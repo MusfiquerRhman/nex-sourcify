@@ -1,0 +1,3177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model departments {
+  id               Int                @id @default(autoincrement())
+  name             String             @db.Char(15)
+  authorizations   authorizations[]
+  level_permission level_permission[]
+  tna_actions      tna_actions[]
+  users            users[]
+}
+
+model level_permission {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  level_id      Int
+  module_id     Int
+  can_view      Boolean      @default(false)
+  can_add       Boolean      @default(false)
+  can_update    Boolean      @default(false)
+  can_delete    Boolean      @default(false)
+  can_trace     Boolean      @default(false)
+  added_by      String?      @db.Uuid
+  created_at    DateTime?    @default(now()) @db.Timestamptz(6)
+  department_id Int?
+  users         users?       @relation(fields: [added_by], references: [id], onUpdate: NoAction)
+  departments   departments? @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  levels        levels       @relation(fields: [level_id], references: [id], onUpdate: NoAction)
+  modules       modules      @relation(fields: [module_id], references: [id], onUpdate: NoAction)
+
+  @@unique([module_id, level_id, department_id], map: "unique_module_per_level_and_department")
+}
+
+model level_permission_history {
+  id                                              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  level_id                                        Int
+  module_id                                       Int
+  can_view                                        Boolean   @default(false)
+  can_add                                         Boolean   @default(false)
+  can_update                                      Boolean   @default(false)
+  can_delete                                      Boolean   @default(false)
+  can_trace                                       Boolean   @default(false)
+  added_by                                        String?   @db.Uuid
+  created_at                                      DateTime? @default(now()) @db.Timestamptz(6)
+  action                                          actions
+  action_by                                       String?   @db.Uuid
+  action_at                                       DateTime? @default(now()) @db.Timestamptz(6)
+  level_permission_id                             String?   @db.Uuid
+  past_action_time                                DateTime? @db.Timestamp(6)
+  users_level_permission_history_action_byTousers users?    @relation("level_permission_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+  users_level_permission_history_added_byTousers  users?    @relation("level_permission_history_added_byTousers", fields: [added_by], references: [id], onUpdate: NoAction)
+  levels                                          levels    @relation(fields: [level_id], references: [id], onUpdate: NoAction)
+  modules                                         modules   @relation(fields: [module_id], references: [id], onUpdate: NoAction)
+}
+
+model levels {
+  id                       Int                        @id @default(autoincrement())
+  name                     String                     @unique(map: "unique_name") @db.VarChar(15)
+  authorizations           authorizations[]
+  level_permission         level_permission[]
+  level_permission_history level_permission_history[]
+  levels_history           levels_history[]
+  users                    users[]
+}
+
+model levels_history {
+  id        Int      @id @default(autoincrement())
+  level_id  Int
+  name      String?  @db.VarChar(15)
+  action    actions
+  action_by String   @db.Uuid
+  action_at DateTime @default(now()) @db.Timestamptz(6)
+  users     users    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  levels    levels   @relation(fields: [level_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model modules {
+  id                       Int                        @id @default(autoincrement())
+  name                     String                     @db.VarChar(50)
+  parent_module_id         Int?
+  authorizations           authorizations[]
+  level_permission         level_permission[]
+  level_permission_history level_permission_history[]
+  modules                  modules?                   @relation("modulesTomodules", fields: [parent_module_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_modules            modules[]                  @relation("modulesTomodules")
+  permissions              permissions[]
+  permissions_history      permissions_history[]
+}
+
+model permissions {
+  id                                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                           String                @db.Uuid
+  module_id                         Int
+  can_view                          Boolean               @default(false)
+  can_add                           Boolean               @default(false)
+  can_update                        Boolean               @default(false)
+  can_delete                        Boolean               @default(false)
+  added_by                          String                @db.Uuid
+  created_at                        DateTime?             @default(now()) @db.Timestamptz(6)
+  can_trace                         Boolean?
+  users_permissions_added_byTousers users                 @relation("permissions_added_byTousers", fields: [added_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  modules                           modules               @relation(fields: [module_id], references: [id], onUpdate: NoAction)
+  users_permissions_user_idTousers  users                 @relation("permissions_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  permissions_history               permissions_history[]
+}
+
+model permissions_history {
+  id                                         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  permission_id                              String?      @db.Uuid
+  user_id                                    String       @db.Uuid
+  module_id                                  Int
+  can_view                                   Boolean      @default(false)
+  can_add                                    Boolean      @default(false)
+  can_update                                 Boolean      @default(false)
+  can_delete                                 Boolean      @default(false)
+  can_trace                                  Boolean      @default(false)
+  added_by                                   String       @db.Uuid
+  created_at                                 DateTime?    @default(now()) @db.Timestamptz(6)
+  action                                     actions
+  action_by                                  String?      @db.Uuid
+  action_at                                  DateTime?    @default(now()) @db.Timestamptz(6)
+  users_permissions_history_action_byTousers users?       @relation("permissions_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+  users_permissions_history_added_byTousers  users        @relation("permissions_history_added_byTousers", fields: [added_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  modules                                    modules      @relation(fields: [module_id], references: [id], onUpdate: NoAction)
+  permissions                                permissions? @relation(fields: [permission_id], references: [id], onUpdate: NoAction)
+  users_permissions_history_user_idTousers   users        @relation("permissions_history_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id                                                                 String                                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  first_name                                                         String                                         @db.VarChar(25)
+  last_name                                                          String?                                        @db.VarChar(25)
+  phone_no                                                           String                                         @db.VarChar(18)
+  password                                                           String
+  email                                                              String                                         @db.VarChar(50)
+  department_id                                                      Int
+  is_active                                                          Boolean                                        @default(true)
+  user_id                                                            String                                         @unique(map: "unique_user_id") @db.VarChar(20)
+  hashed_password                                                    String
+  level_id                                                           Int
+  old_pk                                                             Int?
+  created_at                                                         DateTime?                                      @default(now()) @db.Timestamp(6)
+  authorizations                                                     authorizations[]
+  banks_history_banks_history_action_byTousers                       banks_history[]                                @relation("banks_history_action_byTousers")
+  buyer_additional_clause_history                                    buyer_additional_clause_history[]
+  buyer_banks_history                                                buyer_banks_history[]
+  buyer_brands_history                                               buyer_brands_history[]
+  buyer_consignee_history                                            buyer_consignee_history[]
+  buyer_department_sizes_history                                     buyer_department_sizes_history[]
+  buyer_departments_history                                          buyer_departments_history[]
+  buyer_destinations_history                                         buyer_destinations_history[]
+  buyer_late_policies_history                                        buyer_late_policies_history[]
+  buyer_orders_history                                               buyer_orders_history[]
+  buyer_payment_term_history                                         buyer_payment_term_history[]
+  buyers_history                                                     buyers_history[]
+  color_history_color_history_action_byTousers                       color_history[]                                @relation("color_history_action_byTousers")
+  commercial_tna_planning_details_history                            commercial_tna_planning_details_history[]
+  commercial_tna_templates_actions_history                           commercial_tna_templates_actions_history[]
+  commercial_tna_templates_history                                   commercial_tna_templates_history[]
+  commission_distribution_details_history                            commission_distribution_details_history[]
+  commission_distribution_history                                    commission_distribution_history[]
+  commission_invoice_history                                         commission_invoice_history[]
+  commission_percentage_history                                      commission_percentage_history[]
+  companies_history_companies_history_action_byTousers               companies_history[]                            @relation("companies_history_action_byTousers")
+  company_banks_history                                              company_banks_history[]
+  countries_history_countries_history_action_byTousers               countries_history[]                            @relation("countries_history_action_byTousers")
+  courier_history_courier_history_action_byTousers                   courier_history[]                              @relation("courier_history_action_byTousers")
+  cross_payment_details_history                                      cross_payment_details_history[]
+  cross_payments_history                                             cross_payments_history[]
+  currencies_history_currencies_history_action_byTousers             currencies_history[]                           @relation("currencies_history_action_byTousers")
+  debit_note_details_history                                         debit_note_details_history[]
+  debit_note_history                                                 debit_note_history[]
+  destinations_history_destinations_history_action_byTousers         destinations_history[]                         @relation("destinations_history_action_byTousers")
+  document_submission_factory_invoices_history                       document_submission_factory_invoices_history[]
+  document_submissions_details_history                               document_submissions_details_history[]
+  document_submissions_history                                       document_submissions_history[]
+  early_settlement_details_history                                   early_settlement_details_history[]
+  early_settlement_percentage_history                                early_settlement_percentage_history[]
+  ev_permission_history                                              ev_permission_history[]
+  ev_permissions                                                     ev_permissions[]
+  exfactory_history                                                  exfactory_history[]
+  exfactory_orders_history                                           exfactory_orders_history[]
+  exfactory_shipments_history                                        exfactory_shipments_history[]
+  fabric_suppliers_history_fabric_suppliers_history_action_byTousers fabric_suppliers_history[]                     @relation("fabric_suppliers_history_action_byTousers")
+  fabrics_history_fabrics_history_action_byTousers                   fabrics_history[]                              @relation("fabrics_history_action_byTousers")
+  factory_bank_history_factory_bank_history_action_byTousers         factory_bank_history[]                         @relation("factory_bank_history_action_byTousers")
+  factory_history_factory_history_action_byTousers                   factory_history[]                              @relation("factory_history_action_byTousers")
+  factory_invoice_consignee_history                                  factory_invoice_consignee_history[]
+  factory_invoice_details_history                                    factory_invoice_details_history[]
+  factory_invoice_history                                            factory_invoice_history[]
+  factory_invoice_notify_party_history                               factory_invoice_notify_party_history[]
+  factory_orders_history                                             factory_orders_history[]
+  factory_payments_header_history                                    factory_payments_header_history[]
+  factory_payments_history                                           factory_payments_history[]
+  factory_shipment_details_history                                   factory_shipment_details_history[]
+  fob_type_history                                                   fob_type_history[]
+  fob_types                                                          fob_types[]
+  freight_term                                                       freight_term[]
+  freight_term_history                                               freight_term_history[]
+  handover_dates_history                                             handover_dates_history[]
+  lc_amendment_history                                               lc_amendment_history[]
+  lc_amendment_orders_history                                        lc_amendment_orders_history[]
+  lc_amendment_shipments_history                                     lc_amendment_shipments_history[]
+  lc_master_history                                                  lc_master_history[]
+  lc_orders_history                                                  lc_orders_history[]
+  lc_shipments_history                                               lc_shipments_history[]
+  lc_transfer_details_history                                        lc_transfer_details_history[]
+  lc_transfer_history                                                lc_transfer_history[]
+  level_permission                                                   level_permission[]
+  level_permission_history_level_permission_history_action_byTousers level_permission_history[]                     @relation("level_permission_history_action_byTousers")
+  level_permission_history_level_permission_history_added_byTousers  level_permission_history[]                     @relation("level_permission_history_added_byTousers")
+  levels_history                                                     levels_history[]
+  order_styles_history                                               order_styles_history[]
+  overseas_office_history_overseas_office_history_action_byTousers   overseas_office_history[]                      @relation("overseas_office_history_action_byTousers")
+  payment_terms_history_payment_terms_history_action_byTousers       payment_terms_history[]                        @relation("payment_terms_history_action_byTousers")
+  permissions_permissions_added_byTousers                            permissions[]                                  @relation("permissions_added_byTousers")
+  permissions_permissions_user_idTousers                             permissions[]                                  @relation("permissions_user_idTousers")
+  permissions_history_permissions_history_action_byTousers           permissions_history[]                          @relation("permissions_history_action_byTousers")
+  permissions_history_permissions_history_added_byTousers            permissions_history[]                          @relation("permissions_history_added_byTousers")
+  permissions_history_permissions_history_user_idTousers             permissions_history[]                          @relation("permissions_history_user_idTousers")
+  proceed_realization_details_history                                proceed_realization_details_history[]
+  proceed_realization_history                                        proceed_realization_history[]
+  product_types_history_product_types_history_action_byTousers       product_types_history[]                        @relation("product_types_history_action_byTousers")
+  products_history_products_history_action_byTousers                 products_history[]                             @relation("products_history_action_byTousers")
+  rdl_invoice_details_history                                        rdl_invoice_details_history[]
+  rdl_invoice_history                                                rdl_invoice_history[]
+  rdl_invoice_shipment_details_history                               rdl_invoice_shipment_details_history[]
+  sales_contract_amendment_details_history                           sales_contract_amendment_details_history[]
+  sales_contract_amendment_history                                   sales_contract_amendment_history[]
+  sales_contract_consignees_history                                  sales_contract_consignees_history[]
+  sales_contract_contact_person_history                              sales_contract_contact_person_history[]
+  sales_contract_details_history                                     sales_contract_details_history[]
+  sales_contracts_history                                            sales_contracts_history[]
+  seasons_history                                                    seasons_history[]
+  shipment_details_history                                           shipment_details_history[]
+  shipment_item_details_history                                      shipment_item_details_history[]
+  shipment_tolerance_level_history                                   shipment_tolerance_level_history[]
+  team_members                                                       team_members[]
+  team_members_history                                               team_members_history[]
+  teams_history                                                      teams_history[]
+  tna_actions_history_tna_actions_history_action_byTousers           tna_actions_history[]                          @relation("tna_actions_history_action_byTousers")
+  tna_base_actions_history                                           tna_base_actions_history[]
+  tna_plan_details_history                                           tna_plan_details_history[]
+  tna_plan_history                                                   tna_plan_history[]
+  tna_template_actions_history                                       tna_template_actions_history[]
+  tna_templates_history                                              tna_templates_history[]
+  user_sessions                                                      user_sessions[]
+  departments                                                        departments                                    @relation(fields: [department_id], references: [id], onUpdate: NoAction)
+  levels                                                             levels                                         @relation(fields: [level_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_history_users_history_action_byTousers                       users_history[]                                @relation("users_history_action_byTousers")
+}
+
+model users_history {
+  id                                   Int       @id @default(autoincrement())
+  users_id                             String?   @db.Uuid
+  first_name                           String?   @db.VarChar(25)
+  last_name                            String?   @db.VarChar(25)
+  phone_no                             String?   @db.VarChar(18)
+  password                             String?
+  email                                String?   @db.VarChar(50)
+  department_id                        Int?
+  level_id                             Int?
+  user_id                              String?   @db.VarChar(20)
+  is_active                            Boolean?
+  hashed_password                      String?
+  action_by                            String?   @db.Uuid
+  action_type                          actions?
+  action_at                            DateTime? @default(now()) @db.Timestamp(6)
+  users_users_history_action_byTousers users?    @relation("users_history_action_byTousers", fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model user_sessions {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String    @db.Uuid
+  session_token String
+  ip            String?   @db.Inet
+  browser       String?
+  login_time    DateTime? @default(now()) @db.Timestamptz(6)
+  expire_date   DateTime? @default(dbgenerated("(CURRENT_TIMESTAMP + '18:00:00'::interval)")) @db.Timestamptz(6)
+  logout_at     DateTime? @db.Timestamptz(6)
+  device_id     String?
+  users         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model authorizations {
+  id             Int          @id @default(autoincrement())
+  module_id      Int?
+  level_id       Int?
+  is_enabled     Boolean      @default(true)
+  name           String       @db.VarChar(50)
+  updated_by     String?      @db.Uuid
+  updated_at     DateTime?    @default(now()) @db.Timestamp(6)
+  department_id  Int?
+  approval_level Int?
+  levels         levels?      @relation(fields: [level_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  modules        modules?     @relation(fields: [module_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users          users?       @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  departments    departments? @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "department_id_foreign_key")
+}
+
+model companies {
+  id              Int               @id @default(autoincrement())
+  name            String            @unique(map: "unique_company_name") @db.VarChar(30)
+  country_id      Int?
+  currencies_id   Int?
+  email           String?           @db.VarChar(30)
+  phone_no        String?           @db.VarChar(18)
+  city            String?           @db.VarChar(15)
+  street          String?
+  zip_code        String?           @db.VarChar(6)
+  old_pk          Int?
+  added_at        DateTime?         @default(now()) @db.Timestamp(6)
+  countries       countries?        @relation(fields: [country_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  currencies      currencies?       @relation(fields: [currencies_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company_banks   company_banks[]
+  lc_master       lc_master[]
+  sales_contracts sales_contracts[]
+}
+
+model countries {
+  id               Int                @id @default(autoincrement())
+  name             String             @unique(map: "unique_countries") @db.VarChar(20)
+  country_code     String?            @db.VarChar(5)
+  old_pk           Int?
+  added_at         DateTime?          @default(now()) @db.Timestamp(6)
+  banks            banks[]
+  buyers           buyers[]
+  companies        companies[]
+  destinations     destinations[]
+  fabric_suppliers fabric_suppliers[]
+  overseas_offices overseas_offices[]
+}
+
+model currencies {
+  id               Int                @id @default(autoincrement())
+  name             String             @unique(map: "unique_currencies") @db.VarChar(10)
+  symbol           String             @db.VarChar(2)
+  currency_code    String?            @db.VarChar(5)
+  old_pk           Int?
+  added_at         DateTime?          @default(now()) @db.Timestamp(6)
+  buyer_orders     buyer_orders[]
+  companies        companies[]
+  factory_orders   factory_orders[]
+  lc_master        lc_master[]
+  overseas_offices overseas_offices[]
+}
+
+model destinations {
+  id                 Int                  @id @default(autoincrement())
+  country_id         Int?
+  old_pk             Int?
+  name               String               @unique(map: "unique_destinations") @db.VarChar(50)
+  added_at           DateTime?            @default(now()) @db.Timestamp(6)
+  buyer_destinations buyer_destinations[]
+  countries          countries?           @relation(fields: [country_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  factory_invoice    factory_invoice[]
+  sales_contracts    sales_contracts[]
+  shipment_details   shipment_details[]
+}
+
+model overseas_offices {
+  id            Int         @id @default(autoincrement())
+  name          String      @unique(map: "unique_overseas_office") @db.VarChar(25)
+  email_address String?     @db.VarChar(40)
+  phone_no      String?     @db.VarChar(18)
+  currency_id   Int?
+  country_id    Int?
+  city          String?     @db.VarChar(15)
+  street        String?
+  zip           String?     @db.VarChar(8)
+  old_pk        Int?
+  added_at      DateTime?   @default(now()) @db.Timestamp(6)
+  buyers        buyers[]
+  countries     countries?  @relation(fields: [country_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  currencies    currencies? @relation(fields: [currency_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model payment_terms {
+  id                 Int                  @id @default(autoincrement())
+  term_id            Int
+  tenor              Int
+  term_description   String
+  old_pk             Int?
+  added_at           DateTime?            @default(now()) @db.Timestamp(6)
+  buyer_payment_term buyer_payment_term[]
+  terms              terms                @relation(fields: [term_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  shipment_details   shipment_details[]
+
+  @@unique([term_id, tenor, term_description], map: "unique_payment_terms")
+}
+
+model terms {
+  id                   Int                    @id @default(autoincrement())
+  name                 String                 @db.VarChar(5)
+  commission_invoice   commission_invoice[]
+  cross_payments       cross_payments[]
+  debit_note           debit_note[]
+  document_submissions document_submissions[]
+  exfactory            exfactory[]
+  factory_invoice      factory_invoice[]
+  payment_terms        payment_terms[]
+  proceed_realization  proceed_realization[]
+  rdl_invoice          rdl_invoice[]
+}
+
+model banks {
+  id            Int             @id @default(autoincrement())
+  name          String          @unique(map: "unique_banks") @db.VarChar(100)
+  country_id    Int?
+  old_pk        Int?
+  added_at      DateTime?       @default(now()) @db.Timestamp(6)
+  countries     countries?      @relation(fields: [country_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  buyer_banks   buyer_banks[]
+  company_banks company_banks[]
+  factory_bank  factory_bank[]
+}
+
+model fabrics {
+  id                  Int            @id @default(autoincrement())
+  product_type_id     Int?
+  old_product_type_id Int?
+  description         String?        @db.VarChar(255)
+  composition         String?
+  name                String?
+  value               Int?
+  unit                String?        @db.VarChar(10)
+  old_pk              Int?
+  added_at            DateTime?      @default(now()) @db.Timestamp(6)
+  product_types       product_types? @relation(fields: [product_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  order_styles        order_styles[]
+
+  @@unique([name, product_type_id], map: "unique_fabric")
+}
+
+model product_types {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique(map: "unique_product_type") @db.VarChar(25)
+  is_active    Boolean?       @default(true)
+  old_pk       Int?
+  added_at     DateTime?      @default(now()) @db.Timestamp(6)
+  fabrics      fabrics[]
+  order_styles order_styles[]
+  products     products[]
+}
+
+model products {
+  id                  Int            @id @default(autoincrement())
+  name                String         @db.VarChar(255)
+  product_type_id     Int?
+  old_product_type_id Int?
+  is_active           Boolean?       @default(true)
+  old_pk              Int?
+  added_at            DateTime?      @default(now()) @db.Timestamp(6)
+  order_styles        order_styles[]
+  product_types       product_types? @relation(fields: [product_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([name, product_type_id], map: "unique_products")
+}
+
+model banks_history {
+  id                                   Int       @id @default(autoincrement())
+  bank_id                              Int?
+  name                                 String?   @db.VarChar(100)
+  country_id                           Int?
+  action_type                          actions?
+  action_by                            String?   @db.Uuid
+  action_at                            DateTime? @default(now()) @db.Timestamp(6)
+  users_banks_history_action_byTousers users?    @relation("banks_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model companies_history {
+  id                                       Int       @id @default(autoincrement())
+  company_id                               Int?
+  name                                     String?   @db.VarChar(30)
+  country_id                               Int?
+  currencies_id                            Int?
+  email                                    String?   @db.VarChar(30)
+  phone_no                                 String?   @db.VarChar(18)
+  city                                     String?   @db.VarChar(15)
+  street                                   String?
+  zip_code                                 String?   @db.VarChar(6)
+  action_type                              actions?
+  action_by                                String?   @db.Uuid
+  action_at                                DateTime? @default(now()) @db.Timestamp(6)
+  users_companies_history_action_byTousers users?    @relation("companies_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model countries_history {
+  id                                       Int       @id @default(autoincrement())
+  name                                     String?   @db.VarChar(20)
+  country_code                             String?   @db.VarChar(5)
+  action_type                              actions?
+  action_by                                String?   @db.Uuid
+  action_at                                DateTime? @default(now()) @db.Timestamp(6)
+  country_id                               Int?
+  users_countries_history_action_byTousers users?    @relation("countries_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model currencies_history {
+  id                                        Int       @id @default(autoincrement())
+  name                                      String?   @db.VarChar(10)
+  symbol                                    String?   @db.VarChar(10)
+  currency_code                             String?   @db.VarChar(5)
+  action_type                               actions?
+  action_by                                 String?   @db.Uuid
+  action_at                                 DateTime? @default(now()) @db.Timestamp(6)
+  currency_id                               Int?
+  users_currencies_history_action_byTousers users?    @relation("currencies_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model destinations_history {
+  id                                          Int       @id @default(autoincrement())
+  name                                        String?   @db.VarChar(50)
+  country_id                                  Int?
+  action_type                                 actions?
+  action_by                                   String?   @db.Uuid
+  action_at                                   DateTime? @default(now()) @db.Timestamp(6)
+  destination_id                              Int?
+  users_destinations_history_action_byTousers users?    @relation("destinations_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model fabrics_history {
+  id                                     Int       @id @default(autoincrement())
+  fabrics_id                             Int?
+  name                                   String?
+  product_type_id                        Int?
+  description                            String?   @db.VarChar(255)
+  composition                            String?
+  action_type                            actions?
+  action_by                              String?   @db.Uuid
+  action_at                              DateTime? @default(now()) @db.Timestamp(6)
+  value                                  Int?
+  unit                                   String?   @db.VarChar(10)
+  users_fabrics_history_action_byTousers users?    @relation("fabrics_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model overseas_office_history {
+  id                                             Int       @id @default(autoincrement())
+  overseas_office_id                             Int?
+  name                                           String?   @db.VarChar(25)
+  email_address                                  String?   @db.VarChar(40)
+  phone_no                                       String?   @db.VarChar(18)
+  currency_id                                    Int?
+  country_id                                     Int?
+  city                                           String?   @db.VarChar(15)
+  zip                                            String?   @db.VarChar(8)
+  action_type                                    actions?
+  action_by                                      String?   @db.Uuid
+  action_at                                      DateTime? @default(now()) @db.Timestamp(6)
+  street                                         String?
+  users_overseas_office_history_action_byTousers users?    @relation("overseas_office_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model payment_terms_history {
+  id                                           Int       @id @default(autoincrement())
+  payment_terms_id                             Int?
+  term_id                                      Int?
+  tenor                                        Int?
+  term_description                             String?
+  action_type                                  actions?
+  action_by                                    String?   @db.Uuid
+  action_at                                    DateTime? @default(now()) @db.Timestamp(6)
+  users_payment_terms_history_action_byTousers users?    @relation("payment_terms_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model product_types_history {
+  id                                           Int       @id @default(autoincrement())
+  product_types_id                             Int?
+  name                                         String?   @db.VarChar(25)
+  is_active                                    Boolean?
+  action_type                                  actions?
+  action_by                                    String?   @db.Uuid
+  action_at                                    DateTime? @default(now()) @db.Timestamp(6)
+  users_product_types_history_action_byTousers users?    @relation("product_types_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model products_history {
+  id                                      Int       @id @default(autoincrement())
+  products_id                             Int?
+  name                                    String?   @db.VarChar(255)
+  product_types_id                        Int?
+  is_active                               Boolean?
+  action_type                             actions?
+  action_by                               String?   @db.Uuid
+  action_at                               DateTime? @default(now()) @db.Timestamp(6)
+  users_products_history_action_byTousers users?    @relation("products_history_action_byTousers", fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model color_history {
+  id                                   Int       @id @default(autoincrement())
+  color_id                             Int?
+  name                                 String?   @db.VarChar(50)
+  action_by                            String?   @db.Uuid
+  action_type                          actions?
+  action_at                            DateTime? @default(now()) @db.Timestamp(6)
+  users_color_history_action_byTousers users?    @relation("color_history_action_byTousers", fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model colors {
+  id                    Int                     @id @default(autoincrement())
+  name                  String                  @unique(map: "unique_colors") @db.VarChar(75)
+  old_pk                Int?
+  added_at              DateTime?               @default(now()) @db.Timestamp(6)
+  shipment_item_details shipment_item_details[]
+}
+
+model courier_history {
+  id                                     Int       @id @default(autoincrement())
+  courier_id                             Int?
+  name                                   String    @db.VarChar(50)
+  address                                String?
+  email                                  String?   @db.VarChar(50)
+  contact_person                         String?   @db.VarChar(30)
+  phone_no                               String?   @db.VarChar(18)
+  website                                String?   @db.VarChar(25)
+  action_by                              String?   @db.Uuid
+  action_type                            actions?
+  action_at                              DateTime? @default(now()) @db.Timestamp(6)
+  users_courier_history_action_byTousers users?    @relation("courier_history_action_byTousers", fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model couriers {
+  id                   Int                    @id @default(autoincrement())
+  name                 String                 @unique(map: "unique_couriers") @db.VarChar(50)
+  address              String?
+  email                String?                @db.VarChar(50)
+  contact_person       String?                @db.VarChar(30)
+  phone_no             String?                @db.VarChar(18)
+  website              String?                @db.VarChar(25)
+  old_pk               Int?
+  added_at             DateTime?              @default(now()) @db.Timestamp(6)
+  document_submissions document_submissions[]
+}
+
+model fabric_suppliers {
+  id             Int            @id @default(autoincrement())
+  name           String         @unique(map: "unique_fabric_suppliers") @db.VarChar(50)
+  address        String?
+  contact_person String?        @db.VarChar(30)
+  phone_no       String?        @db.VarChar(18)
+  website        String?        @db.VarChar(30)
+  old_pk         Int?
+  email          String?        @db.VarChar(50)
+  country_id     Int?
+  added_at       DateTime?      @default(now()) @db.Timestamp(6)
+  countries      countries?     @relation(fields: [country_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fabric_suppliers_to_country_fkey")
+  order_styles   order_styles[]
+}
+
+model fabric_suppliers_history {
+  id                                              Int       @id @default(autoincrement())
+  fabric_suppliers_id                             Int?
+  name                                            String?   @db.VarChar(50)
+  address                                         String?
+  contact_person                                  String?   @db.VarChar(30)
+  phone_no                                        String?   @db.VarChar(18)
+  website                                         String?   @db.VarChar(30)
+  action_by                                       String?   @db.Uuid
+  action_type                                     actions?
+  action_at                                       DateTime? @default(now()) @db.Timestamp(6)
+  country_id                                      Int?
+  email                                           String?   @db.VarChar(50)
+  users_fabric_suppliers_history_action_byTousers users?    @relation("fabric_suppliers_history_action_byTousers", fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model factories {
+  id                  Int                   @id @default(autoincrement())
+  name                String                @unique(map: "unique_factories") @db.VarChar(50)
+  office_address      String?
+  factory_address     String?
+  email               String?               @db.VarChar(50)
+  contact_person      String?               @db.VarChar(30)
+  prefix              String?               @db.VarChar(10)
+  phone_no            String?               @db.VarChar(75)
+  website             String?               @db.VarChar(25)
+  old_pk              Int?
+  added_at            DateTime?             @default(now()) @db.Timestamp(6)
+  buyer_orders        buyer_orders[]
+  debit_note          debit_note[]
+  exfactory           exfactory[]
+  factory_bank        factory_bank[]
+  factory_invoice     factory_invoice[]
+  lc_transfer_details lc_transfer_details[]
+  rdl_invoice_details rdl_invoice_details[]
+  sales_contracts     sales_contracts[]
+}
+
+model factory_history {
+  id                                     Int       @id @default(autoincrement())
+  name                                   String    @db.VarChar(50)
+  office_address                         String?
+  factory_address                        String?
+  email                                  String?   @db.VarChar(50)
+  contact_person                         String?   @db.VarChar(30)
+  prefix                                 String?   @db.VarChar(10)
+  phone_no                               String?   @db.VarChar(18)
+  website                                String?   @db.VarChar(25)
+  action_by                              String?   @db.Uuid
+  action_type                            actions?
+  action_at                              DateTime? @default(now()) @db.Timestamp(6)
+  factory_id                             Int?
+  users_factory_history_action_byTousers users?    @relation("factory_history_action_byTousers", fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model fob_types {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique(map: "unique_fob_types") @db.VarChar(50)
+  added_by     String?        @db.Uuid
+  added_at     DateTime?      @default(now()) @db.Timestamp(6)
+  old_pk       Int?
+  buyer_orders buyer_orders[]
+  users        users?         @relation(fields: [added_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model freight_term {
+  id              Int               @id @default(autoincrement())
+  name            String            @unique(map: "unique_freight_term") @db.VarChar(50)
+  added_by        String?           @db.Uuid
+  added_at        DateTime?         @default(now()) @db.Timestamp(6)
+  old_pk          Int?
+  factory_invoice factory_invoice[]
+  users           users?            @relation(fields: [added_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sales_contracts sales_contracts[]
+}
+
+model tna_actions {
+  id                               Int                                @id @default(autoincrement())
+  name                             String                             @db.VarChar(50)
+  department_id                    Int
+  lead_time                        Int
+  alert_before                     Int?
+  old_pk                           Int?
+  added_at                         DateTime?                          @default(now()) @db.Timestamp(6)
+  commercial_tna_templates_actions commercial_tna_templates_actions[]
+  departments                      departments                        @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tna_base_actions                 tna_base_actions[]
+
+  @@unique([name, department_id], map: "unique_tna_actions")
+}
+
+model tna_actions_history {
+  id                                         Int       @id @default(autoincrement())
+  tna_action_id                              Int?
+  name                                       String    @db.VarChar(50)
+  department_id                              Int
+  lead_time                                  Int
+  alert_before                               Int?
+  action_by                                  String?   @db.Uuid
+  action_type                                actions?
+  action_at                                  DateTime? @default(now()) @db.Timestamp(6)
+  users_tna_actions_history_action_byTousers users?    @relation("tna_actions_history_action_byTousers", fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model factory_bank {
+  id              Int               @id @default(autoincrement())
+  factory_id      Int?
+  bank_id         Int?
+  old_factory_id  Int?
+  old_bank_id     Int?
+  branch_name     String?           @db.VarChar(100)
+  account_no      String?           @db.VarChar(20)
+  account_name    String?           @db.VarChar(100)
+  address         String?
+  swift_code      String?           @db.VarChar(15)
+  old_pk          Int?
+  added_at        DateTime?         @default(now()) @db.Timestamp(6)
+  banks           banks?            @relation(fields: [bank_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  factories       factories?        @relation(fields: [factory_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sales_contracts sales_contracts[]
+}
+
+model factory_bank_history {
+  id                                          Int       @id @default(autoincrement())
+  factory_bank_id                             Int?
+  factory_id                                  Int?
+  bank_id                                     Int?
+  branch_name                                 String?   @db.VarChar(100)
+  account_no                                  String?   @db.VarChar(20)
+  account_name                                String?   @db.VarChar(100)
+  address                                     String?
+  swift_code                                  String?   @db.VarChar(15)
+  action_by                                   String?   @db.Uuid
+  action_type                                 actions?
+  action_at                                   DateTime? @default(now()) @db.Timestamp(6)
+  users_factory_bank_history_action_byTousers users?    @relation("factory_bank_history_action_byTousers", fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_additional_clause {
+  id            Int       @id @default(autoincrement())
+  buyer_id      Int?
+  old_buyers_id Int?
+  sl_no         Int
+  description   String
+  added_at      DateTime? @default(now()) @db.Timestamp(6)
+  old_pk        Int?
+  buyers        buyers?   @relation(fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_additional_clause_history {
+  id                         Int       @id @default(autoincrement())
+  buyer_additional_clause_id Int?
+  buyer_id                   Int?
+  sl_no                      Int
+  description                String
+  action_by                  String?   @db.Uuid
+  action_type                actions?
+  action_at                  DateTime? @default(now()) @db.Timestamp(6)
+  users                      users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_banks {
+  id              Int               @id @default(autoincrement())
+  buyer_id        Int?
+  old_buyers_id   Int?
+  bank_id         Int?
+  old_bank_id     Int?
+  branch_name     String?           @db.VarChar(255)
+  account_no      String?           @db.VarChar(30)
+  account_name    String?           @db.VarChar(255)
+  swift           String?           @db.VarChar(20)
+  added_at        DateTime?         @default(now()) @db.Timestamp(6)
+  address         String?
+  old_pk          Int?
+  banks           banks?            @relation(fields: [bank_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  buyers          buyers?           @relation(fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lc_master       lc_master[]
+  sales_contracts sales_contracts[]
+}
+
+model buyer_banks_history {
+  id             Int       @id @default(autoincrement())
+  buyer_banks_id Int?
+  bank_id        Int?
+  buyer_id       Int?
+  branch_name    String?   @db.VarChar(255)
+  account_no     String?   @db.VarChar(30)
+  account_name   String?   @db.VarChar(255)
+  swift          String?   @db.VarChar(20)
+  action_by      String?   @db.Uuid
+  action_type    actions?
+  action_at      DateTime? @default(now()) @db.Timestamp(6)
+  address        String?
+  users          users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_consignee {
+  id                           Int                            @id @default(autoincrement())
+  old_pk                       Int?
+  sl_no                        Int
+  buyer_id                     Int?
+  old_buyer_id                 Int?
+  consignee_name               String                         @db.VarChar(255)
+  address                      String
+  added_at                     DateTime?                      @default(now()) @db.Timestamp(6)
+  buyers                       buyers?                        @relation(fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  factory_invoice_consignee    factory_invoice_consignee[]
+  factory_invoice_notify_party factory_invoice_notify_party[]
+  sales_contract_consignees    sales_contract_consignees[]
+}
+
+model buyer_consignee_history {
+  id                 Int       @id @default(autoincrement())
+  buyer_consignee_id Int?
+  sl_no              Int
+  buyer_id           Int?
+  consignee_name     String    @db.VarChar(255)
+  address            String
+  action_by          String?   @db.Uuid
+  action_type        actions?
+  action_at          DateTime? @default(now()) @db.Timestamp(6)
+  users              users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_destinations {
+  id                  Int           @id @default(autoincrement())
+  buyer_id            Int?
+  old_buyers_id       Int?
+  destinations_id     Int?
+  old_destinations_id Int?
+  added_at            DateTime?     @default(now()) @db.Timestamp(6)
+  buyers              buyers?       @relation(fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  destinations        destinations? @relation(fields: [destinations_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([buyer_id, destinations_id])
+}
+
+model buyer_destinations_history {
+  id                    Int       @id @default(autoincrement())
+  buyer_destinations_id Int?
+  buyer_id              Int?
+  destinations_id       Int?
+  action_by             String?   @db.Uuid
+  action_type           actions?
+  action_at             DateTime? @default(now()) @db.Timestamp(6)
+  users                 users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_late_policies {
+  id            Int       @id @default(autoincrement())
+  buyer_id      Int?
+  old_buyers_id Int?
+  sl_no         Int
+  description   String
+  added_at      DateTime? @default(now()) @db.Timestamp(6)
+  old_pk        Int?
+  buyers        buyers?   @relation(fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_late_policies_history {
+  id                     Int       @id @default(autoincrement())
+  buyer_late_policies_id Int?
+  buyer_id               Int?
+  sl_no                  Int
+  description            String
+  action_by              String?   @db.Uuid
+  action_type            actions?
+  action_at              DateTime? @default(now()) @db.Timestamp(6)
+  users                  users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_payment_term {
+  id                       Int                        @id @default(autoincrement())
+  payment_term_id          Int?
+  old_payment_term_id      Int?
+  buyer_id                 Int?
+  old_buyers_id            Int?
+  added_at                 DateTime?                  @default(now()) @db.Timestamp(6)
+  buyers                   buyers?                    @relation(fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payment_terms            payment_terms?             @relation(fields: [payment_term_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  commercial_tna_templates commercial_tna_templates[]
+
+  @@unique([buyer_id, payment_term_id])
+}
+
+model buyer_payment_term_history {
+  id                    Int       @id @default(autoincrement())
+  buyer_payment_term_id Int?
+  payment_term_id       Int?
+  buyer_id              Int?
+  added_at              DateTime? @default(now()) @db.Timestamp(6)
+  action_by             String?   @db.Uuid
+  action_type           actions?
+  action_at             DateTime? @default(now()) @db.Timestamp(6)
+  users                 users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyers {
+  id                          Int                           @id @default(autoincrement())
+  old_pk                      Int?
+  buyer_name                  String                        @unique(map: "unique_buyer_names") @db.VarChar(255)
+  short_name                  String                        @db.VarChar(50)
+  prefix                      String                        @db.VarChar(50)
+  address                     String?
+  contact_person              String?                       @db.VarChar(50)
+  phone_no                    String?                       @db.VarChar(50)
+  email                       String?                       @db.VarChar(50)
+  old_country_id              Int?
+  country_id                  Int?
+  website                     String?                       @db.VarChar(50)
+  old_overseas_office_id      Int?
+  overseas_office_id          Int?
+  added_at                    DateTime?                     @default(now()) @db.Timestamp(6)
+  buyer_additional_clause     buyer_additional_clause[]
+  buyer_banks                 buyer_banks[]
+  buyer_brands                buyer_brands[]
+  buyer_consignee             buyer_consignee[]
+  buyer_destinations          buyer_destinations[]
+  buyer_late_policies         buyer_late_policies[]
+  buyer_orders                buyer_orders[]
+  buyer_payment_term          buyer_payment_term[]
+  countries                   countries?                    @relation(fields: [country_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  overseas_offices            overseas_offices?             @relation(fields: [overseas_office_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  commercial_tna_templates    commercial_tna_templates[]
+  commission_invoice          commission_invoice[]
+  commission_percentage       commission_percentage[]
+  cross_payments              cross_payments[]
+  cross_payments_metadata     cross_payments_metadata[]
+  debit_note                  debit_note[]
+  debit_note_metadata         debit_note_metadata[]
+  document_submissions        document_submissions[]
+  early_settlement_percentage early_settlement_percentage[]
+  ev_permissions              ev_permissions[]
+  exfactory                   exfactory[]
+  factory_invoice             factory_invoice[]
+  handover_dates              handover_dates?
+  lc_master                   lc_master[]
+  proceed_realization         proceed_realization[]
+  rdl_invoice                 rdl_invoice[]
+  sales_contracts             sales_contracts[]
+  seasons                     seasons[]
+  shipment_tolerance_level    shipment_tolerance_level?
+  teams                       teams[]
+  tna_base_actions            tna_base_actions?
+  tna_templates               tna_templates[]
+}
+
+model buyers_history {
+  id                 Int       @id @default(autoincrement())
+  buyers_id          Int?
+  buyer_name         String    @db.VarChar(255)
+  short_name         String    @db.VarChar(50)
+  prefix             String    @db.VarChar(50)
+  address            String?
+  contact_person     String?   @db.VarChar(50)
+  phone_no           String?   @db.VarChar(50)
+  email              String?   @db.VarChar(50)
+  country_id         Int?
+  website            String?   @db.VarChar(50)
+  overseas_office_id Int?
+  action_by          String?   @db.Uuid
+  action_type        actions?
+  action_at          DateTime? @default(now()) @db.Timestamp(6)
+  users              users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_brands {
+  id                Int                 @id @default(autoincrement())
+  buyer_id          Int?
+  old_buyer_id      Int?
+  brand             String              @db.VarChar(40)
+  added_at          DateTime?           @default(now()) @db.Timestamp(6)
+  old_pk            Int?
+  buyers            buyers?             @relation(fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  buyer_departments buyer_departments[]
+  buyer_orders      buyer_orders[]
+
+  @@unique([buyer_id, brand], map: "unique_brand_per_buyer")
+  @@unique([buyer_id, brand], map: "unique_brand_per_buyer_const")
+}
+
+model buyer_brands_history {
+  id             Int       @id @default(autoincrement())
+  buyer_id       Int?
+  buyer_brand_id Int?
+  brand          String?   @db.VarChar(40)
+  action_by      String?   @db.Uuid
+  action_type    actions?
+  action_at      DateTime? @default(now()) @db.Timestamp(6)
+  users          users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_department_sizes {
+  id                      Int                @id @default(autoincrement())
+  buyer_department_id     Int?
+  old_buyer_department_id Int?
+  size                    String             @db.VarChar(40)
+  added_at                DateTime?          @default(now()) @db.Timestamp(6)
+  old_pk                  Int?
+  buyer_departments       buyer_departments? @relation(fields: [buyer_department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  shipment_details        shipment_details[]
+
+  @@unique([buyer_department_id, size], map: "unique_size_per_department")
+  @@unique([buyer_department_id, size], map: "unique_size_set_per_department")
+}
+
+model buyer_department_sizes_history {
+  id                        Int       @id @default(autoincrement())
+  buyer_department_id       Int?
+  buyer_department_sizes_id Int?
+  size                      String    @db.VarChar(40)
+  action_by                 String?   @db.Uuid
+  action_type               actions?
+  action_at                 DateTime? @default(now()) @db.Timestamp(6)
+  users                     users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_departments {
+  id                     Int                      @id @default(autoincrement())
+  buyer_brand_id         Int?
+  old_buyer_brand_id     Int?
+  department             String                   @db.VarChar(40)
+  added_at               DateTime?                @default(now()) @db.Timestamp(6)
+  old_pk                 Int?
+  buyer_department_sizes buyer_department_sizes[]
+  buyer_brands           buyer_brands?            @relation(fields: [buyer_brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  buyer_orders           buyer_orders[]
+
+  @@unique([buyer_brand_id, department], map: "unique_department_per_brand")
+  @@unique([buyer_brand_id, department], map: "unique_department_per_brand_const")
+}
+
+model buyer_departments_history {
+  id                  Int       @id @default(autoincrement())
+  buyer_brand_id      Int?
+  buyer_department_id Int?
+  department          String    @db.VarChar(40)
+  action_by           String?   @db.Uuid
+  action_type         actions?
+  action_at           DateTime? @default(now()) @db.Timestamp(6)
+  users               users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model seasons {
+  id            Int            @id @default(autoincrement())
+  old_pk        Int?
+  buyer_id      Int?
+  old_buyer_id  Int?
+  season_name   String         @db.VarChar(55)
+  active_status Boolean?       @default(true)
+  added_at      DateTime?      @default(now()) @db.Timestamp(6)
+  buyer_orders  buyer_orders[]
+  buyers        buyers?        @relation(fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([season_name, buyer_id], map: "unique_seasons")
+}
+
+model seasons_history {
+  id            Int       @id @default(autoincrement())
+  season_id     Int?
+  buyer_id      Int?
+  season_name   String    @db.VarChar(55)
+  active_status Boolean?
+  action_by     String?   @db.Uuid
+  action_type   actions?
+  action_at     DateTime? @default(now()) @db.Timestamp(6)
+  users         users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model team_members {
+  id          Int       @id @default(autoincrement())
+  team_id     Int?
+  old_team_id Int?
+  user_id     String?   @db.Uuid
+  old_user_id Int?
+  added_at    DateTime? @default(now()) @db.Timestamp(6)
+  old_pk      Int?
+  teams       teams?    @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users       users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([team_id, user_id], map: "unique_team_member_constraint")
+}
+
+model team_members_history {
+  id             Int       @id @default(autoincrement())
+  team_member_id Int?
+  team_id        Int?
+  user_id        String?   @db.Uuid
+  action_by      String?   @db.Uuid
+  action_type    actions?
+  action_at      DateTime? @default(now()) @db.Timestamp(6)
+  users          users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model teams {
+  id            Int             @id @default(autoincrement())
+  old_pk        Int?
+  buyer_id      Int?
+  old_buyer_id  Int?
+  team_name     String          @db.VarChar(55)
+  added_at      DateTime?       @default(now()) @db.Timestamp(6)
+  buyer_orders  buyer_orders[]
+  team_members  team_members[]
+  buyers        buyers?         @relation(fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tna_templates tna_templates[]
+}
+
+model teams_history {
+  id          Int       @id @default(autoincrement())
+  team_id     Int?
+  buyer_id    Int?
+  team_name   String    @db.VarChar(55)
+  action_by   String?   @db.Uuid
+  action_type actions?
+  action_at   DateTime? @default(now()) @db.Timestamp(6)
+  users       users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model company_banks {
+  id                                                                 Int                  @id @default(autoincrement())
+  company_id                                                         Int?
+  bank_id                                                            Int?
+  old_company_id                                                     Int?
+  old_bank_id                                                        Int?
+  branch_name                                                        String?              @db.VarChar(255)
+  account_no                                                         String?              @db.VarChar(30)
+  account_name                                                       String?              @db.VarChar(255)
+  swift                                                              String?              @db.VarChar(20)
+  added_at                                                           DateTime?            @default(now()) @db.Timestamp(6)
+  address                                                            String?
+  old_pk                                                             Int?
+  commission_invoice                                                 commission_invoice[]
+  banks                                                              banks?               @relation(fields: [bank_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  companies                                                          companies?           @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lc_master                                                          lc_master[]
+  sales_contracts_sales_contracts_negotiation_bank_idTocompany_banks sales_contracts[]    @relation("sales_contracts_negotiation_bank_idTocompany_banks")
+  sales_contracts_sales_contracts_rdl_bank_idTocompany_banks         sales_contracts[]    @relation("sales_contracts_rdl_bank_idTocompany_banks")
+}
+
+model company_banks_history {
+  id              Int       @id @default(autoincrement())
+  company_id      Int?
+  bank_id         Int?
+  branch_name     String?   @db.VarChar(255)
+  account_no      String?   @db.VarChar(30)
+  account_name    String?   @db.VarChar(255)
+  swift           String?   @db.VarChar(20)
+  address         String?
+  action_type     actions?
+  action_by       String?   @db.Uuid
+  action_at       DateTime? @default(now()) @db.Timestamp(6)
+  company_bank_id Int?
+  users           users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model handover_dates {
+  id       Int       @id @default(autoincrement())
+  buyer_id Int       @unique(map: "unique_buyer_ids_in_handover_dates")
+  buffer   Int       @default(7)
+  added_at DateTime? @default(now()) @db.Timestamp(6)
+  buyers   buyers    @relation(fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model handover_dates_history {
+  id               Int       @id @default(autoincrement())
+  handover_date_id Int?
+  buyer_id         Int?
+  buffer           Int?
+  action_type      actions?
+  action_by        String?   @db.Uuid
+  action_at        DateTime? @default(now()) @db.Timestamp(6)
+  users            users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_orders {
+  id                               String                             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ref_no                           String                             @unique @db.VarChar(50)
+  buyer_id                         Int
+  old_buyer_id                     Int?
+  season_id                        Int
+  old_season_id                    Int?
+  fob_type_id                      Int?
+  old_fob_type                     Int?
+  order_date                       DateTime                           @db.Date
+  team_id                          Int
+  old_team_id                      Int?
+  brand_id                         Int
+  old_brand_id                     Int?
+  department_id                    Int
+  old_department_id                Int?
+  secondary_currency_id            Int?
+  old_secondary_currency_id        Int?
+  factory_id                       Int
+  old_factory_id                   Int?
+  currency_rate                    Float?                             @default(1)
+  status                           order_status?                      @default(ACTIVE)
+  remarks                          String?
+  added_at                         DateTime?                          @default(now()) @db.Timestamp(6)
+  old_pk                           Int?
+  buyer_brands                     buyer_brands                       @relation(fields: [brand_id], references: [id], onUpdate: NoAction)
+  buyers                           buyers                             @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
+  buyer_departments                buyer_departments                  @relation(fields: [department_id], references: [id], onUpdate: NoAction)
+  factories                        factories                          @relation(fields: [factory_id], references: [id], onUpdate: NoAction)
+  fob_types                        fob_types?                         @relation(fields: [fob_type_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  seasons                          seasons                            @relation(fields: [season_id], references: [id], onUpdate: NoAction)
+  currencies                       currencies?                        @relation(fields: [secondary_currency_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  teams                            teams                              @relation(fields: [team_id], references: [id], onUpdate: NoAction)
+  commission_distributions         commission_distributions?
+  early_settlement                 early_settlement[]
+  exfactory_orders                 exfactory_orders[]
+  factory_orders                   factory_orders?
+  lc_amendment_orders              lc_amendment_orders[]
+  lc_amendment_shipments           lc_amendment_shipments[]
+  lc_orders                        lc_orders[]
+  lc_orders_history                lc_orders_history[]
+  order_styles                     order_styles[]
+  sales_contract_amendment_details sales_contract_amendment_details[]
+  sales_contract_details           sales_contract_details[]
+  tna_plans                        tna_plans[]
+}
+
+model buyer_orders_history {
+  id                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buyer_order_id        String?       @db.Uuid
+  ref_no                String?       @db.VarChar(50)
+  buyer_id              Int?
+  season_id             Int?
+  fob_type_id           Int?
+  order_date            DateTime?     @db.Date
+  team_id               Int?
+  brand_id              Int?
+  department_id         Int?
+  secondary_currency_id Int?
+  factory_id            Int?
+  currency_rate         Float?
+  status                order_status?
+  remarks               String?
+  action_type           actions?
+  action_by             String?       @db.Uuid
+  action_at             DateTime?     @default(now()) @db.Timestamp(6)
+  users                 users?        @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model order_styles {
+  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  old_pk              Int?
+  order_id            String             @db.Uuid
+  old_order_id        Int?
+  product_type_id     Int
+  old_product_type_id Int?
+  product_id          Int
+  old_product_id      Int?
+  style               String             @db.VarChar(50)
+  fabric_id           Int
+  old_fabric_id       Int?
+  supplier_id         Int
+  old_supplier_id     Int?
+  order_quantity      Int
+  added_at            DateTime?          @default(now()) @db.Timestamp(6)
+  serial              Int?
+  photo_url           String?
+  file_size           Int?
+  fabrics             fabrics            @relation(fields: [fabric_id], references: [id], onUpdate: NoAction)
+  buyer_orders        buyer_orders       @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+  products            products           @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+  product_types       product_types      @relation(fields: [product_type_id], references: [id], onUpdate: NoAction)
+  fabric_suppliers    fabric_suppliers   @relation(fields: [supplier_id], references: [id], onUpdate: NoAction)
+  shipment_details    shipment_details[]
+  tna_plans           tna_plans[]
+}
+
+model order_styles_history {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_style_id  String?   @db.Uuid
+  order_id        String?   @db.Uuid
+  product_type_id Int?
+  product_id      Int?
+  style           String?   @db.VarChar(50)
+  fabric_id       Int?
+  supplier_id     Int?
+  order_quantity  Int?
+  action_type     actions?
+  action_by       String?   @db.Uuid
+  action_at       DateTime? @default(now()) @db.Timestamp(6)
+  serial          Int?
+  users           users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model shipment_details {
+  id                               String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  old_pk                           Int?
+  serial                           Int?
+  order_style_id                   String                            @db.Uuid
+  old_order_style_id               Int?
+  buyer_po                         String                            @db.VarChar(50)
+  etd_date                         DateTime                          @db.Date
+  handover_date                    DateTime                          @db.Date
+  destination_id                   Int
+  old_destination_id               Int?
+  shipment_mode                    shipment_modes?
+  payment_term_id                  Int
+  old_payment_term_id              Int?
+  size_id                          Int
+  old_size_id                      Int?
+  fob_rate                         Float
+  cancel_status                    Boolean?                          @default(false)
+  added_at                         DateTime?                         @default(now()) @db.Timestamp(6)
+  commission_distributions_details commission_distributions_details?
+  early_settlement_details         early_settlement_details[]
+  exfactory_shipments              exfactory_shipments[]
+  factory_shipment_details         factory_shipment_details[]
+  lc_amendment_shipments           lc_amendment_shipments[]
+  lc_shipments                     lc_shipments[]
+  rdl_invoice_shipment_details     rdl_invoice_shipment_details[]
+  destinations                     destinations                      @relation(fields: [destination_id], references: [id], onUpdate: NoAction)
+  order_styles                     order_styles                      @relation(fields: [order_style_id], references: [id], onUpdate: NoAction)
+  payment_terms                    payment_terms                     @relation(fields: [payment_term_id], references: [id], onUpdate: NoAction)
+  buyer_department_sizes           buyer_department_sizes            @relation(fields: [size_id], references: [id], onUpdate: NoAction)
+  shipment_item_details            shipment_item_details[]
+  tna_plan_details                 tna_plan_details[]
+}
+
+model shipment_details_history {
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipment_detail_id String?         @db.Uuid
+  serial             Int?
+  order_style_id     String?         @db.Uuid
+  buyer_po           String          @db.VarChar(50)
+  etd_date           DateTime        @db.Date
+  handover           DateTime        @db.Date
+  destination_id     Int?
+  shipment_mode      shipment_modes?
+  payment_term_id    Int?
+  size_id            Int?
+  fob_rate           Float
+  cancel_status      Boolean?
+  action_type        actions?
+  action_by          String?         @db.Uuid
+  action_at          DateTime?       @default(now()) @db.Timestamp(6)
+  users              users?          @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model factory_orders {
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id                 String                     @unique(map: "unique_buyer_order_id") @db.Uuid
+  old_order_id             Int?
+  factory_order_date       DateTime                   @default(dbgenerated("CURRENT_DATE")) @db.Date
+  remarks                  String?
+  added_at                 DateTime?                  @default(now()) @db.Timestamp(6)
+  approval_status          Int?
+  old_pk                   Int?
+  currency_id              Int?
+  currency_rate            Float?                     @default(1)
+  currencies               currencies?                @relation(fields: [currency_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  buyer_orders             buyer_orders               @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+  factory_shipment_details factory_shipment_details[]
+}
+
+model factory_orders_history {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_order_id   String?   @db.Uuid
+  factory_order_date DateTime? @db.Date
+  remarks            String?
+  action_type        actions?
+  action_by          String?   @db.Uuid
+  action_at          DateTime? @default(now()) @db.Timestamp(6)
+  order_id           String?   @db.Uuid
+  approval_status    Int?
+  currency_id        Int?
+  currency_rate      Float?
+  users              users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model factory_shipment_details {
+  id                      String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_order_id        String           @db.Uuid
+  shipment_detail_id      String           @db.Uuid
+  exfactory_date          DateTime         @db.Date
+  factory_rate            Float?
+  transfer_rate           Float?
+  status                  order_status?
+  old_factory_order_id    Int?
+  old_shipment_details_id Int?
+  old_pk                  Int?
+  added_at                DateTime?        @default(now()) @db.Timestamp(6)
+  factory_orders          factory_orders   @relation(fields: [factory_order_id], references: [id], onUpdate: NoAction, map: "factory_order_fk")
+  shipment_details        shipment_details @relation(fields: [shipment_detail_id], references: [id], onUpdate: NoAction, map: "shipment_details_fk")
+}
+
+model factory_shipment_details_history {
+  id                       String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_shipment_details String?       @db.Uuid
+  shipment_detail_id       String?       @db.Uuid
+  exfactory_date           DateTime?     @db.Date
+  factory_rate             Float?
+  transfer_rate            Float?
+  status                   order_status?
+  action_type              actions?
+  action_by                String?       @db.Uuid
+  action_at                DateTime?     @default(now()) @db.Timestamp(6)
+  factory_order_id         String?       @db.Uuid
+  users                    users?        @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model shipment_item_details {
+  id                      String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipment_detail_id      String           @db.Uuid
+  old_shipment_details_id Int?
+  color_id                Int
+  old_color_id            Int?
+  quantity                Int
+  added_at                DateTime?        @default(now()) @db.Timestamp(6)
+  old_pk                  Int?
+  colors                  colors           @relation(fields: [color_id], references: [id], onUpdate: NoAction)
+  shipment_details        shipment_details @relation(fields: [shipment_detail_id], references: [id], onUpdate: NoAction)
+}
+
+model shipment_item_details_history {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipment_item_details_id String?   @db.Uuid
+  shipment_detail_id       String?   @db.Uuid
+  color_id                 Int?
+  quantity                 Int?
+  action_type              actions?
+  action_by                String?   @db.Uuid
+  action_at                DateTime? @default(now()) @db.Timestamp(6)
+  users                    users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model buyer_order_ref_metadata {
+  id          Int  @id @default(autoincrement())
+  year        Int? @unique
+  last_serial Int?
+}
+
+model tna_plan_details {
+  id                         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tna_plan_id                String?           @db.Uuid
+  shipment_id                String?           @db.Uuid
+  old_tna_plan_id            Int?
+  old_shipment_id            Int?
+  revise_date                DateTime?         @db.Date
+  actual_date                DateTime?         @db.Date
+  action_complete            Boolean?
+  added_at                   DateTime?         @default(now()) @db.Timestamp(6)
+  old_tna_template_action_id Int?
+  tna_template_action_id     String?           @db.Uuid
+  shipment_details           shipment_details? @relation(fields: [shipment_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  tna_plans                  tna_plans?        @relation(fields: [tna_plan_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tna_plan_id, shipment_id, tna_template_action_id], map: "uq_tna_plan_details")
+}
+
+model tna_plan_details_history {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tna_plan_details_id    String?   @db.Uuid
+  tna_plan_id            String?   @db.Uuid
+  shipment_id            String?   @db.Uuid
+  revise_date            DateTime? @db.Date
+  actual_date            DateTime? @db.Date
+  action_complete        Boolean?
+  action_type            actions?
+  action_by              String?   @db.Uuid
+  action_at              DateTime? @default(now()) @db.Timestamp(6)
+  tna_template_action_id String?   @db.Uuid
+  users                  users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model tna_plan_history {
+  id              String    @id(map: "table_history_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tna_plan_id     String?   @db.Uuid
+  tna_template_id String?   @db.Uuid
+  style_id        String?   @db.Uuid
+  plan_date       DateTime? @db.Date
+  action_type     actions?
+  action_by       String?   @db.Uuid
+  action_at       DateTime? @default(now()) @db.Timestamp(6)
+  order_id        String?   @db.Uuid
+  users           users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "table_history_action_by_fkey")
+}
+
+model tna_plans {
+  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id            String             @db.Uuid
+  tna_template_id     String             @db.Uuid
+  style_id            String             @db.Uuid
+  plan_date           DateTime?          @default(dbgenerated("CURRENT_DATE")) @db.Date
+  old_order_id        Int?
+  old_tna_template_id Int?
+  old_style           String?            @db.VarChar(50)
+  added_at            DateTime?          @default(now()) @db.Timestamp(6)
+  old_pk              Int?
+  tna_plan_details    tna_plan_details[]
+  buyer_orders        buyer_orders       @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+  order_styles        order_styles       @relation(fields: [style_id], references: [id], onUpdate: NoAction)
+  tna_templates       tna_templates      @relation(fields: [tna_template_id], references: [id], onUpdate: NoAction)
+}
+
+model tna_template_actions {
+  id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tna_template_id     String        @db.Uuid
+  old_tna_template_id Int?
+  alert_before        Int
+  days                Int?
+  added_at            DateTime?     @default(now()) @db.Timestamp(6)
+  old_tna_action_id   Int?
+  tna_action_id       Int
+  old_pk              Int?
+  serial              Int?
+  tna_templates       tna_templates @relation(fields: [tna_template_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model tna_template_actions_history {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  responsible_level_id   Int?
+  responsible_person_id  String?   @db.Uuid
+  alert_before           Int?
+  action_type            actions?
+  action_by              String?   @db.Uuid
+  action_at              DateTime? @default(now()) @db.Timestamp(6)
+  serial                 Int?
+  tna_template_id        String?   @db.Uuid
+  tna_action_id          Int?
+  days                   Int?
+  tna_template_action_id String?   @db.Uuid
+  users                  users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model tna_templates {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  old_pk               Int?
+  template_name        String
+  buyer_id             Int
+  old_buyer_id         Int?
+  added_at             DateTime?              @default(now()) @db.Timestamp(6)
+  team_id              Int
+  old_team_id          Int?
+  tna_plans            tna_plans[]
+  tna_template_actions tna_template_actions[]
+  teams                teams                  @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_foreign_key")
+  buyers               buyers                 @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
+}
+
+model tna_templates_history {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tna_template_id String?   @db.Uuid
+  template_name   String
+  buyer_id        Int?
+  action_type     actions?
+  action_by       String?   @db.Uuid
+  action_at       DateTime? @default(now()) @db.Timestamp(6)
+  team_id         Int?
+  users           users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model tna_base_actions {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buyer_id    Int         @unique(map: "unique_buyer")
+  action_id   Int
+  added_at    DateTime?   @default(now()) @db.Timestamp(6)
+  tna_actions tna_actions @relation(fields: [action_id], references: [id], onUpdate: NoAction)
+  buyers      buyers      @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
+}
+
+model tna_base_actions_history {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tna_base_action_id String?   @db.Uuid
+  buyer_id           Int?
+  action_id          Int?
+  action_type        actions?
+  action_by          String?   @db.Uuid
+  action_at          DateTime? @default(now()) @db.Timestamp(6)
+  users              users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model commission_distribution_details_history {
+  id                                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commission_distribution_details_id String?   @db.Uuid
+  shipment_details_id                String?   @db.Uuid
+  dhaka_commission_percentage        Float
+  overseas_commission_percentage     Float?
+  others_commission_percentage       Float?
+  action_type                        actions?
+  action_by                          String?   @db.Uuid
+  action_at                          DateTime? @default(now()) @db.Timestamp(6)
+  users                              users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model commission_distribution_history {
+  id                         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commission_distribution_id String?   @db.Uuid
+  order_id                   String?   @db.Uuid
+  plan_date                  DateTime? @db.Date
+  approval_status            Boolean?
+  action_type                actions?
+  action_by                  String?   @db.Uuid
+  action_at                  DateTime? @default(now()) @db.Timestamp(6)
+  remarks                    String?
+  users                      users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model commission_distributions {
+  id                               String                             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id                         String                             @unique(map: "unique_orders") @db.Uuid
+  plan_date                        DateTime?                          @db.Date
+  approval_status                  Boolean?                           @default(false)
+  added_at                         DateTime?                          @default(now()) @db.Timestamp(6)
+  old_pk                           Int?
+  old_order_id                     Int?
+  remarks                          String?
+  buyer_orders                     buyer_orders                       @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+  commission_distributions_details commission_distributions_details[]
+}
+
+model commission_distributions_details {
+  id                             String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commission_distribution_id     String                   @db.Uuid
+  shipment_details_id            String                   @unique(map: "commission_distribution_shipment_unique") @db.Uuid
+  dhaka_commission_percentage    Float?
+  overseas_commission_percentage Float?
+  others_commission_percentage   Float?
+  added_at                       DateTime?                @default(now()) @db.Timestamp(6)
+  old_pk                         Int?
+  old_shipment_id                Int?
+  old_commission_distribution_id Int?
+  commission_distributions       commission_distributions @relation(fields: [commission_distribution_id], references: [id], onUpdate: NoAction, map: "commission_distributions_detail_commission_distribution_id_fkey")
+  shipment_details               shipment_details         @relation(fields: [shipment_details_id], references: [id], onUpdate: NoAction)
+}
+
+model fob_type_history {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fob_type_id Int?
+  action_type actions?
+  action_by   String?   @db.Uuid
+  action_at   DateTime? @default(now()) @db.Timestamp(6)
+  name        String?   @db.VarChar(50)
+  users       users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model freight_term_history {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  freight_term_id Int?
+  action_type     actions?
+  action_by       String?   @db.Uuid
+  action_at       DateTime? @default(now()) @db.Timestamp(6)
+  name            String?   @db.VarChar(50)
+  users           users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model sales_contract_amendment {
+  id                               String                             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  amendment_date                   DateTime                           @default(dbgenerated("CURRENT_DATE")) @db.Date
+  amendment_no                     Int?
+  remarks                          String?
+  old_pk                           Int?
+  sales_contract_id                String                             @db.Uuid
+  old_sales_contract_id            Int?
+  added_at                         DateTime?                          @default(now()) @db.Timestamp(6)
+  sales_contracts                  sales_contracts                    @relation(fields: [sales_contract_id], references: [id], onUpdate: NoAction)
+  sales_contract_amendment_details sales_contract_amendment_details[]
+}
+
+model sales_contract_amendment_details {
+  id                              String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sales_contract_amendment_id     String                   @db.Uuid
+  order_id                        String                   @db.Uuid
+  added_at                        DateTime?                @default(dbgenerated("CURRENT_DATE")) @db.Date
+  old_sales_contract_amendment_id Int?
+  old_order_id                    Int?
+  sales_contract_amendment        sales_contract_amendment @relation(fields: [sales_contract_amendment_id], references: [id], onUpdate: NoAction, map: "sales_contract_amendment_detai_sales_contract_amendment_id_fkey")
+  buyer_orders                    buyer_orders             @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+
+  @@unique([sales_contract_amendment_id, order_id], map: "unique_order_per_amendment")
+  @@unique([sales_contract_amendment_id, order_id], map: "unique_order_per_amendment_const")
+}
+
+model sales_contract_amendment_details_history {
+  id                               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sales_contract_amendment_details String?   @db.Uuid
+  sales_contract_amendment_id      String?   @db.Uuid
+  order_id                         String?   @db.Uuid
+  action_type                      actions?
+  action_by                        String?   @db.Uuid
+  action_at                        DateTime? @default(now()) @db.Timestamp(6)
+  users                            users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model sales_contract_amendment_history {
+  id                          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sales_contract_amendment_id String?   @db.Uuid
+  amendment_date              DateTime  @default(dbgenerated("CURRENT_DATE")) @db.Date
+  amendment_no                Int?
+  remarks                     String?
+  action_type                 actions?
+  action_by                   String?   @db.Uuid
+  action_at                   DateTime? @default(now()) @db.Timestamp(6)
+  sales_contract_id           String?   @db.Uuid
+  users                       users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model sales_contract_contact_person {
+  id              Int               @id @default(autoincrement())
+  name            String            @db.VarChar(50)
+  contact_number  String?           @db.VarChar(50)
+  pabx            String?           @db.VarChar(50)
+  ext             Int?
+  email           String?           @db.VarChar(50)
+  added_at        DateTime?         @default(now()) @db.Timestamp(6)
+  sales_contracts sales_contracts[]
+}
+
+model sales_contract_contact_person_history {
+  id                               Int       @id @default(autoincrement())
+  sales_contract_contact_person_id Int?
+  name                             String    @db.VarChar(50)
+  contact_number                   String?   @db.VarChar(50)
+  pabx                             String?   @db.VarChar(50)
+  ext                              Int?
+  email                            String?   @db.VarChar(50)
+  action_type                      actions?
+  action_by                        String?   @db.Uuid
+  action_at                        DateTime? @default(now()) @db.Timestamp(6)
+  users                            users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model sales_contracts {
+  id                                                               String                                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buyer_id                                                         Int
+  old_buyer_id                                                     Int?
+  factory_id                                                       Int
+  old_factory_id                                                   Int?
+  sales_contract_date                                              DateTime                              @db.Date
+  sales_contract_no                                                String                                @unique(map: "unique_sales_contract_no") @db.VarChar(50)
+  old_currency_id                                                  Int?
+  buyer_bank_id                                                    Int
+  old_buyer_bank_id                                                Int?
+  supplier_bank_id                                                 Int
+  old_supplier_bank_id                                             Int?
+  rdl_bank_id                                                      Int
+  old_rdl_bank_id                                                  Int?
+  negotiation_bank_id                                              Int
+  old_negotiation_bank_id                                          Int?
+  partial_shipment                                                 Boolean?                              @default(true)
+  port_of_loading_id                                               Int?
+  old_port_of_loading_id                                           Int?
+  freight_term_id                                                  Int?
+  old_freight_term_id                                              Int?
+  approval_status                                                  Int?                                  @default(0) @db.SmallInt
+  approved_once                                                    Boolean?
+  contact_person_id                                                Int?
+  old_pk                                                           Int?
+  added_at                                                         DateTime?                             @default(now()) @db.Timestamp(6)
+  company_id                                                       Int?
+  commission_invoice                                               commission_invoice[]
+  debit_note                                                       debit_note[]
+  document_submissions                                             document_submissions[]
+  factory_invoice                                                  factory_invoice[]
+  lc_transfer_details                                              lc_transfer_details[]
+  rdl_invoice                                                      rdl_invoice[]
+  sales_contract_amendment                                         sales_contract_amendment[]
+  sales_contract_amendment_no_metadata                             sales_contract_amendment_no_metadata?
+  sales_contract_consignees                                        sales_contract_consignees[]
+  sales_contract_details                                           sales_contract_details[]
+  buyer_banks                                                      buyer_banks                           @relation(fields: [buyer_bank_id], references: [id], onUpdate: NoAction)
+  buyers                                                           buyers                                @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
+  companies                                                        companies?                            @relation(fields: [company_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sales_contract_contact_person                                    sales_contract_contact_person?        @relation(fields: [contact_person_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  factories                                                        factories                             @relation(fields: [factory_id], references: [id], onUpdate: NoAction)
+  freight_term                                                     freight_term?                         @relation(fields: [freight_term_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  company_banks_sales_contracts_negotiation_bank_idTocompany_banks company_banks                         @relation("sales_contracts_negotiation_bank_idTocompany_banks", fields: [negotiation_bank_id], references: [id], onUpdate: NoAction)
+  destinations                                                     destinations?                         @relation(fields: [port_of_loading_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  company_banks_sales_contracts_rdl_bank_idTocompany_banks         company_banks                         @relation("sales_contracts_rdl_bank_idTocompany_banks", fields: [rdl_bank_id], references: [id], onUpdate: NoAction)
+  factory_bank                                                     factory_bank                          @relation(fields: [supplier_bank_id], references: [id], onUpdate: NoAction)
+}
+
+model sales_contracts_history {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sales_contracts_id  String?   @db.Uuid
+  buyer_id            Int?
+  factory_id          Int?
+  sales_contract_date DateTime  @db.Date
+  sales_contract_no   String    @db.VarChar(50)
+  currency_id         Int?
+  buyer_bank_id       Int?
+  supplier_bank_id    Int?
+  rdl_bank_id         Int?
+  negotiation_bank_id Int?
+  partial_shipment    Boolean?  @default(true)
+  port_of_loading_id  Int?
+  freight_term_id     Int?
+  approval_status     Int?      @db.SmallInt
+  approved_once       Boolean?
+  contact_person_id   Int?
+  action_by           String?   @db.Uuid
+  action_type         actions?
+  action_at           DateTime? @default(now()) @db.Timestamp(6)
+  company_id          Int?
+  users               users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model sales_contract_details {
+  id                    String          @id(map: "sales_contract_contact_details_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sales_contract_id     String          @db.Uuid
+  order_id              String          @db.Uuid
+  added_at              DateTime?       @default(now()) @db.Timestamp(6)
+  old_pk                Int?
+  old_sales_contract_id Int?
+  old_order_id          Int?
+  buyer_orders          buyer_orders    @relation(fields: [order_id], references: [id], onUpdate: NoAction, map: "sales_contract_contact_details_order_id_fkey")
+  sales_contracts       sales_contracts @relation(fields: [sales_contract_id], references: [id], onUpdate: NoAction, map: "sales_contract_contact_details_sales_contract_id_fkey")
+
+  @@unique([sales_contract_id, order_id], map: "unique_orders_in_sc")
+  @@unique([sales_contract_id, order_id], map: "unique_orders_in_sales_contract")
+}
+
+model sales_contract_details_history {
+  id                        String    @id(map: "sales_contract_contact_details_history_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sales_contract_details_id String?   @db.Uuid
+  sales_contract_id         String?   @db.Uuid
+  order_id                  String?   @db.Uuid
+  action_type               actions?
+  action_by                 String?   @db.Uuid
+  action_at                 DateTime? @default(now()) @db.Timestamp(6)
+  users                     users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sales_contract_contact_details_history_action_by_fkey")
+}
+
+model sales_contract_consignees {
+  id                    String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sales_contract_id     String?          @db.Uuid
+  consignee_id          Int?
+  old_sales_contract_id Int?
+  old_consignee_id      Int?
+  added_at              DateTime?        @default(now()) @db.Timestamp(6)
+  buyer_consignee       buyer_consignee? @relation(fields: [consignee_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sales_contracts       sales_contracts? @relation(fields: [sales_contract_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model sales_contract_consignees_history {
+  id                           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sales_contract_consignees_id String?   @db.Uuid
+  sales_contract_id            String?   @db.Uuid
+  consignee_id                 Int?
+  action_type                  actions?
+  action_by                    String?   @db.Uuid
+  action_at                    DateTime? @default(now()) @db.Timestamp(6)
+  users                        users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model sales_contract_no_metadata {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  year        Int    @unique
+  last_serial Int?
+}
+
+model sales_contract_amendment_no_metadata {
+  id                    String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sales_contract_id     String?          @unique @db.Uuid
+  amendment_no          Int?             @default(0)
+  old_sales_contract_id Int?
+  sales_contracts       sales_contracts? @relation(fields: [sales_contract_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model lc_master {
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_no                 String                 @unique(map: "unique_lc_number") @db.VarChar(50)
+  lc_open_date          DateTime               @db.Date
+  quantity              Int
+  lc_value              Float
+  buyer_bank_id         Int
+  lc_received_date      DateTime               @db.Date
+  lc_expire_date        DateTime?              @db.Date
+  currency_id           Int
+  latest_shipment_date  DateTime?              @db.Date
+  rdl_bank_id           Int
+  remarks               String?
+  added_at              DateTime?              @default(now()) @db.Timestamp(6)
+  status                Boolean?
+  old_pk                Int?
+  old_buyer_bank_id     Int?
+  old_rdl_bank_id       Int?
+  old_currency_id       Int?
+  buyer_id              Int?
+  old_buyer_id          Int?
+  company_id            Int?
+  is_authorized         Boolean?               @default(false)
+  approved_once         Boolean?               @default(false)
+  commission_invoice    commission_invoice[]
+  debit_note            debit_note[]
+  document_submissions  document_submissions[]
+  factory_invoice       factory_invoice[]
+  lc_amendment          lc_amendment[]
+  lc_amendment_metadata lc_amendment_metadata?
+  buyer_banks           buyer_banks            @relation(fields: [buyer_bank_id], references: [id], onUpdate: NoAction)
+  buyers                buyers?                @relation(fields: [buyer_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  companies             companies?             @relation(fields: [company_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  currencies            currencies             @relation(fields: [currency_id], references: [id], onUpdate: NoAction)
+  company_banks         company_banks          @relation(fields: [rdl_bank_id], references: [id], onUpdate: NoAction)
+  lc_orders             lc_orders[]
+  lc_transfer           lc_transfer[]
+  rdl_invoice           rdl_invoice[]
+}
+
+model lc_master_history {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_master_id         String?   @db.Uuid
+  lc_no                String?   @db.VarChar(50)
+  lc_open_date         DateTime? @db.Date
+  quantity             Int?
+  lc_value             Float?
+  buyer_bank_id        Int?
+  lc_received_date     DateTime? @db.Date
+  lc_expire_date       DateTime? @db.Date
+  currency_id          Int?
+  latest_shipment_date DateTime? @db.Date
+  rdl_bank_id          Int?
+  remarks              String?
+  status               Boolean?
+  action_type          actions?
+  action_by            String?   @db.Uuid
+  action_at            DateTime? @default(now()) @db.Timestamp(6)
+  company_id           Int?
+  is_authorized        Boolean?
+  users                users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model lc_orders {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id         String?        @db.Uuid
+  dm_pi_no         String?        @db.VarChar(30)
+  added_at         DateTime?      @default(now()) @db.Timestamp(6)
+  old_pk           Int?
+  lc_master_id     String?        @db.Uuid
+  old_orders_id    Int?
+  old_lc_master_id Int?
+  lc_master        lc_master?     @relation(fields: [lc_master_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  buyer_orders     buyer_orders?  @relation(fields: [order_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  lc_shipments     lc_shipments[]
+
+  @@unique([order_id, lc_master_id], map: "unique_order_per_lc")
+}
+
+model lc_orders_history {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_orders_id String?       @db.Uuid
+  order_id     String?       @db.Uuid
+  dm_pi_no     String?       @db.VarChar(30)
+  action_type  actions?
+  action_by    String?       @db.Uuid
+  action_at    DateTime?     @default(now()) @db.Timestamp(6)
+  lc_master_id String?       @db.Uuid
+  users        users?        @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  buyer_orders buyer_orders? @relation(fields: [order_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model lc_shipments {
+  id                      String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_order_id             String?           @db.Uuid
+  shipment_details_id     String?           @db.Uuid
+  added_at                DateTime?         @default(now()) @db.Timestamp(6)
+  old_pk                  Int?
+  old_shipment_details_id Int?
+  lc_master_id            String?           @db.Uuid
+  old_lc_master_id        Int?
+  old_order_id            Int?
+  order_id                String?           @db.Uuid
+  lc_orders               lc_orders?        @relation(fields: [lc_order_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  shipment_details        shipment_details? @relation(fields: [shipment_details_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([lc_order_id, shipment_details_id], map: "unique_shipment_per_lc_order")
+}
+
+model lc_shipments_history {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_shipments_id     String?   @db.Uuid
+  lc_order_id         String?   @db.Uuid
+  shipment_details_id String?   @db.Uuid
+  action_type         actions?
+  action_by           String?   @db.Uuid
+  action_at           DateTime? @default(now()) @db.Timestamp(6)
+  users               users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model exfactory {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  term_id          Int?
+  factory_id       Int?
+  buyer_id         Int?
+  exfactory_date   DateTime?          @db.Date
+  exfactory_no     String?            @unique(map: "unique_exfactory_no") @db.VarChar(50)
+  added_at         DateTime?          @default(now()) @db.Timestamp(6)
+  old_term_id      Int?
+  old_factory_id   Int?
+  old_buyer_id     Int?
+  old_pk           Int?
+  is_authorized    Boolean?           @default(false)
+  remarks          String?
+  buyers           buyers?            @relation(fields: [buyer_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  factories        factories?         @relation(fields: [factory_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  terms            terms?             @relation(fields: [term_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  exfactory_orders exfactory_orders[]
+}
+
+model exfactory_history {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exfactory_id   String?   @db.Uuid
+  term_id        Int?
+  factory_id     Int?
+  buyer_id       Int?
+  exfactory_date DateTime? @db.Date
+  exfactory_no   String?   @db.VarChar(50)
+  action_type    actions?
+  action_by      String?   @db.Uuid
+  action_at      DateTime? @default(now()) @db.Timestamp(6)
+  users          users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model exfactory_orders {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exfactory_id        String?               @db.Uuid
+  order_id            String?               @db.Uuid
+  old_exfactory_id    Int?
+  old_order_id        Int?
+  added_at            DateTime?             @default(now()) @db.Timestamp(6)
+  old_pk              Int?
+  exfactory           exfactory?            @relation(fields: [exfactory_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  buyer_orders        buyer_orders?         @relation(fields: [order_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  exfactory_shipments exfactory_shipments[]
+}
+
+model exfactory_orders_history {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exfactory_id String?   @db.Uuid
+  order_id     String?   @db.Uuid
+  action_type  actions?
+  action_by    String?   @db.Uuid
+  action_at    DateTime? @default(now()) @db.Timestamp(6)
+  users        users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model exfactory_shipments {
+  id                                String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exfactory_orders_id               String?                   @db.Uuid
+  shipment_details_id               String?                   @db.Uuid
+  delivery_quantity                 Int?
+  old_factory_shipment_details_id   Int?
+  old_pk                            Int?
+  old_exfactory_shipment_details_id Int?
+  added_at                          DateTime?                 @default(now()) @db.Timestamp(6)
+  po_close                          Boolean?                  @default(false)
+  style_close                       Boolean?                  @default(false)
+  changed_shipment_mode             shipment_modes?
+  debit_note_details                debit_note_details[]
+  exfactory_orders                  exfactory_orders?         @relation(fields: [exfactory_orders_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  shipment_details                  shipment_details?         @relation(fields: [shipment_details_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  factory_invoice_details           factory_invoice_details[]
+}
+
+model exfactory_shipments_history {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exfactory_shipment_id String?         @db.Uuid
+  exfactory_orders_id   String?         @db.Uuid
+  shipment_details_id   String?         @db.Uuid
+  delivery_quantity     Int?
+  action_type           actions?
+  action_by             String?         @db.Uuid
+  action_at             DateTime?       @default(now()) @db.Timestamp(6)
+  po_close              Boolean?        @default(false)
+  style_close           Boolean?        @default(false)
+  changed_shipment_mode shipment_modes?
+  users                 users?          @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model exfactory_metadata {
+  id       Int  @id @default(autoincrement())
+  last_ref Int?
+  year     Int? @unique(map: "unique_years")
+}
+
+model lc_amendment {
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_id                  String?                  @db.Uuid
+  amendment_no           Int?                     @default(0)
+  amend_value            Float?
+  amend_quantity         Int?
+  remarks                String?
+  old_lc_amendment_id    Int?
+  added_at               DateTime?                @default(now()) @db.Timestamp(6)
+  amendment_date         DateTime?                @db.Date
+  old_lc_id              Int?
+  old_pk                 Int?
+  lc_master              lc_master?               @relation(fields: [lc_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  lc_amendment_orders    lc_amendment_orders[]
+  lc_amendment_shipments lc_amendment_shipments[]
+}
+
+model lc_amendment_history {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_amendment_id String?   @db.Uuid
+  lc_id           String?   @db.Uuid
+  amendment_no    Int?      @default(0)
+  amend_value     Float?
+  amend_quantity  Int?
+  remarks         String?
+  action_type     actions?
+  action_by       String?   @db.Uuid
+  action_at       DateTime? @default(now()) @db.Timestamp(6)
+  users           users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model lc_amendment_metadata {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_id        String?    @unique @db.Uuid
+  amendment_no Int?       @default(0)
+  old_lc_id    Int?
+  lc_master    lc_master? @relation(fields: [lc_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model lc_amendment_orders {
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_amendment_id        String                   @db.Uuid
+  order_id               String                   @db.Uuid
+  dm_pi_no               String?                  @db.VarChar(50)
+  added_at               DateTime?                @default(now()) @db.Timestamp(6)
+  old_pk                 Int?
+  old_lc_amendment_id    Int?
+  old_order_id           Int?
+  lc_amendment           lc_amendment             @relation(fields: [lc_amendment_id], references: [id], onUpdate: NoAction)
+  buyer_orders           buyer_orders             @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+  lc_amendment_shipments lc_amendment_shipments[]
+
+  @@unique([lc_amendment_id, order_id], map: "unique_order_per_lc_amendment")
+}
+
+model lc_amendment_orders_history {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_amendment_orders_id String?   @db.Uuid
+  lc_amendment_id        String?   @db.Uuid
+  order_id               String?   @db.Uuid
+  dm_pi_no               String?   @db.VarChar(50)
+  action_type            actions?
+  action_by              String?   @db.Uuid
+  action_at              DateTime? @default(now()) @db.Timestamp(6)
+  users                  users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model lc_amendment_shipments {
+  id                      String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_amendment_id         String?              @db.Uuid
+  lc_amendment_order_id   String?              @db.Uuid
+  shipment_details_id     String?              @db.Uuid
+  order_id                String?              @db.Uuid
+  dm_pi_no                String?              @db.VarChar(50)
+  added_at                DateTime?            @default(now()) @db.Timestamp(6)
+  old_pk                  Int?
+  old_order_id            Int?
+  old_lc_amendment_id     Int?
+  old_shipment_details_id Int?
+  lc_amendment            lc_amendment?        @relation(fields: [lc_amendment_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  lc_amendment_orders     lc_amendment_orders? @relation(fields: [lc_amendment_order_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  buyer_orders            buyer_orders?        @relation(fields: [order_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  shipment_details        shipment_details?    @relation(fields: [shipment_details_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([lc_amendment_order_id, shipment_details_id], map: "unique_shipment_per_lc_amendment_order")
+}
+
+model lc_amendment_shipments_history {
+  id                        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_amendment_shipments_id String?   @db.Uuid
+  lc_amendment_id           String?   @db.Uuid
+  order_id                  String?   @db.Uuid
+  dm_pi_no                  String?   @db.Uuid
+  action_by                 String?   @db.Uuid
+  action_at                 DateTime? @default(now()) @db.Timestamp(6)
+  shipment_details_id       String?   @db.Uuid
+  action_type               actions?
+  users                     users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model shipment_tolerance_level {
+  id              Int       @id @default(autoincrement())
+  buyer_id        Int?      @unique(map: "unique_buyer_per_tolerance_level")
+  tolerance_level Float?    @default(10)
+  added_at        DateTime? @default(now()) @db.Timestamp(6)
+  buyers          buyers?   @relation(fields: [buyer_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model shipment_tolerance_level_history {
+  id                          Int       @id @default(autoincrement())
+  shipment_tolerance_level_id Int?
+  buyer_id                    Int?
+  tolerance_level             Float?
+  action_by                   String?   @db.Uuid
+  action_at                   DateTime? @default(now()) @db.Timestamp(6)
+  action_type                 actions?
+  users                       users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model lc_transfer {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_transfer_date    DateTime              @db.Date
+  old_pk              Int?
+  added_at            DateTime?             @default(now()) @db.Timestamp(6)
+  lc_master_id        String                @db.Uuid
+  old_lc_header_id    Int?
+  remarks             String?
+  lc_master           lc_master             @relation(fields: [lc_master_id], references: [id], onUpdate: NoAction)
+  lc_transfer_details lc_transfer_details[]
+}
+
+model lc_transfer_details {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_transfer_id        String          @db.Uuid
+  lc_transfer_quantity  Int
+  lc_transfer_value     Float
+  lc_transfer_date      DateTime?       @db.Date
+  factory_id            Int
+  sales_contract_id     String          @db.Uuid
+  old_pk                Int?
+  old_factory_id        Int?
+  old_sales_contract_id Int?
+  added_at              DateTime?       @default(now()) @db.Timestamp(6)
+  old_lc_transfer_id    Int?
+  factories             factories       @relation(fields: [factory_id], references: [id], onUpdate: NoAction)
+  lc_transfer           lc_transfer     @relation(fields: [lc_transfer_id], references: [id], onUpdate: NoAction)
+  sales_contracts       sales_contracts @relation(fields: [sales_contract_id], references: [id], onUpdate: NoAction)
+}
+
+model lc_transfer_details_history {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_transfer_details_id String?   @db.Uuid
+  lc_transfer_id         String?   @db.Uuid
+  lc_transfer_quantity   Int?
+  lc_transfer_value      Float?
+  lc_transfer_date       DateTime? @db.Date
+  factory_id             Int?
+  sales_contract_id      String?   @db.Uuid
+  action_type            actions?
+  action_by              String?   @db.Uuid
+  action_at              DateTime? @default(now()) @db.Timestamp(6)
+  users                  users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model lc_transfer_history {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lc_transfer_id   String?   @db.Uuid
+  lc_transfer_date DateTime? @db.Date
+  action_type      actions?
+  action_by        String?   @db.Uuid
+  action_at        DateTime? @default(now()) @db.Timestamp(6)
+  remarks          String?
+  lc_master_id     String?   @db.Uuid
+  users            users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model factory_invoice {
+  id                                   String                                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_id                           Int
+  old_factory_id                       Int?
+  invoice_no                           String                                 @db.VarChar(50)
+  invoice_date                         DateTime?                              @default(dbgenerated("CURRENT_DATE")) @db.Date
+  term_id                              Int
+  sales_contract_id                    String?                                @db.Uuid
+  old_sales_contract_id                Int?
+  lc_id                                String?                                @db.Uuid
+  old_lc_id                            Int?
+  remarks                              String?
+  old_pk                               Int?
+  added_at                             DateTime?                              @default(now()) @db.Timestamp(6)
+  discount                             Float?
+  buyer_id                             Int?
+  old_buyer_id                         Int?
+  shipment_mode                        shipment_modes?
+  port_of_loading                      Int?
+  freight_term_id                      Int?
+  commercial_tna_planning              commercial_tna_planning?
+  cross_payment_details                cross_payment_details[]
+  document_submission_factory_invoices document_submission_factory_invoices[]
+  buyers                               buyers?                                @relation(fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  factories                            factories                              @relation(fields: [factory_id], references: [id], onUpdate: NoAction)
+  freight_term                         freight_term?                          @relation(fields: [freight_term_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lc_master                            lc_master?                             @relation(fields: [lc_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  destinations                         destinations?                          @relation(fields: [port_of_loading], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sales_contracts                      sales_contracts?                       @relation(fields: [sales_contract_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  terms                                terms                                  @relation(fields: [term_id], references: [id], onUpdate: NoAction)
+  factory_invoice_consignee            factory_invoice_consignee[]
+  factory_invoice_details              factory_invoice_details[]
+  factory_invoice_notify_party         factory_invoice_notify_party[]
+  factory_payments                     factory_payments[]
+  rdl_invoice_details                  rdl_invoice_details[]
+}
+
+model factory_invoice_details {
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_invoice_id           String                         @db.Uuid
+  old_factory_invoice_id       Int?
+  exfactory_shipment_id        String                         @db.Uuid
+  old_exfactory_shipment_id    Int?
+  old_pk                       Int?
+  added_at                     DateTime?                      @default(now()) @db.Timestamp(6)
+  exfactory_shipments          exfactory_shipments            @relation(fields: [exfactory_shipment_id], references: [id], onUpdate: NoAction)
+  factory_invoice              factory_invoice                @relation(fields: [factory_invoice_id], references: [id], onUpdate: NoAction)
+  rdl_invoice_shipment_details rdl_invoice_shipment_details[]
+}
+
+model factory_invoice_details_history {
+  id                         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_invoice_details_id String?   @db.Uuid
+  factory_invoice_id         String?   @db.Uuid
+  exfactory_shipment_id      String?   @db.Uuid
+  old_pk                     Int?
+  added_at                   DateTime? @default(now()) @db.Timestamp(6)
+  action_type                actions?
+  action_by                  String?   @db.Uuid
+  users                      users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model factory_invoice_history {
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_invoice_id String?         @db.Uuid
+  factory_id         Int?
+  invoice_no         String?         @db.VarChar(50)
+  invoice_date       DateTime?       @db.Date
+  term_id            Int?
+  sales_contract_id  String?         @db.Uuid
+  lc_id              String?         @db.Uuid
+  remarks            String?
+  action_type        actions?
+  action_by          String?         @db.Uuid
+  action_at          DateTime?       @default(now()) @db.Timestamp(6)
+  discount           Float?
+  buyer_id           Int?
+  shipment_mode      shipment_modes?
+  port_of_loading    Int?
+  freight_term_id    Int?
+  users              users?          @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model factory_invoice_consignee {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_invoice_id String?          @db.Uuid
+  consignee_id       Int?
+  buyer_consignee    buyer_consignee? @relation(fields: [consignee_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  factory_invoice    factory_invoice? @relation(fields: [factory_invoice_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model factory_invoice_consignee_history {
+  id                           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_invoice_consignee_id String?   @db.Uuid
+  factory_invoice_id           String?   @db.Uuid
+  consignee_id                 Int?
+  action_type                  actions?
+  action_by                    String?   @db.Uuid
+  action_at                    DateTime? @default(now()) @db.Timestamp(6)
+  users                        users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model factory_invoice_notify_party {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_invoice_id String?          @db.Uuid
+  notify_party_id    Int?
+  factory_invoice    factory_invoice? @relation(fields: [factory_invoice_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  buyer_consignee    buyer_consignee? @relation(fields: [notify_party_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model factory_invoice_notify_party_history {
+  id                              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_invoice_notify_party_id String?   @db.Uuid
+  factory_invoice_id              String?   @db.Uuid
+  notify_party_id                 Int?
+  action_type                     actions?
+  action_by                       String?   @db.Uuid
+  action_at                       DateTime? @default(now()) @db.Timestamp(6)
+  users                           users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model rdl_invoice {
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buyer_id                     Int
+  term_id                      Int?
+  invoice_no                   String                         @unique(map: "unique_rdl_invoice_no") @db.VarChar(50)
+  invoice_date                 DateTime                       @db.Date
+  sales_contract_id            String?                        @db.Uuid
+  lc_id                        String?                        @db.Uuid
+  invoice_type                 Boolean?                       @default(false)
+  pi_no                        String?                        @db.VarChar(50)
+  old_buyer_id                 Int?
+  old_sales_contract_id        Int?
+  old_lc_id                    Int?
+  added_at                     DateTime?                      @default(now()) @db.Timestamp(6)
+  old_pk                       Int?
+  is_authorized                Boolean?                       @default(false)
+  container_no                 String?                        @db.VarChar(100)
+  discount                     Float?                         @default(0)
+  remarks                      String?
+  contact_no                   String?                        @db.VarChar(100)
+  commission_invoice           commission_invoice[]
+  document_submissions_details document_submissions_details[]
+  proceed_realization_details  proceed_realization_details[]
+  buyers                       buyers                         @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
+  lc_master                    lc_master?                     @relation(fields: [lc_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sales_contracts              sales_contracts?               @relation(fields: [sales_contract_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  terms                        terms?                         @relation(fields: [term_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  rdl_invoice_details          rdl_invoice_details[]
+}
+
+model rdl_invoice_details {
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rdl_invoice_id               String                         @db.Uuid
+  factory_invoice_id           String                         @db.Uuid
+  old_pk                       Int?
+  old_rdl_invoice_id           Int?
+  old_factory_invoice_id       Int?
+  added_at                     DateTime?                      @default(now()) @db.Timestamp(6)
+  factory_id                   Int
+  old_factory_id               Int?
+  factories                    factories                      @relation(fields: [factory_id], references: [id], onUpdate: NoAction)
+  factory_invoice              factory_invoice                @relation(fields: [factory_invoice_id], references: [id], onUpdate: NoAction)
+  rdl_invoice                  rdl_invoice                    @relation(fields: [rdl_invoice_id], references: [id], onUpdate: NoAction)
+  rdl_invoice_shipment_details rdl_invoice_shipment_details[]
+}
+
+model rdl_invoice_details_history {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rdl_invoice_details String?   @db.Uuid
+  rdl_invoice_id      String?   @db.Uuid
+  factory_invoice_id  String?   @db.Uuid
+  action_type         actions?
+  action_by           String?   @db.Uuid
+  action_at           DateTime? @default(now()) @db.Timestamp(6)
+  factory_id          Int?
+  users               users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model rdl_invoice_history {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rdl_invoice_id    String?   @db.Uuid
+  buyer_id          Int?
+  term_id           Int?
+  invoice_no        String?   @db.VarChar(50)
+  invoice_date      DateTime? @db.Date
+  sales_contract_id String?   @db.Uuid
+  lc_id             String?   @db.Uuid
+  invoice_type      Boolean?
+  pi_no             String?   @db.VarChar(50)
+  action_type       actions?
+  action_by         String?   @db.Uuid
+  action_at         DateTime? @default(now()) @db.Timestamp(6)
+  container_no      String?   @db.VarChar(100)
+  discount          Float?    @default(0)
+  remarks           String?
+  is_authorized     Boolean?
+  contact_no        String?   @db.VarChar(100)
+  users             users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model rdl_invoice_shipment_details {
+  id                             String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rdl_invoice_details_id         String?                  @db.Uuid
+  shipment_details_id            String?                  @db.Uuid
+  invoice_quantity               Int?
+  old_pk                         Int?
+  old_rdl_invoice_details_id     Int?
+  old_shipment_details_id        Int?
+  added_at                       DateTime?                @default(now()) @db.Timestamp(6)
+  factory_invoice_details_id     String?                  @db.Uuid
+  old_factory_invoice_details_id Int?
+  factory_invoice_details        factory_invoice_details? @relation(fields: [factory_invoice_details_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "rdl_invoice_shipment_details_factory_invoice_details_fkey")
+  rdl_invoice_details            rdl_invoice_details?     @relation(fields: [rdl_invoice_details_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  shipment_details               shipment_details?        @relation(fields: [shipment_details_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model ev_permission_history {
+  id               Int       @id @default(autoincrement())
+  ev_permission_id Int?
+  buyer_id         Int?
+  user_id          String?   @db.Uuid
+  action_type      actions?
+  action_by        String?   @db.Uuid
+  action_at        DateTime? @default(now()) @db.Timestamp(6)
+  users            users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model ev_permissions {
+  id       Int       @id @default(autoincrement())
+  buyer_id Int?
+  user_id  String?   @db.Uuid
+  added_at DateTime? @default(now()) @db.Timestamp(6)
+  buyers   buyers?   @relation(fields: [buyer_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  users    users?    @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([buyer_id, user_id], map: "unique_buyer_user")
+}
+
+model rdl_invoice_shipment_details_history {
+  id                         String    @id(map: "rdl_invoice_shiment_details_histroy_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rdl_invoice_details_id     String?   @db.Uuid
+  shipment_details_id        String?   @db.Uuid
+  invoice_quantity           Int?
+  action_type                actions?
+  action_by                  String?   @db.Uuid
+  action_at                  DateTime? @default(now()) @db.Timestamp(6)
+  factory_invoice_details_id String?   @db.Uuid
+  users                      users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "rdl_invoice_shiment_details_histroy_action_by_fkey")
+}
+
+model document_submission_factory_invoices {
+  id                                 String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_submissions_details_id    String                       @db.Uuid
+  factory_invoice_id                 String                       @db.Uuid
+  old_pk                             Int?
+  old_document_submission_details_id Int?
+  old_factory_invoice_id             Int?
+  added_at                           DateTime?                    @default(now()) @db.Timestamp(6)
+  factory_fdbc_no                    String?                      @db.VarChar(100)
+  rdl_invoice_details_id             String?                      @db.Uuid
+  document_submissions_details       document_submissions_details @relation(fields: [document_submissions_details_id], references: [id], onUpdate: NoAction, map: "document_submission_factory_i_document_submissions_details_fkey")
+  factory_invoice                    factory_invoice              @relation(fields: [factory_invoice_id], references: [id], onUpdate: NoAction)
+}
+
+model document_submission_factory_invoices_history {
+  id                                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_submission_factory_invoices_id String?   @db.Uuid
+  document_submissions_details_id         String?   @db.Uuid
+  factory_invoice_id                      String?   @db.Uuid
+  action_type                             actions?
+  action_by                               String?   @db.Uuid
+  action_at                               DateTime? @default(now()) @db.Timestamp(6)
+  factory_fdbc_no                         String?   @db.VarChar(50)
+  rdl_invoice_details_id                  String?   @db.Uuid
+  users                                   users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model document_submissions {
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  term_id                      Int
+  buyer_id                     Int
+  submission_date              DateTime?                      @default(dbgenerated("CURRENT_DATE")) @db.Date
+  fdbc_no                      String?                        @db.VarChar(100)
+  fdbc_value                   Float?
+  fdbc_date                    DateTime?                      @db.Date
+  lc_id                        String?                        @db.Uuid
+  sales_contract_id            String?                        @db.Uuid
+  awb_no                       String?                        @db.VarChar(100)
+  courier_id                   Int?
+  added_at                     DateTime?                      @default(now()) @db.Timestamp(6)
+  old_pk                       Int?
+  old_buyer_id                 Int?
+  old_lc_id                    Int?
+  old_sales_contract_id        Int?
+  old_courier_id               Int?
+  awb_date                     DateTime?                      @db.Date
+  remarks                      String?
+  commission_invoice           commission_invoice[]
+  buyers                       buyers                         @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
+  couriers                     couriers?                      @relation(fields: [courier_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  lc_master                    lc_master?                     @relation(fields: [lc_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "document_submissions_lc_ic_fkey")
+  sales_contracts              sales_contracts?               @relation(fields: [sales_contract_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  terms                        terms                          @relation(fields: [term_id], references: [id], onUpdate: NoAction)
+  document_submissions_details document_submissions_details[]
+  factory_payment_header       factory_payment_header?
+  factory_payments             factory_payments[]
+  proceed_realization          proceed_realization[]
+}
+
+model document_submissions_details {
+  id                                   String                                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_submissions_id              String                                 @db.Uuid
+  rdl_invoice_id                       String                                 @db.Uuid
+  old_pk                               Int?
+  old_document_submission_id           Int?
+  old_rdl_invoice_id                   Int?
+  added_at                             DateTime?                              @default(now()) @db.Timestamp(6)
+  received_value                       Float?
+  document_submission_factory_invoices document_submission_factory_invoices[]
+  document_submissions                 document_submissions                   @relation(fields: [document_submissions_id], references: [id], onUpdate: NoAction)
+  rdl_invoice                          rdl_invoice                            @relation(fields: [rdl_invoice_id], references: [id], onUpdate: NoAction)
+}
+
+model document_submissions_details_history {
+  id                              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_submissions_details_id String?   @db.Uuid
+  document_submissions_id         String?   @db.Uuid
+  rdl_invoice_id                  String?   @db.Uuid
+  action_type                     actions?
+  action_by                       String?   @db.Uuid
+  action_at                       DateTime? @default(now()) @db.Timestamp(6)
+  received_value                  Int?
+  users                           users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model document_submissions_history {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_submission_id String?   @db.Uuid
+  term_id                Int?
+  buyer_id               Int?
+  submission_date        DateTime? @db.Date
+  fdbc_no                String?   @db.VarChar(100)
+  fdbc_value             Float?
+  fdbc_date              DateTime? @db.Date
+  lc_id                  String?   @db.Uuid
+  sales_contract_id      String?   @db.Uuid
+  awb_no                 String?   @db.VarChar(100)
+  courier_id             Int?
+  action_type            actions?
+  action_by              String?   @db.Uuid
+  action_at              DateTime? @default(now()) @db.Timestamp(6)
+  awb_date               DateTime? @db.Date
+  remarks                String?
+  users                  users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model commission_invoice {
+  id                         String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  term_id                    Int
+  buyer_id                   Int
+  lc_id                      String?               @db.Uuid
+  sales_contract_id          String?               @db.Uuid
+  document_submission_id     String?               @db.Uuid
+  rdl_invoice_id             String?               @db.Uuid
+  company_bank_id            Int
+  ref_no                     String                @unique(map: "unique_ref_no") @db.VarChar(50)
+  old_buyer_id               Int?
+  old_lc_id                  Int?
+  old_sales_contract_id      Int?
+  old_document_submission_id Int?
+  old_rdl_invoice_id         Int?
+  old_bank_id                Int?
+  old_pk                     Int?
+  invoice_date               DateTime?             @db.Date
+  added_at                   DateTime?             @default(now()) @db.Timestamp(6)
+  buyers                     buyers                @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
+  company_banks              company_banks         @relation(fields: [company_bank_id], references: [id], onUpdate: NoAction)
+  document_submissions       document_submissions? @relation(fields: [document_submission_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  lc_master                  lc_master?            @relation(fields: [lc_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  rdl_invoice                rdl_invoice?          @relation(fields: [rdl_invoice_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sales_contracts            sales_contracts?      @relation(fields: [sales_contract_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  terms                      terms                 @relation(fields: [term_id], references: [id], onUpdate: NoAction)
+}
+
+model commission_invoice_history {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commission_invoice_id  String?   @db.Uuid
+  term_id                Int?
+  buyer_id               Int?
+  lc_id                  String?   @db.Uuid
+  sales_contract_id      String?   @db.Uuid
+  document_submission_id String?   @db.Uuid
+  rdl_invoice_id         String?   @db.Uuid
+  company_bank_id        Int?
+  ref_no                 String?   @db.VarChar(30)
+  action_type            actions?
+  action_by              String?   @db.Uuid
+  action_at              DateTime? @default(now()) @db.Timestamp(6)
+  users                  users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model commission_invoice_metadata {
+  id       String @id(map: "rdl_invoice_metadata_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buyer_id Int
+  last_ref Int    @default(0)
+  year     Int
+
+  @@unique([buyer_id, year], map: "unique_rdl_invoice_buyer_ref_year")
+}
+
+model proceed_realization {
+  id                          String                        @id(map: "procced_realization_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  term_id                     Int
+  buyer_id                    Int
+  document_submission_id      String                        @db.Uuid
+  bank_charge                 Float?
+  discount_charge             Float?
+  document_charge             Float?
+  old_pk                      Int?
+  old_buyer_id                Int?
+  old_document_submission_id  Int?
+  added_at                    DateTime?                     @default(now()) @db.Timestamp(6)
+  realization_date            DateTime?                     @db.Date
+  buyers                      buyers                        @relation(fields: [buyer_id], references: [id], onUpdate: NoAction, map: "procced_realization_buyer_id_fkey")
+  document_submissions        document_submissions          @relation(fields: [document_submission_id], references: [id], onUpdate: NoAction, map: "procced_realization_document_submission_id_fkey")
+  terms                       terms                         @relation(fields: [term_id], references: [id], onUpdate: NoAction, map: "procced_realization_term_id_fkey")
+  proceed_realization_details proceed_realization_details[]
+}
+
+model proceed_realization_details {
+  id                  String              @id(map: "realization_details_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  realization_id      String              @db.Uuid
+  rdl_invoice_id      String              @db.Uuid
+  realized_amount     Float?
+  old_realization_id  Int?
+  old_rdl_invoice_id  Int?
+  added_at            DateTime?           @default(now()) @db.Timestamp(6)
+  old_pk              Int?
+  rdl_invoice         rdl_invoice         @relation(fields: [rdl_invoice_id], references: [id], onUpdate: NoAction, map: "realization_details_rdl_invoice_id_fkey")
+  proceed_realization proceed_realization @relation(fields: [realization_id], references: [id], onUpdate: NoAction, map: "realization_details_realization_id_fkey")
+}
+
+model proceed_realization_details_history {
+  id                     String    @id(map: "realization_details_history_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  realization_details_id String?   @db.Uuid
+  realization_id         String?   @db.Uuid
+  rdl_invoice_id         String?   @db.Uuid
+  action_type            actions?
+  action_by              String?   @db.Uuid
+  action_at              DateTime? @default(now()) @db.Timestamp(6)
+  users                  users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "realization_details_history_action_by_fkey")
+}
+
+model proceed_realization_history {
+  id                     String    @id(map: "procced_realization_history_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  proceed_realization_id String?   @db.Uuid
+  term_id                Int?
+  buyer_id               Int?
+  document_submission_id String?   @db.Uuid
+  bank_charge            Float?
+  discount_charge        Float?
+  document_charge        Float?
+  realized_amount        Float?
+  action_type            actions?
+  action_by              String?   @db.Uuid
+  action_at              DateTime? @default(now()) @db.Timestamp(6)
+  realization_date       DateTime? @db.Date
+  users                  users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "procced_realization_history_action_by_fkey")
+}
+
+model factory_payment_header {
+  id                         String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_submission_id     String?               @unique(map: "unique_document_submission_id") @db.Uuid
+  old_document_submission_id Int?
+  remarks                    String?
+  added_at                   DateTime?             @default(now()) @db.Timestamp(6)
+  document_submissions       document_submissions? @relation(fields: [document_submission_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model factory_payments {
+  id                         String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_submission_id     String?               @db.Uuid
+  factory_invoice_id         String?               @db.Uuid
+  paid_amount                Float?
+  payment_date               DateTime?             @default(dbgenerated("CURRENT_DATE")) @db.Date
+  added_at                   DateTime?             @default(now()) @db.Timestamp(6)
+  old_factory_invoice_id     Int?
+  old_document_submission_id Int?
+  is_cross_paid              Boolean?              @default(false)
+  factory_payment_no         String?               @db.VarChar(100)
+  document_submissions       document_submissions? @relation(fields: [document_submission_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  factory_invoice            factory_invoice?      @relation(fields: [factory_invoice_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([document_submission_id, factory_invoice_id], map: "unique_factory_invoice_per_document_submission")
+}
+
+model factory_payments_header_history {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_submission_id String?   @db.Uuid
+  remarks                DateTime? @db.Date
+  action_type            actions?
+  action_by              String?   @db.Uuid
+  action_at              DateTime? @default(now()) @db.Timestamp(6)
+  users                  users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model factory_payments_history {
+  id                         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_payments_id        String?   @db.Uuid
+  document_submission_id     String?   @db.Uuid
+  old_document_submission_id Int?
+  factory_invoice_id         String?   @db.Uuid
+  paid_amount                Float?
+  payment_date               DateTime? @db.Date
+  action_type                actions?
+  action_by                  String?   @db.Uuid
+  action_at                  DateTime? @default(now()) @db.Timestamp(6)
+  factory_payment_no         String?   @db.VarChar(100)
+  users                      users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model debit_note {
+  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  term_id               Int
+  buyer_id              Int
+  debit_note_date       DateTime             @default(dbgenerated("CURRENT_DATE")) @db.Date
+  debit_note_ref        String               @db.VarChar(50)
+  lc_id                 String?              @db.Uuid
+  sales_contract_id     String?              @db.Uuid
+  less                  Float?
+  processing_charge     Float?
+  conversion_rate       Float?
+  additional_adjustment Float?
+  remarks               String?
+  added_at              DateTime?            @default(now()) @db.Timestamp(6)
+  old_pk                Int?
+  old_buyer_id          Int?
+  old_lc_id             Int?
+  old_sc_id             Int?
+  factory_id            Int
+  old_factory_id        Int?
+  buyers                buyers               @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
+  factories             factories            @relation(fields: [factory_id], references: [id], onUpdate: NoAction)
+  lc_master             lc_master?           @relation(fields: [lc_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sales_contracts       sales_contracts?     @relation(fields: [sales_contract_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  terms                 terms                @relation(fields: [term_id], references: [id], onUpdate: NoAction)
+  debit_note_details    debit_note_details[]
+}
+
+model debit_note_history {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  debit_note_id         String?   @db.Uuid
+  term_id               Int?
+  buyer_id              Int?
+  debit_note_date       DateTime? @db.Date
+  debit_note_ref        String?   @db.VarChar(50)
+  lc_id                 String?   @db.Uuid
+  sales_contract_id     String?   @db.Uuid
+  less                  Float?
+  processing_charge     Float?
+  conversion_rate       Float?
+  additional_adjustment Float?
+  remarks               String?
+  action_type           actions?
+  action_by             String?   @db.Uuid
+  action_at             DateTime? @default(now()) @db.Timestamp(6)
+  users                 users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model debit_note_details {
+  id                               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  debit_note_header_id             String              @db.Uuid
+  old_pk                           Int?
+  old_debit_note_header_id         Int?
+  added_at                         DateTime?           @default(now()) @db.Timestamp(6)
+  exfactory_shipment_id            String              @db.Uuid
+  old_exfactory_shipment_detail_id Int?
+  debit_note                       debit_note          @relation(fields: [debit_note_header_id], references: [id], onUpdate: NoAction)
+  exfactory_shipments              exfactory_shipments @relation(fields: [exfactory_shipment_id], references: [id], onUpdate: NoAction)
+}
+
+model debit_note_details_history {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  debit_note_details    Int?
+  debit_note_header_id  String?   @db.Uuid
+  action_type           actions?
+  action_by             String?   @db.Uuid
+  action_at             DateTime? @default(now()) @db.Timestamp(6)
+  exfactory_shipment_id String?   @db.VarChar(40)
+  users                 users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model debit_note_metadata {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buyer_id Int?
+  last_ref Int?
+  year     Int?
+  buyers   buyers? @relation(fields: [buyer_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([buyer_id, year], map: "unique_buyer_in_debit_notes")
+}
+
+model cross_payment_details {
+  id                   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cross_payment_id     String          @db.Uuid
+  factory_invoice_id   String          @db.Uuid
+  value                Float?
+  added_at             DateTime?       @default(now()) @db.Timestamp(6)
+  factory_payment_no   String?         @db.VarChar(50)
+  factory_payment_date DateTime?       @db.Date
+  regularized          Boolean?        @default(false)
+  cross_payments       cross_payments  @relation(fields: [cross_payment_id], references: [id], onUpdate: NoAction)
+  factory_invoice      factory_invoice @relation(fields: [factory_invoice_id], references: [id], onUpdate: NoAction)
+}
+
+model cross_payment_details_history {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cross_payment_details_id String?   @db.Uuid
+  cross_payment_id         String?   @db.Uuid
+  factory_invoice_id       String?   @db.Uuid
+  value                    Float?
+  action_type              actions?
+  action_by                String?   @db.Uuid
+  action_at                DateTime? @default(now()) @db.Timestamp(6)
+  factory_payment_no       String?   @db.VarChar(50)
+  factory_payment_date     DateTime? @db.Date
+  users                    users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model cross_payments {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cross_payment_ref     String                  @db.VarChar(100)
+  cross_payment_date    DateTime?               @default(dbgenerated("CURRENT_DATE")) @db.Date
+  buyer_id              Int
+  term_id               Int
+  added_at              DateTime?               @default(now()) @db.Timestamp(6)
+  remarks               String?
+  is_authorized         Boolean?                @default(false)
+  cross_payment_details cross_payment_details[]
+  buyers                buyers                  @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
+  terms                 terms                   @relation(fields: [term_id], references: [id], onUpdate: NoAction)
+}
+
+model cross_payments_history {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cross_payments_id  String?   @db.Uuid
+  cross_payment_ref  String?   @db.VarChar(100)
+  cross_payment_date DateTime? @db.Date
+  buyer_id           Int?
+  term_id            Int?
+  action_type        actions?
+  action_by          String?   @db.Uuid
+  action_at          DateTime? @default(now()) @db.Timestamp(6)
+  is_authorized      Boolean?
+  users              users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model cross_payments_metadata {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  year     Int?
+  last_ref Int?
+  buyer_id Int?
+  buyers   buyers? @relation(fields: [buyer_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([year, buyer_id], map: "unique_buyer_year_cross_payment")
+}
+
+model commercial_tna_templates {
+  id                               String                             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  template_name                    String
+  buyer_id                         Int
+  added_at                         DateTime?                          @default(now()) @db.Timestamp(6)
+  payment_term_id                  Int
+  commercial_tna_planning          commercial_tna_planning[]
+  commercial_tna_planning_details  commercial_tna_planning_details[]
+  buyers                           buyers                             @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
+  buyer_payment_term               buyer_payment_term                 @relation(fields: [payment_term_id], references: [id], onUpdate: NoAction)
+  commercial_tna_templates_actions commercial_tna_templates_actions[]
+
+  @@unique([buyer_id, payment_term_id], map: "unique_template_per_buyer_term")
+}
+
+model commercial_tna_templates_actions {
+  id                              String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commercial_tna_template_id      String                            @db.Uuid
+  alert_before                    Int?                              @default(0)
+  days                            Int
+  tna_action_id                   Int
+  serial                          Int?
+  added_at                        DateTime?                         @default(now()) @db.Timestamp(6)
+  commercial_tna_planning_details commercial_tna_planning_details[]
+  commercial_tna_templates        commercial_tna_templates          @relation(fields: [commercial_tna_template_id], references: [id], onUpdate: NoAction, map: "commercial_tna_templates_action_commercial_tna_template_id_fkey")
+  tna_actions                     tna_actions                       @relation(fields: [tna_action_id], references: [id], onUpdate: NoAction)
+}
+
+model commercial_tna_templates_actions_history {
+  id                                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commercial_tna_templates_actions_id String?   @db.Uuid
+  commercial_tna_template_id          String?   @db.Uuid
+  alert_before                        Int?
+  days                                Int?
+  tna_action_id                       Int?
+  serial                              Int?
+  action_type                         actions?
+  action_by                           String?   @db.Uuid
+  action_at                           DateTime? @default(now()) @db.Timestamp(6)
+  users                               users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model commercial_tna_templates_history {
+  id                          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commercial_tna_templates_id String?   @db.Uuid
+  buyer_id                    Int?
+  action_type                 actions?
+  action_by                   String?   @db.Uuid
+  action_at                   DateTime? @default(now()) @db.Timestamp(6)
+  template_name               String?
+  payment_term_id             Int?
+  users                       users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model commercial_tna_planning {
+  id                              String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  factory_invoice_id              String                            @unique(map: "unique_commercial_tna_planning_per_factory_invoice") @db.Uuid
+  commercial_tna_template_id      String                            @db.Uuid
+  added_at                        DateTime?                         @default(now()) @db.Timestamp(6)
+  commercial_tna_templates        commercial_tna_templates          @relation(fields: [commercial_tna_template_id], references: [id], onUpdate: NoAction, map: "commercial_tna_planning_commer_tna_template_id_fkey")
+  factory_invoice                 factory_invoice                   @relation(fields: [factory_invoice_id], references: [id], onUpdate: NoAction)
+  commercial_tna_planning_details commercial_tna_planning_details[]
+}
+
+model commercial_tna_planning_details {
+  id                                  String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commercial_tna_templates_actions_id String                           @db.Uuid
+  plan_date                           DateTime?                        @db.Date
+  actual_date                         DateTime?                        @db.Date
+  added_at                            DateTime?                        @default(now()) @db.Timestamp(6)
+  commercial_tna_template_id          String?                          @db.Uuid
+  commercial_tna_planning_id          String?                          @db.Uuid
+  commercial_tna_templates_actions    commercial_tna_templates_actions @relation(fields: [commercial_tna_templates_actions_id], references: [id], onUpdate: NoAction, map: "commercial_tna_planning_detai_commercial_tna_templates_act_fkey")
+  commercial_tna_planning             commercial_tna_planning?         @relation(fields: [commercial_tna_planning_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  commercial_tna_templates            commercial_tna_templates?        @relation(fields: [commercial_tna_template_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model commercial_tna_planning_details_history {
+  id                                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commercial_tna_planning_details_id String?   @db.Uuid
+  commercial_tna_template_actions_id String?   @db.Uuid
+  plan_date                          DateTime? @db.Date
+  actual_date                        DateTime? @db.Date
+  commercial_tna_planning_id         String?   @db.Uuid
+  action_type                        actions?
+  action_by                          String?   @db.Uuid
+  action_at                          DateTime? @default(now()) @db.Timestamp(6)
+  users                              users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model commission_percentage {
+  id                  Int       @id @default(autoincrement())
+  buyer_id            Int?
+  other_percentage    Float?
+  overseas_percentage Float?
+  added_at            DateTime? @default(now()) @db.Timestamp(6)
+  buyers              buyers?   @relation(fields: [buyer_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model commission_percentage_history {
+  id                    Int       @id(map: "commission_percentage_historty_pkey") @default(autoincrement())
+  commission_percentage Int?
+  buyer_id              Int?
+  other_percentage      Float?
+  overseas_percentage   Float?
+  action_type           actions?
+  action_by             String?   @db.Uuid
+  action_at             DateTime? @default(now()) @db.Timestamp(6)
+  users                 users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "commission_percentage_historty_action_by_fkey")
+}
+
+model early_settlement_percentage {
+  id       String    @id(map: "early_settelment_percentage_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buyer_id Int
+  charge   Float
+  added_at DateTime? @default(now()) @db.Timestamp(6)
+  buyers   buyers    @relation(fields: [buyer_id], references: [id], onUpdate: NoAction, map: "early_settelment_percentage_buyer_id_fkey")
+}
+
+model early_settlement_percentage_history {
+  id                             String    @id(map: "early_settelment_percentage_history_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  early_settlement_percentage_id String?   @db.Uuid
+  buyer_id                       Int?
+  charge                         Float?
+  added_at                       DateTime? @default(now()) @db.Timestamp(6)
+  action_by                      String?   @db.Uuid
+  action_at                      DateTime? @default(now()) @db.Timestamp(6)
+  action_type                    actions?
+  users                          users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "early_settelment_percentage_history_action_by_fkey")
+}
+
+model error_logs {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+  request_id     String   @db.Uuid
+  procedure_name String
+  request_method String   @db.VarChar(10)
+  query_params   Json?
+  ip_address     String?  @db.Inet
+  user_agent     String?
+  referer        String?
+  input_data     Json?
+  error_name     String   @db.VarChar(255)
+  error_code     String?  @db.VarChar(100)
+  user_id        String?  @db.Uuid
+  error_message  String?
+}
+
+model early_settlement {
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id                 String                     @db.Uuid
+  remarks                  String?
+  added_at                 DateTime?                  @default(now()) @db.Timestamp(6)
+  buyer_orders             buyer_orders               @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+  early_settlement_details early_settlement_details[]
+}
+
+model early_settlement_details {
+  id                      String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipment_details_id     String            @db.Uuid
+  early_settlement_charge Float
+  added_at                DateTime?         @default(now()) @db.Timestamp(6)
+  early_settlement_id     String?           @db.Uuid
+  early_settlement        early_settlement? @relation(fields: [early_settlement_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  shipment_details        shipment_details  @relation(fields: [shipment_details_id], references: [id], onUpdate: NoAction)
+}
+
+model early_settlement_details_history {
+  id                          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  early_settlement_details_id String?   @db.Uuid
+  shipment_details_id         String?   @db.Uuid
+  early_settlement_charge     Float?
+  action_type                 actions?
+  action_by                   String?   @db.Uuid
+  action_at                   DateTime? @default(now()) @db.Timestamp(6)
+  users                       users?    @relation(fields: [action_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+enum actions {
+  UPDATE
+  DELETE
+  RESTORE
+  ADDED
+}
+
+enum authorization_types {
+  USER
+  LEVEL
+}
+
+enum order_status {
+  ACTIVE
+  DELIVERED
+  CANCELED
+}
+
+enum shipment_modes {
+  SEA
+  AIR
+  LAND
+  BY_ROAD @map("BY ROAD")
+}

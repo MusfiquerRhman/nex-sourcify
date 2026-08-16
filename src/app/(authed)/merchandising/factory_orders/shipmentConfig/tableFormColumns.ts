@@ -1,0 +1,16 @@
+export const tableFormColumns = [
+    { key: 'buyer_po', label: 'Buyer PO' },
+    { key: 'exfactory_date', label: 'Exfactory Date' },
+    { key: 'etd_date', label: 'ETD Date' },
+    { key: 'handover_date', label: 'Handover Date' },
+    { key: 'destination_name', label: 'Destination Port' },
+    { key: 'shipment_mode', label: 'Shipment Mode' },
+    { key: 'payment_term', label: 'Payment Term' },
+    { key: 'size_name', label: 'Size Range' },
+    { key: 'colors', label: 'Colors (Quantity)' },
+    { key: 'lot_quantity', label: 'Quantity' },
+    { key: 'factory_fob', label: 'Factory FOB' },
+    { key: 'factory_value', label: 'Factory Value' },
+    { key: 'transfer_rate', label: 'Transfer Rate' },
+    { key: 'transfer_value', label: 'Transfer Value' },
+]

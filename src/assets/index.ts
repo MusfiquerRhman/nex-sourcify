@@ -1,0 +1,40 @@
+// icons
+export { default as accountsIcon } from "./icons/account.png";
+export { default as dashboardIcon } from "./icons/dashboard.png";
+export { default as adminIcon } from "./icons/admin.png";
+export { default as caretDownIcon } from "./icons/caret-down.png";
+export { default as caretUpIcon } from "./icons/caret-up.png";
+export { default as bookIcon } from "./icons/book.png";
+export { default as plusIcon } from "./icons/plus.png";
+export { default as qualityIcon } from "./icons/quality.png";
+export { default as reportIcon } from "./icons/report.png";
+export { default as sackDollarIcon } from "./icons/sack-dollar.png";
+export { default as shirtIcon } from "./icons/shirt.png";
+export { default as complianceIcon } from './icons/compliance.png';
+export { default as searchIcon } from './icons/search.png';
+export { default as leftArrowIcon } from './icons/left-arrow.png';
+export { default as rightArrowIcon } from './icons/right-arrow.png';
+export { default as viewIcon } from './icons/view.png';
+export { default as hideIcon } from './icons/hide.png';
+export { default as editIcon } from './icons/edit.png';
+export { default as deleteIcon } from './icons/delete.png';
+export { default as logoutIcon } from './icons/logout.png';
+export { default as clearIcon } from './icons/clear.png';
+export { default as upBlackIcon } from './icons/up-black.png';
+export { default as downBlackIcon } from './icons/down-black.png'
+export { default as notificationIcon } from './icons/notification.png';
+export { default as printingIcon } from './icons/printing.png';
+export { default as printingWhiteIcon } from './icons/printing_white.png';
+export { default as userIcon } from './icons/user.png';
+export { default as maximizeIcon } from './icons/maximize.png';
+export { default as tagIcon } from './icons/tag.png';
+export { default as commissionIcon } from './icons/commission.png';
+export { default as excelIcon } from './icons/excel.png';
+export { default as settingIcon } from './icons/settings.png';
+export { default as codeIcon } from './icons/code.png';
+
+// images
+export { default as unauthorizedImage } from "./img/denied.jpg";
+export { default as nexSourcifyImage } from "./img/nexSourcify.jpg";
+export { default as authorized } from "./img/authorized.png";
+export { default as notFound } from "./img/not_found.png";

@@ -1,0 +1,31 @@
+export interface OrderSummaryReportRow {
+    ORDER_NO: string;
+    FACTORY_NAME: string;
+    BUYER_NAME: string;
+    BRAND: string;
+    DEPARTMENT: string;
+    SIZE: string;
+    SEASON_NAME: string;
+    STYLE: string;
+    PRODUCT_TYPE: string;
+    PRODUCT: string;
+    COLORS: string;
+    FABRIC: string;
+    FABRIC_SUPPLIER: string;
+    BUYER_PO: string;
+    ORDER_DATE: string;
+    EXFACTORY_DATE: string;
+    ACTUAL_EXFACTORY_DATE: string;
+    HANDOVER_DATE: string;
+    ETD_DATE: string;
+    LOT_QUANTITY: number;
+    DELIVERY_QUANTITY: number;
+    FOB_RATE: number;
+    FACTORY_RATE: number;
+    PO_CLOSE: boolean;
+    ORDER_RDL_VALUE: number;
+    DELIVERED_RDL_VALUE: number;
+    FACTORY_ORDER_VALUE: number;
+    FACTORY_DELIVERY_VALUE: number;
+    TEAM_NAME: string;
+}

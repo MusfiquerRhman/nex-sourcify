@@ -1,0 +1,58 @@
+export interface SalesContractResponse {
+    id: number;
+    sales_contract_no: string;
+    sales_contract_date: Date;
+    sales_contract_value: number;
+    factory_name: string;
+    approval_status: number;
+    currency_symbol: string;
+    total_count: bigint;
+}
+
+export interface SalesContractPDFHeaderData {
+    sales_contract_no: string;
+    sales_contract_date: Date;
+    buyer_name: string;
+    buyer_address: string;
+    buyer_bank_name: string;
+    buyer_bank_branch: string;
+    buyer_bank_account_no: string;
+    buyer_bank_account_name: string;
+    buyer_bank_swift: string;
+    buyer_bank_address: string;
+    factory_name: string;
+    factory_address: string;
+    factory_bank_name: string;
+    factory_bank_branch: string;
+    factory_bank_account_no: string;
+    factory_bank_account_name: string;
+    factory_bank_swift: string;
+    factory_bank_address: string;
+    company_name: string;
+    company_address: string;
+    company_bank: string;
+    company_bank_branch: string;
+    company_bank_account_no: string;
+    company_bank_account_name: string;
+    company_bank_swift: string;
+    company_bank_address: string;
+    negotiation_bank: string;
+    negotiation_bank_branch: string;
+    negotiation_bank_account_no: string;
+    negotiation_bank_account_name: string;  
+    negotiation_bank_swift: string;
+    negotiation_bank_address: string;
+    contact_person: string;
+    contact_number: string;
+    contact_person_pabx: string;
+    contact_person_ext: string;
+    contact_person_email: string;
+    payment_terms: string;
+    last_shipment_date: Date;
+    expiry_date: Date;
+    final_destination: string;
+    partial_shipment_allowed: boolean;
+    freight_term: string;
+    port_of_loading: string;
+    approval_status: number;
+};

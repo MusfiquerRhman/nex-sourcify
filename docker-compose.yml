@@ -1,0 +1,19 @@
+services:
+  app:
+    image: musfiquer/rdl-nexus-test:latest
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: RDL_NEXUS_TEST_SERVER
+    restart: always
+    ports:
+      - "7000:7000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=7000
+      - TZ=Asia/Dhaka
+    volumes:
+      - ./public:/app/public
