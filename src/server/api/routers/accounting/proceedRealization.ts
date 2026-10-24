@@ -1,9 +1,10 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
 import { m } from "~/utils/moduleMap";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { actions } from "@prisma/client";
+import { actions, type factory_payments } from "@prisma/client";
 import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID, PROCEED_DATE } from "~/utils/config";
 import { currencyFormatter } from "~/utils/localNumberStrings";
 import type { ProceedRealizationResult, RdlInvoiceDetailsResult } from './_types/proceedRealization'
@@ -36,8 +37,8 @@ export const proceedRealizationRouter = createTRPCRouter({
                             SUM(PRD.REALIZED_AMOUNT)::NUMERIC(18,2) AS REALIZED_AMOUNT,
                             PR.ADDED_AT
                         FROM proceed_realization AS PR
-                            INNER JOIN proceed_realization_details AS PRD ON PRD.realization_id = PR.id
-                            INNER JOIN document_submissions AS DS ON DS.id = PR.document_submission_id
+                            LEFT JOIN proceed_realization_details AS PRD ON PRD.realization_id = PR.id
+                            LEFT JOIN document_submissions AS DS ON DS.id = PR.document_submission_id
                             INNER JOIN buyers AS B ON B.id = PR.buyer_id
                             INNER JOIN terms AS T ON T.id = PR.term_id
                         WHERE (
@@ -108,11 +109,10 @@ export const proceedRealizationRouter = createTRPCRouter({
                             SUM(PRD.REALIZED_AMOUNT)::NUMERIC(18,2) AS REALIZED_AMOUNT,
                             PR.ADDED_AT
                         FROM proceed_realization AS PR
-                            INNER JOIN proceed_realization_details AS PRD ON PRD.realization_id = PR.id
-                            INNER JOIN document_submissions AS DS ON DS.id = PR.document_submission_id
+                            LEFT JOIN PROCEED_REALIZATION_DETAILS AS PRD ON PRD.realization_id = PR.id
+                            LEFT JOIN document_submissions AS DS ON DS.id = PR.document_submission_id
                             INNER JOIN buyers AS B ON B.id = PR.buyer_id
                             INNER JOIN terms AS T ON T.id = PR.term_id
-                            LEFT JOIN PROCEED_REALIZATION_DETAILS AS PRD ON PRD.realization_id = PR.id
                             LEFT JOIN rdl_invoice AS RI ON RI.id = PRD.rdl_invoice_id
                         WHERE (
                             EXISTS ( -- Admin
@@ -129,7 +129,6 @@ export const proceedRealizationRouter = createTRPCRouter({
                                 WHERE T.BUYER_ID = B.ID
                                     AND TM.USER_ID = ${ctx.user.id}
                             )
-                            GROUP BY PR.ID, B.ID, T.ID, DS.ID
                         )
                         AND (
                             B.buyer_name ILIKE '%' || ${input.query} || '%'
@@ -137,6 +136,7 @@ export const proceedRealizationRouter = createTRPCRouter({
                             OR T.NAME ILIKE '%' || ${input.query} || '%'
                             OR RI.INVOICE_NO ILIKE '%' || ${input.query} || '%'
                         )
+                        GROUP BY PR.ID, B.ID, T.ID, DS.ID
                     )
                     SELECT *,
                         COUNT(*) OVER() AS TOTAL_COUNT
@@ -175,7 +175,35 @@ export const proceedRealizationRouter = createTRPCRouter({
             }
             
             try {
-                await ctx.db.$transaction(async (tx) => {
+                // Order of action is very very important
+                await transactionWithQueuedHistory(ctx.db, async (tx) => {
+                    const realization = await tx.proceed_realization.findUnique({
+                        where: {
+                            id: input.id
+                        }
+                    });
+
+                    let factoryPayments: factory_payments[];
+
+                    // Get payment info before deleting the proceed details, otherwise broken relation return empty rows.
+                    if(realization?.term_id === 2) { // LC
+                        factoryPayments = await tx.factory_payments.findMany({
+                            where: {
+                                document_submission_id: realization.document_submission_id,
+                            }
+                        });
+                    }
+                    else { // TT
+                        factoryPayments = await tx.$queryRaw<factory_payments[]>`
+                            SELECT DISTINCT 
+                                fp.* 
+                            FROM factory_payments as fp
+                                INNER JOIN proceed_realization_details AS prd ON prd.rdl_invoice_id = fp.rdl_invoice_id
+                                INNER JOIN proceed_realization AS pr ON pr.id = prd.realization_id
+                            WHERE pr.id = ${input.id}
+                        `;
+                    }
+
                     const deletedDetails = await tx.proceed_realization_details.findMany({
                         where: {
                             realization_id: input.id,
@@ -206,41 +234,59 @@ export const proceedRealizationRouter = createTRPCRouter({
                         },
                     });
 
-                    const factoryPayments = await tx.factory_payments.findMany({
-                        where: {
-                            document_submission_id: deletedRealization.document_submission_id,
-                        }
-                    });
+                    const rdlInvoiceIds = [
+                        ...new Set(
+                            factoryPayments.map((payment) => payment.rdl_invoice_id)
+                                .filter((id): id is string => id !== null)
+                        ),
+                    ];
 
-                    await Promise.all([
+                    if(deletedRealization.term_id === 2) { // LC
                         await tx.factory_payments.deleteMany({
                             where: {
                                 document_submission_id: deletedRealization.document_submission_id,
                             }
-                        }),
+                        })
 
                         await tx.factory_payment_header.deleteMany({
                             where: {
                                 document_submission_id: deletedRealization.document_submission_id,
                             }
-                        }),
-
-                        await tx.proceed_realization_history.create({
-                            data: {
-                                proceed_realization_id: deletedRealization.id,
-                                buyer_id: deletedRealization.buyer_id,
-                                document_submission_id: deletedRealization.document_submission_id,
-                                term_id: deletedRealization.term_id,
-                                realization_date: deletedRealization.realization_date,
-                                action_type: actions.DELETE,
-                                action_by: ctx.user.id,
+                        })
+                    }
+                    else { // TT
+                        await tx.factory_payments.deleteMany({
+                            where: {
+                                rdl_invoice_id: {
+                                    in: rdlInvoiceIds,
+                                },
                             },
                         })
-                    ]);
+
+                        await tx.factory_payment_header.deleteMany({
+                            where: {
+                                rdl_invoice_id: {
+                                    in: rdlInvoiceIds
+                                }
+                            }
+                        })
+                    }
+
+                    await tx.proceed_realization_history.create({
+                        data: {
+                            proceed_realization_id: deletedRealization.id,
+                            buyer_id: deletedRealization.buyer_id,
+                            document_submission_id: deletedRealization.document_submission_id,
+                            term_id: deletedRealization.term_id,
+                            realization_date: deletedRealization.realization_date,
+                            action_type: actions.DELETE,
+                            action_by: ctx.user.id,
+                        },
+                    });
 
                     await tx.factory_payments_history.createMany({
                         data: factoryPayments.map((payment) => ({
-                            factory_payment_id: payment.id,
+                            factory_payments_id: payment.id,
                             document_submission_id: payment.document_submission_id,
                             payment_date: payment.payment_date,
                             paid_amount: payment.paid_amount,
@@ -317,13 +363,16 @@ export const proceedRealizationRouter = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx, queueHistoryJob) => {
                     const newProceedRealization = await tx.proceed_realization.create({
                         data: {
                             buyer_id: input.buyer_id,
                             document_submission_id: input.document_submission_id,
                             term_id: input.term_id,
                             realization_date: input.realization_date,
+                            bank_charge: input.bank_charge,
+                            discount_charge: input.discount_charge,
+                            document_charge: input.document_charge
                         },
                     });
 
@@ -335,6 +384,9 @@ export const proceedRealizationRouter = createTRPCRouter({
                                 document_submission_id: newProceedRealization.document_submission_id,
                                 term_id: newProceedRealization.term_id,
                                 realization_date: newProceedRealization.realization_date,
+                                discount_charge: newProceedRealization.discount_charge,
+                                document_charge: newProceedRealization.document_charge,
+                                bank_charge: newProceedRealization.bank_charge,
                                 action_type: actions.ADDED,
                                 action_by: ctx.user.id,
                             },
@@ -348,20 +400,13 @@ export const proceedRealizationRouter = createTRPCRouter({
                             })),
                         }),
 
-                        await tx.proceed_realization_details.findMany({
-                            where: {
+                        queueHistoryJob({
+                            name: "proceed_realization_details_added",
+                            data: {
                                 realization_id: newProceedRealization.id,
+                                rdl_invoice_ids: input.rdl_invoice_details.map((detail) => detail.rdl_invoice_id),
+                                action_by: ctx.user.id,
                             },
-                        }).then(async (details) => {
-                            await tx.proceed_realization_details_history.createMany({
-                                data: details.map((detail) => ({
-                                    realization_details_id: detail.id,
-                                    realization_id: detail.realization_id,
-                                    rdl_invoice_id: detail.rdl_invoice_id,
-                                    action_type: actions.ADDED,
-                                    action_by: ctx.user.id,
-                                })),
-                            });
                         }),
 
                         await tx.$executeRaw`
@@ -461,23 +506,13 @@ export const proceedRealizationRouter = createTRPCRouter({
                 }
 
                 const rdlInvoiceDetails = await ctx.db.$queryRaw<RdlInvoiceDetailsResult[]>`
-                    WITH RDL_INVOICE_DETAILS AS (
-                        SELECT 
-                            RID.rdl_invoice_id AS RIDID,
-                            SUM(RISD.INVOICE_QUANTITY * SD.fob_rate) AS TOTAL_VALUE
-                        FROM rdl_invoice_details AS RID
-                            INNER JOIN rdl_invoice_shipment_details AS RISD ON RISD.rdl_invoice_details_id = RID.id
-                            INNER JOIN shipment_details AS SD ON SD.id = RISD.shipment_details_id
-                        GROUP BY RID.rdl_invoice_id
-                    )
                     SELECT
                         RI.id AS rdl_invoice_id,
                         RI.invoice_no AS rdl_invoice_no,
-                        RD.TOTAL_VALUE::NUMERIC(18,2) AS invoice_value
+                        DSD.received_value AS invoice_value
                     FROM document_submissions AS DS
                         INNER JOIN document_submissions_details AS DSD ON DSD.document_submissions_id = DS.id
                         INNER JOIN rdl_invoice AS RI ON RI.id = DSD.rdl_invoice_id
-                        INNER JOIN RDL_INVOICE_DETAILS AS RD ON RD.RIDID = RI.id
                     WHERE DS.id = ${proceedRealizationObj.document_submissions.id};
                 `;
 
@@ -526,29 +561,19 @@ export const proceedRealizationRouter = createTRPCRouter({
             if (!can_view) {
                 throw new TRPCError({
                     code: "FORBIDDEN",
-                    message: "You do not have permission to view invoice details for proceed realization.",
+                    message: "You do not have permission to view NexSourcify invoice details for proceed realization.",
                 });
             }
             
             try {
                 const rdlInvoiceDetails = await ctx.db.$queryRaw<RdlInvoiceDetailsResult[]>`
-                    WITH RDL_INVOICE_DETAILS AS (
-                        SELECT 
-                            RID.rdl_invoice_id AS RIDID,
-                            SUM(RISD.INVOICE_QUANTITY * SD.fob_rate) AS TOTAL_VALUE
-                        FROM rdl_invoice_details AS RID
-                            INNER JOIN rdl_invoice_shipment_details AS RISD ON RISD.rdl_invoice_details_id = RID.id
-                            INNER JOIN shipment_details AS SD ON SD.id = RISD.shipment_details_id
-                        GROUP BY RID.rdl_invoice_id
-                    )
                     SELECT
                         RI.id AS rdl_invoice_id,
                         RI.invoice_no AS rdl_invoice_no,
-                        RD.TOTAL_VALUE::NUMERIC(18,2) AS invoice_value
+                        DSD.received_value AS invoice_value
                     FROM document_submissions AS DS
                         INNER JOIN document_submissions_details AS DSD ON DSD.document_submissions_id = DS.id
                         INNER JOIN rdl_invoice AS RI ON RI.id = DSD.rdl_invoice_id
-                        INNER JOIN RDL_INVOICE_DETAILS AS RD ON RD.RIDID = RI.id
                     WHERE DS.id = ${input.document_submission_id};
                 `;
 
@@ -584,7 +609,7 @@ export const proceedRealizationRouter = createTRPCRouter({
                     });
                 }
 
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedProceedRealization = await tx.proceed_realization.update({
                         where: {
                             id: input.id,

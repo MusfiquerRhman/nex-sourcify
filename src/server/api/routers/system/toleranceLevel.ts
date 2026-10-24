@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -136,7 +137,7 @@ export const toleranceLevelRouter = createTRPCRouter({
             }
 
             try {
-                return ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     await tx.shipment_tolerance_level.create({
                         data: {
                             buyer_id: input.buyer_id,
@@ -178,7 +179,7 @@ export const toleranceLevelRouter = createTRPCRouter({
             }
 
             try {
-                return ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     await tx.shipment_tolerance_level.update({
                         where: { id: input.id },
                         data: {
@@ -216,7 +217,7 @@ export const toleranceLevelRouter = createTRPCRouter({
             }
 
             try {
-                return ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const deletedTolerance = await tx.shipment_tolerance_level.delete({
                         where: { id: input.id },
                     });

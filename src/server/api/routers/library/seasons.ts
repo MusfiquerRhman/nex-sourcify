@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -110,7 +111,7 @@ export const seasonsRouter = createTRPCRouter({
                 }
 
                 try {
-                    return await ctx.db.$transaction(async (tx) => {
+                    return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                         const season = await tx.seasons.create({
                             data: {
                                 season_name: input.season_name.trim(),
@@ -159,7 +160,7 @@ export const seasonsRouter = createTRPCRouter({
                 }
 
                 try {
-                    return await ctx.db.$transaction(async (tx) => {
+                    return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                         await tx.seasons_history.create({
                             data: {
                                 season_id: input.id,
@@ -206,7 +207,7 @@ export const seasonsRouter = createTRPCRouter({
                 }
 
                 try {
-                    return await ctx.db.$transaction(async (tx) => {
+                    return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                         const season = await tx.seasons.delete({
                             where: { id: input.id },
                         });

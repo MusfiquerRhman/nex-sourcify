@@ -9,6 +9,7 @@ import Image from "next/image";
 
 type SizesProps = {
     sizes: { size: string; id?: number }[];
+    departmentName: string;
     newSizes: Record<string, string>;
     setNewSizes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     setBrands: React.Dispatch<React.SetStateAction<BrandsState | undefined>>
@@ -17,7 +18,7 @@ type SizesProps = {
     canDelete?: boolean;
 }
 
-const Sizes = ({sizes, newSizes, setNewSizes, setBrands, brandIndex, departmentIndex, canDelete}: SizesProps) => {
+const Sizes = ({sizes, departmentName, newSizes, setNewSizes, setBrands, brandIndex, departmentIndex, canDelete}: SizesProps) => {
     const handleAddSizeSet = (brandIndex: number, departmentIndex: number, size: string) => {
         const value = size.trim();
         if (!value) return;
@@ -85,19 +86,15 @@ const Sizes = ({sizes, newSizes, setNewSizes, setBrands, brandIndex, departmentI
     }
 
     return (
-        <div className="ml-2 border-l-2 border-secondary pl-4">
-            <p className="py-1">Sizes</p>
-            {sizes.map((sizeSet, sizeIndex) => (
-                <div key={sizeIndex} className="flex flex-row justify-between items-center border-2 border-gray-400 my-2 rounded-lg pl-2">
-                     <p className={'p-1'}>{sizeSet.size}</p>
-                    {canDelete && (
-                        <DeleteButton size="sm"
-                            onClick={() => handleRemoveSizeSet( brandIndex, departmentIndex, sizeIndex, sizeSet?.id ) }
-                        />
-                    )}
+        <div className="mt-4 border-l-2 border-gray-200 pl-4 sm:pl-5">
+            <div className="mb-2 flex items-center justify-between gap-3">
+                <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-600">Sizes</p>
+                    <p className="text-xs text-gray-500">Add sizes covered by <span className='font-bold'>{departmentName}</span> department.</p>
                 </div>
-            ))}
-            <div className="flex gap-2 mt-2">
+                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">{sizes.length}</span>
+            </div>
+            <div className="my-4 flex flex-col gap-2 sm:flex-row">
                 <Input
                     placeholder="Size name"
                     value={newSizes[`${brandIndex}-${departmentIndex}`] ?? ""}
@@ -115,7 +112,9 @@ const Sizes = ({sizes, newSizes, setNewSizes, setBrands, brandIndex, departmentI
                     }}
                 />
                 <button
-                    className="p-2 invert rounded-lg my-1"
+                    type="button"
+                    aria-label="Add size"
+                    className="my-1 flex items-center justify-center gap-2 rounded-lg bg-gray-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
                     disabled={!newSizes[ `${brandIndex}-${departmentIndex}`]?.trim()}
                     onClick={() => {
                         handleAddSizeSet(
@@ -126,10 +125,22 @@ const Sizes = ({sizes, newSizes, setNewSizes, setBrands, brandIndex, departmentI
                         setNewSizes((prev) => ({ ...prev, [ `${brandIndex}-${departmentIndex}`]: "" }));
                     }}
                 >
-                    <div className="h-5 w-5 hover:cursor-pointer">
+                    <div className="h-5 w-5">
                         <Image width={20} height={20} src={plusIcon.src} alt="Add Size" />
-                    </div>
+                    </div>Add
                 </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+            {sizes.map((sizeSet, sizeIndex) => (
+                <div key={sizeIndex} className="flex items-center gap-1 rounded-full border border-gray-300 bg-white pl-4 text-sm font-medium text-gray-700">
+                     <span>{sizeSet.size}</span>
+                    {canDelete && (
+                        <DeleteButton size="xm"
+                            onClick={() => handleRemoveSizeSet( brandIndex, departmentIndex, sizeIndex, sizeSet?.id ) }
+                        />
+                    )}
+                </div>
+            ))}
             </div>
         </div>
     )

@@ -10,12 +10,12 @@ import { formatDate } from "~/utils/localDateString";
 import { excelIcon } from "~/assets";
 
 const currentTime = new Date().toLocaleTimeString('en-US', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: true
+	hour: '2-digit',
+	minute: '2-digit',
+	hour12: true
 }).replace(':', '-');
 
-const OrderSummaryReportPage = () => {
+const CommercialActivityReportPage = () => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +26,7 @@ const OrderSummaryReportPage = () => {
 	const getPdfDataMutation = api.activityReportRouter.getCommercialActivityReport.useMutation({
 		onSuccess: async () => {
             setError(null);
-            toast.success("Order Summary Report generated successfully!");
+            toast.success("Commercial Activity Report generated successfully!");
         }
     });
   
@@ -87,11 +87,12 @@ const OrderSummaryReportPage = () => {
 					leftIcon={excelIcon}
 					onClick={() => onSubmitAll()}
 					label={"Generate Activity Report"} 
-					className="bg-secondary text-lg tracking-wide mt-6 max-w-80 m-8"
+					variant="secondary"
+					className="text-lg tracking-wide mt-6 max-w-80 m-8"
 				/>
 			</div>
 		</Wrapper>
 	)
 }
 
-export default OrderSummaryReportPage;
+export default CommercialActivityReportPage;

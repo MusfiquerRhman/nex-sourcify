@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Form, Info, MessageBox, Wrapper } from "~/components";
+import { Button, Form, MessageBox, Wrapper } from "~/components";
 import React, { useEffect, useState } from "react";
 import { useFactoryOrderForm } from "../../config/useFactoryOrderForm";
 import { api } from "~/trpc/react";
@@ -48,7 +48,10 @@ const EditFactoryOrderPage = ({ params }: ParamsProp) => {
         onSuccess: async () => {
             setError(null);
             toast.success("Factory Order updated successfully!");
-            await utils.factoryOrder.getFactoryOrders.invalidate();
+            await Promise.all([
+                utils.factoryOrder.getBuyerOrderDetailsByFactoryOrderId.invalidate(),
+                utils.factoryOrder.getFactoryOrders.invalidate()
+            ])
             // utils.factoryOrder.getFactoryOrderById.invalidate({ factoryOrderId: id });
         },
     });
@@ -169,12 +172,14 @@ const EditFactoryOrderPage = ({ params }: ParamsProp) => {
                 validationError={validationError.factoryOrder ?? {}}
                 error={error}
                 control={control}
+                // disabled={!can_update}
                 disabled={!can_update || authorizations?.authorizations?.approval_status === 2}
             />
 
             <StylesDetails 
                 methods={methods}
                 validationError={validationError.factoryOrder ?? {}}
+                // disabled={!can_update}
                 disabled={!can_update || authorizations?.authorizations?.approval_status === 2}
             />
 
@@ -195,7 +200,7 @@ const EditFactoryOrderPage = ({ params }: ParamsProp) => {
 
             <MessageBox 
                 message="Factory order / Buyer order is incomplete." 
-                active={!authorizations?.authorizations?.is_complete} 
+                active={!authorizations?.authorizations?.is_complete && isAuthorizationLoading === false} 
                 type="error" 
             />
 
@@ -215,6 +220,7 @@ const EditFactoryOrderPage = ({ params }: ParamsProp) => {
                         || isLoadingSubmit 
                         || !can_update 
                         || !hasPermission.data
+                        // && (isCommissionDistributionAuthorized ?? false)
                         && (
                             authorizations?.authorizations?.approval_status === 2 
                             || (isCommissionDistributionAuthorized ?? false)

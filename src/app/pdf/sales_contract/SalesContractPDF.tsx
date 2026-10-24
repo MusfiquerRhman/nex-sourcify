@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Document, Image, Page, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, styles, tableBorderColor } from "../components/pdfConfig";
-import { PrintByAndDate, NexSourcifyLogo, ReportTitle } from "../components";
+import { PrintByAndDate, RenaissanceLogo, ReportTitle } from "../components";
 import { formatDate } from "~/utils/localDateString";
 import { authorized } from '~/assets'
 import type { inferRouterOutputs } from '@trpc/server';
@@ -26,17 +26,45 @@ const rowStyle = {
 };
 
 const SalesContractPDF = ({ data }: { data: GetPDFDataOutput }) => {
-    const tableColumns = useMemo(() => [
-        { key: 'style', label: 'Style', width: 145 },
-        { key: 'description', label: 'Description', width: 120 },
-        { key: 'buyer_po', label: 'PO', width: 145 },
-        { key: 'colors', label: 'Color', width: 108 },
-        { key: 'quantity', label: 'Qty/Unit', width: 88 },
-        { key: 'transfer_rate', label: 'Price/Unit', width: 78 },
-        { key: 'price', label: 'Total Price Per Order Quantity', width: 118 },
-        { key: 'destination', label: 'Destination', width: 98 },
-        { key: 'exfactory_date', label: 'Delivery Date (Ex-Factory)', width: 98 }
-    ], []);
+    const tableColumns = useMemo(() => {
+        const baseColumns = [
+            { key: 'style', label: 'Style', width: 160 },
+            { key: 'description', label: 'Description', width: 120 },
+            { key: 'buyer_po', label: 'PO', width: 150 },
+            { key: 'colors', label: 'Color', width: 108 },
+            { key: 'quantity', label: 'Qty / Unit', width: 68 },
+            { key: 'transfer_rate', label: 'Price / Unit', width: 68 },
+            { key: 'price', label: 'Total Price Per Order Quantity', width: 118 },
+            { key: 'destination', label: 'Destination', width: 108 },
+            { key: 'exfactory_date', label: 'Delivery Date (Ex- Factory)', width: 100 }
+        ];
+
+        if (data.pdfHeaderData?.buyer_name === 'LLC DM') {
+            const extraWidth = 108 / 3;
+
+            return [
+                { key: 'style', label: 'Style', width: 160 + extraWidth },
+                { key: 'description', label: 'Description', width: 120 + extraWidth },
+                { key: 'buyer_po', label: 'PO', width: 150 + extraWidth },
+                { key: 'colors', label: 'Color', width: 108 },
+                { key: 'quantity', label: 'Qty / Unit', width: 68 },
+                { key: 'transfer_rate', label: 'Price / Unit', width: 68 },
+                { key: 'price', label: 'Total Price Per Order Quantity', width: 118 },
+                { key: 'exfactory_date', label: 'Delivery Date (Ex- Factory)', width: 100 }
+            ];
+        }
+
+        return baseColumns;
+    }, [data.pdfHeaderData?.buyer_name]);
+
+    const subtotalFirstCellWidth = useMemo(
+        () => tableColumns.slice(0, 4).reduce((total, column) => total + column.width, 0),
+        [tableColumns],
+    );
+    const subtotalLastCellWidth = useMemo(
+        () => tableColumns.slice(4).reduce((total, column) => total + column.width, 0),
+        [tableColumns],
+    );
 
     const useFlattenedRows = (orderData: GetPDFDataOutput['orderData']) => {
         return useMemo(() => {
@@ -108,16 +136,16 @@ const SalesContractPDF = ({ data }: { data: GetPDFDataOutput }) => {
     return (
         <Document
             title={data.pdfHeaderData?.sales_contract_no}
-            author="Nex Sourcify"
+            author="NexSourcify Nexus"
             subject="Sales Contract PDF"
-            keywords="Sales, Contract, PDF, Nex Sourcify, ERP"
+            keywords="Sales, Contract, PDF, NexSourcify Nexus, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="Nex Sourcify"
+            producer="NexSourcify Nexus"
             pageMode='useOutlines'
 			creationDate={new Date()}
         >
             <Page orientation="portrait" size="A4" style={styles.body}>
-				<NexSourcifyLogo />
+				<RenaissanceLogo />
 				<PrintByAndDate />
 				<ReportTitle title="SALES CONTRACT" />
 
@@ -228,7 +256,7 @@ const SalesContractPDF = ({ data }: { data: GetPDFDataOutput }) => {
                         <View style={{flex: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
                             <Text style={styles.textBold}>BUYER NOMINATED AGENT NAME:</Text>
                             <Text style={styles.text}>{data.pdfHeaderData?.company_name}</Text>
-                            <Text style={styles.text}>{data.pdfHeaderData?.company_address}</Text>
+                            <Text style={styles.text}>{data.pdfHeaderData?.company_address.trim()}</Text>
                         </View>
                         <View style={{flex: 2, display: 'flex', flexDirection: 'column'}}>
                             <Text style={styles.textBold}>BANK DETAILS:</Text>
@@ -241,7 +269,7 @@ const SalesContractPDF = ({ data }: { data: GetPDFDataOutput }) => {
                     </View>
 
                     {/* Contact Person Details */}
-                    <View style={{maxWidth: 700, display: 'flex', flexDirection: 'column', gap: 5, marginTop: 15}}>
+                    <View style={{maxWidth: 700, display: 'flex', flexDirection: 'column', gap: 5, marginTop: 15}} wrap={false}>
                         <Text style={styles.textBold}>CONTACT PERSON: {data.pdfHeaderData?.contact_person}</Text>
                         <Text style={styles.textAmasis}>Contact Number: {data.pdfHeaderData?.contact_number}</Text>
                         <Text style={styles.textAmasis}>PABX: {data.pdfHeaderData?.contact_person_pabx}, EXT: {data.pdfHeaderData?.contact_person_ext}</Text>
@@ -351,10 +379,10 @@ const SalesContractPDF = ({ data }: { data: GetPDFDataOutput }) => {
                                     <View key={`ship-${index}`} style={styles.row} wrap={false}>
                                     {tableColumns.map((column, i) => (
                                         <View key={column.key} style={{...columnStyles[i], flexWrap: "wrap"}}>
-                                            {/* <Text>{row.data[column.key]}</Text> */}
-                                            {row.data[column.key]?.split("").map((s: string, idx: number) => {
-                                                return <Text key={idx}>{s}</Text>
-                                            })}
+                                            {/* {row.data[column.key]} */}
+                                            <Text>
+                                                {String(row.data[column.key] ?? '')}
+                                            </Text>
                                         </View>
                                     ))}
                                     </View>
@@ -369,15 +397,15 @@ const SalesContractPDF = ({ data }: { data: GetPDFDataOutput }) => {
                                         style={[styles.row, { fontWeight: "bold", fontFamily: "Amasis" }]}
                                         wrap={false}
                                     >
-                                        <View style={{ ...styles.cell, padding: 4, width: 518 }}>
+                                        <View style={{ ...styles.cell, padding: 4, width: subtotalFirstCellWidth }}>
                                             <Text>SUB TOTAL</Text>
                                         </View>
 
-                                        <View style={{ ...styles.cell, padding: 4, width: 88 }}>
+                                        <View style={{ ...styles.cell, padding: 4, width: 68 }}>
                                             <Text>{row.results.totalQuantity}</Text>
                                         </View>
 
-                                        <View style={{ ...styles.cell, padding: 4, width: 78 }}>
+                                        <View style={{ ...styles.cell, padding: 4, width: 68 }}>
                                             <Text />
                                         </View>
 
@@ -385,7 +413,7 @@ const SalesContractPDF = ({ data }: { data: GetPDFDataOutput }) => {
                                             <Text>{row.results.totalValue}</Text>
                                         </View>
 
-                                        <View style={{ ...styles.cell, padding: 4, width: 196 }}>
+                                        <View style={{ ...styles.cell, padding: 4, width: subtotalLastCellWidth - 68 - 68 - 118 }}>
                                             <Text />
                                         </View>
                                     </View>
@@ -399,19 +427,19 @@ const SalesContractPDF = ({ data }: { data: GetPDFDataOutput }) => {
                         style={[styles.row, { fontWeight: "bold", fontFamily: "Amasis" }]}
                         wrap={false}
                     >
-                        <View style={{ ...styles.cell, padding: 4, width: 518 }}>
+                        <View style={{ ...styles.cell, padding: 4, width: subtotalFirstCellWidth }}>
                             <Text>TOTAL</Text>
                         </View>
-                        <View style={{ ...styles.cell, padding: 4, width: 88 }}>
+                        <View style={{ ...styles.cell, padding: 4, width: 68 }}>
                             <Text>{data.totals.totalQuantity}</Text>
                         </View>
-                        <View style={{ ...styles.cell, padding: 4, width: 78 }}>
+                        <View style={{ ...styles.cell, padding: 4, width: 68 }}>
                             <Text />
                         </View>
                         <View style={{ ...styles.cell, padding: 4, width: 118 }}>
                             <Text>{data.totals.totalValue}</Text>
                         </View>
-                        <View style={{ ...styles.cell, padding: 4, width: 196 }}>
+                        <View style={{ ...styles.cell, padding: 4, width: subtotalLastCellWidth - 68 - 68 - 118 }}>
                             <Text />
                         </View>
                     </View>

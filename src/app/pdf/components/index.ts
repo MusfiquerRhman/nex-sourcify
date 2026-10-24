@@ -1,4 +1,4 @@
-export { default as NexSourcifyLogo } from './headers/NexSourcifyImage';
+export { default as RenaissanceLogo } from './headers/RenaissanceLogo';
 export { default as PrintByAndDate } from './headers/PrintByAndDate';
 export { default as ReportTitle } from './headers/ReportTitle';
 export { default as Signature } from './footers/Signature';

@@ -48,6 +48,20 @@ const ShipmentDetails = (props: props) => {
         });
     }, [addShipment]);
 
+    const copyShipmentRow = useCallback((index: number) => {
+        const shipment = methods.getValues(`order.styles.${styleIndex}.shipments.${index}`);
+        if (!shipment) return;
+
+        addShipment({
+            ...shipment,
+            db_id: undefined,
+            colors: shipment.colors.map((color) => ({
+                ...color,
+                db_id: undefined,
+            })),
+        });
+    }, [addShipment, methods, styleIndex]);
+
     const utils = api.useUtils();
 
     const deleteShipmentMutation = api.buyerOrders.deleteShipment.useMutation({
@@ -75,8 +89,8 @@ const ShipmentDetails = (props: props) => {
 
     const handoverDateBuffer = api.handoverDates.getHandoverDateBufferByBuyerId.useQuery(
         !!buyerId ? { buyer_id: parseInt(buyerId) } : skipToken,
+        { staleTime: 900 * 1000 }
     ).data?.buffer ?? 7;
-
     
     const shipmentsData = useWatch({
         control: methods.control,
@@ -135,7 +149,7 @@ const ShipmentDetails = (props: props) => {
     }, [JSON.stringify(etdDate), handoverDateBuffer, methods.setValue]);
 
 
-    // Auto calculate RDL values when FOB or Quantity change
+    // Auto calculate NexSourcify values when FOB or Quantity change
     useEffect(() => {
         if (!shipments?.length) return;
 
@@ -213,6 +227,13 @@ const ShipmentDetails = (props: props) => {
         </div>
     );
 
+    const order_id = methods.getValues("order.db_id");
+
+    const { data: hasCommissionDistribution } = api.buyerOrders.hasCommissionDistribution.useQuery(
+        !!order_id ? {id: order_id } : skipToken 
+    )
+    
+
     return (
         <TableForm 
             title={<ShipmentHeading />}
@@ -220,8 +241,11 @@ const ShipmentDetails = (props: props) => {
             rows={shipmentFields}
             columns={shipmentTableFormColumns}
             register={methods.register}
-            addRow={addShipmentRow}
+            addRow={!hasCommissionDistribution 
+                ? addShipmentRow 
+                : () => toast.error("Cannot add new shipment/style in this order because it has Commission Distribution.")}
             removeRow={removeShipmentRow}
+            copyRow={copyShipmentRow}
             disabled={disabled}
             methods={methods}
             validationError={validationError}

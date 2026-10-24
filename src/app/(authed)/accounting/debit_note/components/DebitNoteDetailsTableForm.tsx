@@ -101,8 +101,10 @@ const TableForm = (props: Props) => {
                                     validationError={validationError?.details ?? {}}
                                 />
                             ))}
-                            <ShipmentSummaryRow methods={methods} />
                         </TableBody>
+                        <tfoot>
+                            <ShipmentSummaryRow methods={methods} />
+                        </tfoot>
                     </TableWrapper>
                 </div>
                 {!disabled && 

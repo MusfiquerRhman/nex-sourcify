@@ -1,17 +1,20 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
 import { m } from "~/utils/moduleMap";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { actions } from "@prisma/client";
+import { actions, Prisma } from "@prisma/client";
 import { currencyFormatter } from "~/utils/localNumberStrings";
 import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID } from "~/utils/config";
 import type { LcResponse, LcDetailsResponse } from './_types/lcMaster';
+import { notificationQueue } from "~/server/queues/notification.queue";
 
 export const lcMasterRouter = createTRPCRouter({
     getLc: protectedProcedure
         .input(
             z.object({
+                filter: z.number().min(-1).default(-1), 
                 limit: z.number().optional(),
                 offset: z.number().optional(),
             })
@@ -72,6 +75,9 @@ export const lcMasterRouter = createTRPCRouter({
                                     AND TM.USER_ID = ${ctx.user.id}
                             )
                         )
+                        ${input.filter === -1 
+                            ? Prisma.empty
+                            : Prisma.sql`AND LC.IS_AUTHORIZED = ${input.filter}`}
                         GROUP BY LC.ID, LC.ADDED_AT, B.BUYER_NAME, C.symbol, LCAMD.AMENDMENT_NO
                     )
                     SELECT *,
@@ -167,15 +173,15 @@ export const lcMasterRouter = createTRPCRouter({
                             OR B.BUYER_NAME ILIKE '%' || ${input.query} || '%'
                             OR EXISTS (
                                 SELECT 1
-                                FROM lc_orders AS LCD2
-                                    LEFT JOIN order_styles AS OS ON OS.order_id = LCD2.order_id
-                                    LEFT JOIN shipment_details AS SD ON SD.order_style_id = OS.id
-                                    LEFT JOIN buyer_orders AS BO ON BO.ID = LCD.order_id 
-                                WHERE LCD2.lc_master_id = LC.id
+                                FROM lc_shipments AS LCS
+                                INNER JOIN shipment_details AS SD ON SD.id = LCS.shipment_details_id
+                                INNER JOIN order_styles AS OS ON OS.id = SD.order_style_id
+                                INNER JOIN buyer_orders AS BO ON BO.id = OS.order_id
+                                WHERE LCS.lc_master_id = LC.id
                                     AND (
                                         OS.style ILIKE '%' || ${input.query} || '%'
                                         OR SD.buyer_po ILIKE '%' || ${input.query} || '%'
-                                        OR BO.REF_NO ILIKE '%' || ${input.query} || '%'
+                                        OR BO.ref_no ILIKE '%' || ${input.query} || '%'
                                     )
                             )
                         )
@@ -222,7 +228,7 @@ export const lcMasterRouter = createTRPCRouter({
             }
 
             try {
-                await ctx.db.$transaction(async (tx) => {
+                await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     await tx.lc_amendment_metadata.deleteMany({
                         where: { lc_id: input.id }
                     });
@@ -234,6 +240,29 @@ export const lcMasterRouter = createTRPCRouter({
                             }
                         }
                     });
+
+                    const hasExfactory = await tx.lc_shipments.findFirst({
+                        where: {
+                            shipment_details: {
+                                exfactory_shipments: {
+                                    some: {
+                                        shipment_details_id: {
+                                            in: lcShipmentDetails
+                                                .map((shipment) => shipment.shipment_details_id)
+                                                .filter((id): id is string => id !== null)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    if(hasExfactory) {
+                        throw new TRPCError({
+                            code: "BAD_REQUEST",
+                            message: "This LC cannot be deleted as there are shipments with ex-factory."
+                        });
+                    }
 
                     for (const shipment of lcShipmentDetails) {
                         await tx.lc_shipments_history.create({
@@ -341,13 +370,12 @@ export const lcMasterRouter = createTRPCRouter({
             if (!can_add) {
                 throw new TRPCError({
                     code: "FORBIDDEN",
-                    message:
-                        "You do not have permission to create a new LC.",
+                    message: "You do not have permission to create a new LC.",
                 });
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newLC = await tx.lc_master.create({
                         data: {
                             buyer_id: input.buyer_id,
@@ -412,6 +440,18 @@ export const lcMasterRouter = createTRPCRouter({
                         })
                     );
 
+                    await notificationQueue.add("lc-submitted", {
+                        lc_id: newLC.id,
+                        approval_status: -1,
+                        action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
+                    }, {
+                        attempts: 5,
+                        backoff: {
+                            type: "exponential",
+                            delay: 1000,
+                        },
+                    });
+
                     return newLC.id;
                 }, {timeout: 30000});
             } catch (error) {
@@ -436,14 +476,12 @@ export const lcMasterRouter = createTRPCRouter({
                 status: z.boolean(),
                 remarks: z.string().optional(),
                 company_id: z.number(),
-                orders: z
-                    .array(
-                        z.object({
-                            order_id: z.string(),
-                            dm_pi_no: z.string().optional(),
-                        })
-                    )
-                    .optional(),
+                orders: z.array(
+                    z.object({
+                        order_id: z.string(),
+                        dm_pi_no: z.string().optional(),
+                    })
+                ).optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -458,7 +496,7 @@ export const lcMasterRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx, queueHistoryJob) => {
                     const updatedLC = await tx.lc_master.update({
                         where: {
                             id: input.id,
@@ -469,8 +507,7 @@ export const lcMasterRouter = createTRPCRouter({
                             lc_open_date: input.lc_open_date,
                             lc_received_date: input.lc_received_date,
                             lc_expire_date: input.lc_expire_date,
-                            latest_shipment_date:
-                                input.latest_shipment_date,
+                            latest_shipment_date: input.latest_shipment_date,
                             currency_id: input.currency_id,
                             rdl_bank_id: input.rdl_bank_id,
                             buyer_bank_id: input.buyer_bank_id,
@@ -576,10 +613,10 @@ export const lcMasterRouter = createTRPCRouter({
                         })
                     );
 
-                    let createdOrders: Awaited<ReturnType<typeof tx.lc_orders.findMany>> = [];
+                    let createdOrders: Awaited<ReturnType<typeof tx.lc_orders.createManyAndReturn>> = [];
 
                     if (newOrders.length > 0) {
-                        await tx.lc_orders.createMany({
+                        createdOrders = await tx.lc_orders.createManyAndReturn({
                             data: newOrders.map((order) => ({
                                 lc_master_id: input.id,
                                 order_id: order.order_id,
@@ -587,27 +624,17 @@ export const lcMasterRouter = createTRPCRouter({
                             })),
                         });
 
-                        createdOrders =await tx.lc_orders.findMany({
-                            where: {
+                        queueHistoryJob({
+                            name: "lc_orders_added",
+                            data: {
                                 lc_master_id: input.id,
-                                order_id: {
-                                    in: newOrders.map(
-                                        (order) =>
-                                            order.order_id
-                                    ),
-                                },
-                            },
-                        });
-
-                        await tx.lc_orders_history.createMany({
-                            data: createdOrders.map((order) => ({
-                                lc_master_id: input.id,
-                                lc_orders_id: order.id,
-                                order_id: order.order_id,
-                                dm_pi_no: order.dm_pi_no,
-                                action_type: actions.ADDED,
+                                orders: newOrders.map((order) => ({
+                                    order_id: order.order_id,
+                                    dm_pi_no: order.dm_pi_no ?? null,
+                                })),
+                                row_ids: createdOrders.map((row) => row.id),
                                 action_by: ctx.user.id,
-                            })),
+                            },
                         });
                     }
 
@@ -954,7 +981,7 @@ export const lcMasterRouter = createTRPCRouter({
             }
 
             try {
-                await ctx.db.$transaction(async (tx) => {
+                await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const existingShipments = await tx.lc_shipments.findMany({
                         where: {
                             lc_order_id: input.lc_order_id,
@@ -1030,7 +1057,7 @@ export const lcMasterRouter = createTRPCRouter({
             }
 
             try {
-                await ctx.db.$transaction(async (tx) => {
+                await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const shipments = await tx.lc_shipments.findMany({
                         where: {
                             lc_order_id: input.lc_order_id,
@@ -1137,7 +1164,7 @@ export const lcMasterRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const userLevel = ctx.user.level_id;
                     const userDepartment = ctx.user.department_id;
                     const isAdmin = userLevel === ADMIN_LEVEL_ID && userDepartment === ADMIN_DEPARTMENT_ID;
@@ -1185,6 +1212,18 @@ export const lcMasterRouter = createTRPCRouter({
                             action_type: actions.UPDATE,
                             action_by: ctx.user.id,
                         }
+                    });
+
+                    await notificationQueue.add("lc-submitted", {
+                        lc_id: input.id,
+                        approval_status: input.is_authorized ? 1 : 0,
+                        action_by: `${ctx.user.first_name} ${ctx.user.last_name}`
+                    }, {
+                        attempts: 5,
+                        backoff: {
+                            type: "exponential",
+                            delay: 1000,
+                        },
                     });
 
                     return updatedLC;

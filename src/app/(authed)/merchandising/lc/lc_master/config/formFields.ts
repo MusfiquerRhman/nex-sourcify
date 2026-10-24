@@ -68,7 +68,7 @@ export const formFields = ({ isEdit, company_id, buyer_id}: PropsType): Field<ke
         },
         {
             name: 'rdl_bank_id',
-            label: 'Bank',
+            label: 'NexSourcify Bank',
             type: 'select',
             options: (rdlBanks ?? []).map(bank => ({ 
                 label: bank.name,

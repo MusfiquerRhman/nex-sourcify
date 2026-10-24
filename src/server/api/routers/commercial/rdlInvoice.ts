@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -10,10 +11,12 @@ import type {
     RdlInvoiceListItem, ShipmentDetailForFactoryInvoice, FactoryInvoiceForRDLInvoice, 
     FactoryInvoicePDFTableItem, BankDetailsOfBeneficiary 
 } from './_types/rdlInvoice';
+import { notificationQueue } from "~/server/queues/notification.queue";
 
 export const rdlInvoiceRouter = createTRPCRouter({
     getRdlInvoice: protectedProcedure
         .input(z.object({
+            filter: z.number().min(-1).default(-1),  
             limit: z.number(),
             offset: z.number(),
         }))
@@ -23,7 +26,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view Invoices." 
+                    message: "You do not have permission to view NexSourcify Invoices." 
                 });
             }
             
@@ -37,17 +40,17 @@ export const rdlInvoiceRouter = createTRPCRouter({
                             RI.INVOICE_DATE,
                             COALESCE(RI.IS_AUTHORIZED, FALSE) AS IS_AUTHORIZED,
                             COALESCE(SUM(SD.FOB_RATE * RISD.INVOICE_QUANTITY) - RI.DISCOUNT, 0) AS VALUE,
-                            C.SYMBOL,
+                            MAX(C.SYMBOL) AS SYMBOL,
                             RI.ADDED_AT
                         FROM rdl_invoice AS RI
-                            INNER JOIN rdl_invoice_details AS RID ON RID.rdl_invoice_id = RI.id
-                            INNER JOIN FACTORY_INVOICE AS FI ON FI.id = RID.factory_invoice_id
-                            INNER JOIN rdl_invoice_shipment_details AS RISD ON RISD.rdl_invoice_details_id = RID.id
-                            INNER JOIN SHIPMENT_DETAILS AS SD ON SD.ID = RISD.shipment_details_id
-                            INNER JOIN ORDER_STYLES AS OS ON OS.id = SD.order_style_id
-                            INNER JOIN BUYER_ORDERS AS BO ON BO.ID = OS.order_id
-                            INNER JOIN CURRENCIES AS C ON C.id = BO.secondary_currency_id
-                            INNER JOIN BUYERS AS B ON B.id = RI.buyer_id
+                            LEFT JOIN rdl_invoice_details AS RID ON RID.rdl_invoice_id = RI.id
+                            LEFT JOIN FACTORY_INVOICE AS FI ON FI.id = RID.factory_invoice_id
+                            LEFT JOIN rdl_invoice_shipment_details AS RISD ON RISD.rdl_invoice_details_id = RID.id
+                            LEFT JOIN SHIPMENT_DETAILS AS SD ON SD.ID = RISD.shipment_details_id
+                            LEFT JOIN ORDER_STYLES AS OS ON OS.id = SD.order_style_id
+                            LEFT JOIN BUYER_ORDERS AS BO ON BO.ID = OS.order_id
+                            LEFT JOIN CURRENCIES AS C ON C.id = BO.secondary_currency_id
+                            LEFT JOIN BUYERS AS B ON B.id = RI.buyer_id
                         WHERE (
                             EXISTS ( -- Admin
                                 SELECT 1
@@ -64,7 +67,10 @@ export const rdlInvoiceRouter = createTRPCRouter({
                                     AND TM.USER_ID = ${ctx.user.id}
                             )
                         )
-                        GROUP BY RI.ID, B.ID, C.ID
+                        ${input.filter === -1 
+                            ? Prisma.empty
+                            : Prisma.sql`AND COALESCE(RI.IS_AUTHORIZED, FALSE) = ${input.filter}`}
+                        GROUP BY RI.ID, B.ID
                     )
                     SELECT *,
                         COUNT(*) OVER() AS TOTAL_COUNT
@@ -99,7 +105,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view Invoices." 
+                    message: "You do not have permission to view NexSourcify Invoices." 
                 });
             }
             
@@ -113,17 +119,17 @@ export const rdlInvoiceRouter = createTRPCRouter({
                             RI.INVOICE_DATE,
                             COALESCE(RI.IS_AUTHORIZED, FALSE) AS IS_AUTHORIZED,
                             SUM(SD.FOB_RATE * RISD.INVOICE_QUANTITY) - RI.DISCOUNT AS VALUE,
-                            C.SYMBOL,
+                            MAX(C.SYMBOL) AS SYMBOL,
                             RI.ADDED_AT
                         FROM rdl_invoice AS RI
-                            INNER JOIN rdl_invoice_details AS RID ON RID.rdl_invoice_id = RI.id
-                            INNER JOIN FACTORY_INVOICE AS FI ON FI.id = RID.factory_invoice_id
-                            INNER JOIN rdl_invoice_shipment_details AS RISD ON RISD.rdl_invoice_details_id = RID.id
-                            INNER JOIN SHIPMENT_DETAILS AS SD ON SD.ID = RISD.shipment_details_id
-                            INNER JOIN ORDER_STYLES AS OS ON OS.id = SD.order_style_id
-                            INNER JOIN BUYER_ORDERS AS BO ON BO.ID = OS.order_id
-                            INNER JOIN CURRENCIES AS C ON C.id = BO.secondary_currency_id
-                            INNER JOIN BUYERS AS B ON B.id = RI.buyer_id
+                            LEFT JOIN rdl_invoice_details AS RID ON RID.rdl_invoice_id = RI.id
+                            LEFT JOIN FACTORY_INVOICE AS FI ON FI.id = RID.factory_invoice_id
+                            LEFT JOIN rdl_invoice_shipment_details AS RISD ON RISD.rdl_invoice_details_id = RID.id
+                            LEFT JOIN SHIPMENT_DETAILS AS SD ON SD.ID = RISD.shipment_details_id
+                            LEFT JOIN ORDER_STYLES AS OS ON OS.id = SD.order_style_id
+                            LEFT JOIN BUYER_ORDERS AS BO ON BO.ID = OS.order_id
+                            LEFT JOIN CURRENCIES AS C ON C.id = BO.secondary_currency_id
+                            LEFT JOIN BUYERS AS B ON B.id = RI.buyer_id
                         WHERE (
                             EXISTS ( -- Admin
                                 SELECT 1
@@ -147,7 +153,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
                             OR OS.STYLE ILIKE '%' || ${input.query} || '%'
                             OR SD.buyer_po ILIKE '%' || ${input.query} || '%'
                         )
-                        GROUP BY RI.ID, B.ID, C.ID
+                        GROUP BY RI.ID, B.ID
                     )
                     SELECT *,
                         COUNT(*) OVER() AS TOTAL_COUNT
@@ -180,12 +186,12 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_delete) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to delete Invoices." 
+                    message: "You do not have permission to delete NexSourcify Invoices." 
                 });
             }
             
             try {
-                await ctx.db.$transaction(async (tx) => {
+                await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const rdlInvoiceDetails = await tx.rdl_invoice_details.findMany({
                         where: { rdl_invoice_id: input.id },
                     });
@@ -271,7 +277,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view Invoices." 
+                    message: "You do not have permission to view NexSourcify Invoices." 
                 });
             }
             
@@ -356,7 +362,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_view) {
                 throw new TRPCError({ 
                     code: 'FORBIDDEN', 
-                    message: "You don't have permission to view Invoices." 
+                    message: "You don't have permission to view NexSourcify Invoices." 
                 });
             }
             
@@ -474,7 +480,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
                 if (!can_create) {
                     throw new TRPCError({ 
                         code: "FORBIDDEN", 
-                        message: "You do not have permission to create Invoices." 
+                        message: "You do not have permission to create NexSourcify Invoices." 
                     });
                 }
 
@@ -492,7 +498,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
 
                 const isTT = terms.name.toLowerCase() === 'tt';
 
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const rdlInvoice = await tx.rdl_invoice.create({
                         data: {
                             buyer_id: input.buyer_id,
@@ -576,6 +582,18 @@ export const rdlInvoiceRouter = createTRPCRouter({
                         })
                     );
 
+                    await notificationQueue.add("rdl-Invoice-Submitted", {
+                        rdl_invoice_id: rdlInvoice.id,
+                        approval_status: -1,
+                        action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
+                    }, {
+                        attempts: 5,
+                        backoff: {
+                            type: "exponential",
+                            delay: 1000,
+                        },
+                    });
+
                     return rdlInvoice;
                 }, {timeout: 30000});
             }
@@ -628,16 +646,6 @@ export const rdlInvoiceRouter = createTRPCRouter({
                     `
                     : Prisma.empty;
 
-                const invoiceFilter = input.rdl_invoice_id
-                    ? Prisma.sql`
-                        AND (
-                            CRID.ID IS NOT NULL
-                            OR PI.FACTORY_INVOICE_ID IS NULL
-                            OR COALESCE(PI.PREVIOUS_QUANTITY, 0)::NUMERIC(18,2) < I.TOTAL_QUANTITY::NUMERIC(18,2)
-                        )
-                    `
-                    : Prisma.empty;
-
                 const havingClause = input.rdl_invoice_id
                     ? Prisma.empty
                     : Prisma.sql`
@@ -680,7 +688,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
                         FI.ID,
                         FI.INVOICE_NO,
                         SUM(I.TOTAL_QUANTITY) AS TOTAL_QUANTITY,
-                        SUM(I.FACTORY_VALUE) - COALESCE(FI.discount, 0) AS FACTORY_VALUE
+                        (SUM(I.FACTORY_VALUE) - COALESCE(FI.discount, 0))::NUMERIC(18, 2) AS FACTORY_VALUE
                     FROM FACTORY_INVOICE FI
                         INNER JOIN factory_invoice_details FID ON FID.factory_invoice_id = FI.ID
                         INNER JOIN INVOICE I ON I.EFSD_ID = FID.exfactory_shipment_id
@@ -689,10 +697,12 @@ export const rdlInvoiceRouter = createTRPCRouter({
                     WHERE
                         FI.factory_id = ${input.factory_id}
                         AND ${whereClause}
-                        ${invoiceFilter}
+                        -- {invoiceFilter}
                     GROUP BY FI.ID, FI.INVOICE_NO, PI.FACTORY_INVOICE_ID, PI.PREVIOUS_QUANTITY
                     ${havingClause}
                 `;
+
+                // -- ${invoiceFilter}
 
                 const factoryInvoice = factoryInvoiceList.map(invoice => ({
                     ...invoice,
@@ -718,12 +728,12 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_delete) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to delete Factory Invoices from Invoices." 
+                    message: "You do not have permission to delete Factory Invoices from NexSourcify Invoices." 
                 });
             }
             
             try {
-                await ctx.db.$transaction(async (tx) => {
+                await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const rdlInvoiceDetail = await tx.rdl_invoice_details.findUnique({
                         where: { id: input.db_id },
                     });
@@ -791,13 +801,13 @@ export const rdlInvoiceRouter = createTRPCRouter({
                 const shipmentDetailsObj = await ctx.db.$queryRaw<ShipmentDetailForFactoryInvoice[]>`
                     WITH PREVIOUS_INVOICE AS (
                         SELECT
-                            RID.factory_invoice_id AS FACTORY_INVOICE_ID,
+                            RISD.factory_invoice_details_id AS FACTORY_INVOICE_DETAILS_ID,
                             SUM(RISD.INVOICE_QUANTITY) AS PREVIOUS_QUANTITY
                         FROM RDL_INVOICE RI
                             INNER JOIN rdl_invoice_details RID ON RID.rdl_invoice_id = RI.ID
                             INNER JOIN RDL_INVOICE_SHIPMENT_DETAILS RISD ON RISD.rdl_invoice_details_id = RID.ID
                             ${excludeCurrentInvoiceClause}
-                        GROUP BY RISD.factory_invoice_details_id, RID.factory_invoice_id
+                        GROUP BY RISD.factory_invoice_details_id
                     )
                     SELECT 
                         FID.id AS id,
@@ -816,7 +826,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
                         INNER JOIN ORDER_STYLES AS OS ON OS.id = SD.order_style_id
                         INNER JOIN BUYER_ORDERS AS BO ON BO.id = OS.order_id
                         INNER JOIN DESTINATIONS AS D ON D.id = SD.destination_id
-                        LEFT JOIN PREVIOUS_INVOICE PI ON PI.FACTORY_INVOICE_ID = FI.ID
+                        LEFT JOIN PREVIOUS_INVOICE PI ON PI.FACTORY_INVOICE_DETAILS_ID = FID.ID
                     WHERE FI.ID = ${input.factory_invoice_id}
                     GROUP BY BO.ID, OS.ID, SD.ID, FID.ID, D.ID, PI.PREVIOUS_QUANTITY, ES.ID;
                 `;
@@ -868,12 +878,12 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_update) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to update Invoices." 
+                    message: "You do not have permission to update NexSourcify Invoices." 
                 });
             }
             
             try {
-                await ctx.db.$transaction(async (tx) => {
+                await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updated = await tx.rdl_invoice.update({
                         where: { id: input.id },
                         data: {
@@ -1018,7 +1028,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if(!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view invoices." 
+                    message: "You do not have permission to view NexSourcify invoices." 
                 });
             }
 
@@ -1059,7 +1069,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if(!can_approve) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to approve invoices." 
+                    message: "You do not have permission to approve NexSourcify invoices." 
                 });
             }
 
@@ -1081,24 +1091,37 @@ export const rdlInvoiceRouter = createTRPCRouter({
                 if (can_approve.length === 0 && !isAdmin) {
                     throw new TRPCError({
                         code: "FORBIDDEN",
-                        message: "You do not have permission to Authorize this Invoice.",
+                        message: "You do not have permission to Authorize this NexSourcify Invoice.",
                     });
                 }
 
-                const updatedInvoice = await ctx.db.rdl_invoice.update({
-                    where: { id: input.id },
-                    data: {
-                        is_authorized: input.approval_status,
-                    }
+                const updatedInvoice = await transactionWithQueuedHistory(ctx.db, async (tx) => {
+                    const updated = await tx.rdl_invoice.update({
+                        where: { id: input.id },
+                        data: { is_authorized: input.approval_status },
+                    });
+
+                    await tx.rdl_invoice_history.create({
+                        data: {
+                            rdl_invoice_id: updated.id,
+                            is_authorized: updated.is_authorized,
+                            action_type: actions.UPDATE,
+                            action_by: ctx.user.id,
+                        },
+                    });
+                    return updated;
                 });
 
-                await ctx.db.rdl_invoice_history.create({
-                    data: {
-                        rdl_invoice_id: updatedInvoice.id,
-                        is_authorized: updatedInvoice.is_authorized,
-                        action_type: actions.UPDATE,
-                        action_by: ctx.user.id,
-                    }
+                await notificationQueue.add("rdl-Invoice-Submitted", {
+                    rdl_invoice_id: input.id,
+                    approval_status: input.approval_status ? 1 : 0,
+                    action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
+                }, {
+                    attempts: 5,
+                    backoff: {
+                        type: "exponential",
+                        delay: 1000,
+                    },
                 });
 
                 return updatedInvoice;
@@ -1146,7 +1169,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
                 if(!isATeamMember && (ctx.user.level_id !== 5 || ctx.user.department_id !== 5)) {
                     throw new TRPCError({ 
                         code: "FORBIDDEN", 
-                        message: "You do not have permission to view this Invoice." 
+                        message: "You do not have permission to view this NexSourcify Invoice." 
                     });
                 }
 

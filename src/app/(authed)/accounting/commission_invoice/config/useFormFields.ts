@@ -71,7 +71,7 @@ export const useFormFields = ({lcScList, isEdit, fdbcRdlInvoiceList, companyBank
         },
         {
             name: "fdbc_rdl_invoice_id",
-            label: "FDBC/Invoice No",
+            label: "FDBC/NexSourcify Invoice No",
             type: "select",
             options: fdbcRdlInvoiceList.map((invoice) => ({ label: invoice.fdbc_rdl_invoice_no, value: invoice.id })),
             disabled: isEdit,

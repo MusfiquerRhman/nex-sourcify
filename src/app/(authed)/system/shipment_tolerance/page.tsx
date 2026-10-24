@@ -31,7 +31,7 @@ const ShipmentTolerancePage = () => {
         { enabled: debouncedSearch.length > 0 }
     );
 
-    const editURL = '/maintenance/shipment_tolerance/edit/';
+    const editURL = '/system/shipment_tolerance/edit/';
 
     const deleteMutation = api.toleranceLevel.deleteTolerance.useMutation({
         onSuccess: async () => {
@@ -69,7 +69,7 @@ const ShipmentTolerancePage = () => {
                                 variant="secondary"
                                 label="Add New Shipment Tolerance"
                                 leftIcon={plusIcon}
-                                onClick={() => router.push('/maintenance/shipment_tolerance/new')}
+                                onClick={() => router.push('/system/shipment_tolerance/new')}
                             />
                         </div>
                     ) : null

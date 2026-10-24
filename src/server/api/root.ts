@@ -1,21 +1,19 @@
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 import { 
-	levelRouter, userRouter, authRouter, departmentsRouter, permissionRouter, modulesRouter, 
-	authorizationsRouter, countriesRouter, currenciesRouter, overseasOfficesRouter, 
-	destinationsRouter, banksRouter, companiesRouter, termsRouter, paymentTermsRouter, 
-	productTypeRouter, productsRouter, fabricsRouter, fabricsSuppliersRouter, colorsRouter, 
-	fobTypesRouter, freightTermsRouter, courierRouter, tnaActionsRouter, factoryRouter, buyerRouter,
-	seasonsRouter, teamsRouter, handoverDatesRouter, buyerOrdersRouter, factoryOrderRouter, 
-	tnaBaseActionRouter, tnaTemplatesRouter, tnaPlanRouter, commissionDistributionRouter,
-	scContactPersonRouter, salesContractsRouter, salesContractAmendmentRouter, lcMasterRouter, 
-	lcAmendmentRouter, toleranceLevelRouter, exFactoryRouter, lcTransferRouter, factoryInvoiceRouter, 
-	evPermissionRouter, rdlInvoiceRouter, documentSubmissionRouter, commissionInvoiceRouter,
-	proceedRealizationRouter, factoryPaymentRouter, salesReportRouter, exportReportRouter,
-	orderSummaryReportRouter, debitNotesRouter, crossPaymentsRouter, commercialTnaTemplatesRouter,
-	activityReportRouter, commercialTnaPlanRouter, exportSummaryReportRouter, commissionPercentageRouter,
-	earlySettlementPercentageRoute, errorLogsRouter, userSessionsRouter, lcScClosingRouter,
-	earlySettlementRouter
+	levelRouter, userRouter, authRouter, departmentsRouter, permissionRouter, modulesRouter, authorizationsRouter, 
+	countriesRouter, currenciesRouter, overseasOfficesRouter, destinationsRouter, banksRouter, companiesRouter, 
+	termsRouter, paymentTermsRouter, productTypeRouter, productsRouter, fabricsRouter, fabricsSuppliersRouter, 
+	colorsRouter, fobTypesRouter, freightTermsRouter, courierRouter, tnaActionsRouter, factoryRouter, buyerRouter,
+	seasonsRouter, teamsRouter, handoverDatesRouter, buyerOrdersRouter, factoryOrderRouter, tnaBaseActionRouter, 
+	tnaTemplatesRouter, tnaPlanRouter, commissionDistributionRouter, scContactPersonRouter, salesContractsRouter, 
+	salesContractAmendmentRouter, lcMasterRouter, lcAmendmentRouter, toleranceLevelRouter, exFactoryRouter, 
+	lcTransferRouter, factoryInvoiceRouter, evPermissionRouter, rdlInvoiceRouter, documentSubmissionRouter, 
+	commissionInvoiceRouter, proceedRealizationRouter, factoryPaymentRouter, salesReportRouter, exportReportRouter,
+	orderSummaryReportRouter, debitNotesRouter, crossPaymentsRouter, commercialTnaTemplatesRouter, activityReportRouter, 
+	commercialTnaPlanRouter, exportSummaryReportRouter, commissionPercentageRouter, earlySettlementPercentageRoute, 
+	errorLogsRouter, userSessionsRouter, lcScClosingRouter, earlySettlementRouter, commissionDistributionReportRouter, 
+	lcTransferReportRouter, crossPaymentReportRouter, healthRouter, notificationsRouter, orderChecklistRouter,
 } from '.';
 
 // All routers added in /api/routers should be manually added here.
@@ -52,12 +50,15 @@ export const appRouter = createTRPCRouter({
 	factory: factoryRouter,
 	buyers: buyerRouter,
 	seasons: seasonsRouter,
+
+	// system routers
 	handoverDates: handoverDatesRouter,
 	tnaBaseAction: tnaBaseActionRouter,
 	scContactPerson: scContactPersonRouter,
 	toleranceLevel: toleranceLevelRouter,
-	commissionPercentage: commissionPercentageRouter,
 	earlySettlementPercentage: earlySettlementPercentageRoute,
+	commissionPercentage: commissionPercentageRouter,
+	notifications: notificationsRouter,
 
 	// merchandising routers
 	buyerOrders: buyerOrdersRouter,
@@ -94,10 +95,17 @@ export const appRouter = createTRPCRouter({
 	activityReportRouter: activityReportRouter,
 	exportSummaryReport: exportSummaryReportRouter,
 	lcScClosingReport: lcScClosingRouter,
+	commissionDistributionReport: commissionDistributionReportRouter,
+	lcTransferReport: lcTransferReportRouter,
+	crossPaymentReport: crossPaymentReportRouter,
 
-	// Devs
+	// maintenance
 	errorLogs: errorLogsRouter,
-	userSessions: userSessionsRouter
+	userSessions: userSessionsRouter,
+	health: healthRouter,
+
+	// quality
+	orderChecklist: orderChecklistRouter,
 });
 
 // export type definition of API

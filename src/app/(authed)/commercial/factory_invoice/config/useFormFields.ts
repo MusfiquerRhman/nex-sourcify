@@ -119,7 +119,6 @@ export const useFormFields = ({lcList, isEdit, buyer_id}: PropsType): Field<keyo
                 { label: 'SEA', value: 'SEA' },
                 { label: 'LAND', value: 'LAND' },
             ],
-            optional: true,
         },
         {
             name: "discount",

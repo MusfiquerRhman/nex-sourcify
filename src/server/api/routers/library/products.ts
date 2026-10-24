@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -107,7 +108,7 @@ export const productsRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const product = await tx.products.create({
                         data: {
                             name: input.name.trim(),
@@ -154,7 +155,7 @@ export const productsRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const product = await tx.products.findUnique({
                         where: { id: input.id },
                     });
@@ -211,7 +212,7 @@ export const productsRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const product = await tx.products.delete({
                         where: { id: input.id },
                     });

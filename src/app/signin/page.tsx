@@ -4,8 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api } from "~/trpc/react";
-import { Heading, TextField, Button } from "~/components";
-import { Loader } from "~/components";
+import { Heading, TextField, Button, Loader } from "~/components";
 import { useRouter } from "next/navigation";
 import { useDecodedUser } from "~/hooks/useDecodedUser";
 import { toast } from "sonner";
@@ -101,18 +100,23 @@ const SignInPage = () => {
     };
 
     return (
-        <div className="flex login-gradient h-[100vh] justify-center items-center">
-            {/* <div className="flex-1 items-start h-full">
-                <img  src="./nexus_T.png" alt="Logo" />
-            </div> */}
-            <div className="flex-1 flex justify-center items-center rounded-lg shadow-lg">
-                <div className="bg-background w-full max-w-xl px-8 py-6 rounded-lg emboss-inner">
-                    <Heading className="text-center font-rajdhani tracking-wide">Nex Sourcify</Heading>
-                    <Heading as='h3' className="text-center font-rajdhani">Sign In</Heading>
+        <div className="nex-signin">
+            <div className="nex-signin-story">
+                <img src="/nexsourcify-logo.png" alt="NexSourcify" className="nex-signin-logo" />
+                <div className="nex-signin-copy">
+                    <p className="text-sm tracking-[0.3em]">SMART SOURCING</p>
+                    <h1 className="mt-4 text-5xl font-semibold leading-tight">Better Production.</h1>
+                    <p className="mt-6 max-w-sm">We connect you with the right factories, for a stronger tomorrow.</p>
+                </div>
+            </div>
+            <div className="nex-signin-form">
+                <div className="mx-auto w-full max-w-xl px-8 py-10">
+                    <Heading className="text-center font-rajdhani tracking-wide">NexSourcify</Heading>
+                    <Heading as='h3' className="text-center font-rajdhani">Welcome Back</Heading>
                     {!clicked ? (
                         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
                             <TextField {...register("name")} 
-                                label="Name" 
+                                label="User ID" 
                                 placeholder="User ID" 
                                 type="text" 
                                 error={validationError.name?.message ?? errors.name?.message}
@@ -121,7 +125,7 @@ const SignInPage = () => {
                                 label="Password" 
                                 type="password" 
                                 error={validationError.password?.message ?? errors.password?.message} 
-                                placeholder="At least 6 characters long"
+                                placeholder="Enter your password"
                             />
                             <Button type="submit" 
                                 label="Sign In" 
@@ -132,6 +136,7 @@ const SignInPage = () => {
                     ) : (
                         <Loader />
                     )}
+                    <Heading as='h3' className="text-center font-rajdhani mt-2">NexSourcify</Heading>
                 </div>
             </div>
         </div>

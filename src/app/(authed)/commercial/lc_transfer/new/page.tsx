@@ -40,7 +40,12 @@ const NewLcTransferPage = () => {
         onSuccess: async () => {
             setError(null);
             toast.success("LC Transfer added successfully!");
-            await utils.lcTransfer.getLcTransferList.invalidate();
+            await Promise.all([
+                utils.lcTransfer.getLcTransferList.invalidate(),
+                utils.lcTransfer.getLCDetailsForTransfer.invalidate(),
+                utils.lcTransfer.getLCForLcTransferByUser.invalidate(),
+                utils.lcTransfer.getSalesContractForLcTransfer.invalidate(),
+            ])
         }
     });
 

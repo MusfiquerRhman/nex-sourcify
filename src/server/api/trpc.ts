@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import jwt from "jsonwebtoken";
 
 import { db } from "~/server/db";
+import { getRedis } from "~/server/redis";
 
 interface TRPCContextOptions {
     headers: Headers;
@@ -17,7 +18,6 @@ interface TRPCContextOptions {
         userAgent: string | null;
         referer: string | null;
         origin: string | null;
-        startTime: number;
 	}
 }
 
@@ -45,7 +45,46 @@ const verifyToken = (token: string) => {
 // Fetch user from database
 const getUserFromPayload = async (payload: { user_id: string } | null) => {
 	if (!payload) return null;
-	return db.users.findUnique({ where: { user_id: payload.user_id } });
+
+	const cacheKey = `auth:user:${payload.user_id}`;
+	const redis = await getRedis();
+	const cached = redis ? await redis.get(cacheKey) : null;
+	if (cached) {
+		return superjson.parse(cached) as Awaited<ReturnType<typeof db.users.findUnique>>;
+	}
+
+	const user = await db.users.findUnique({
+		where: { user_id: payload.user_id },
+		select: {
+			id: true,
+			first_name: true,
+			last_name: true,
+			department_id: true,
+			is_active: true,
+			user_id: true,
+			level_id: true,
+		},
+	});
+	
+	if (user) {
+		if (redis) await redis.set(cacheKey, superjson.stringify(user), { EX: 600 });
+	}
+
+	return user;
+};
+
+export const invalidateAuthUserCache = async (...userIds: string[]) => {
+	const redis = await getRedis();
+	if (redis) await Promise.all(userIds.map((userId) => redis.del(`auth:user:${userId}`)));
+};
+
+export const invalidateAuthPermissionsCache = async () => {
+    const redis = await getRedis();
+    if (!redis) return;
+
+    for await (const keys of redis.scanIterator({ MATCH: "auth:permissions:*" })) {
+        if (keys.length > 0) await redis.del(keys);
+    }
 };
 
 // Main context creator
@@ -53,12 +92,24 @@ export const createTRPCContext = async (opts: TRPCContextOptions) => {
 	const token = getBearerToken(opts.headers);
 	const payload = token ? verifyToken(token) : null;
 	const user = await getUserFromPayload(payload);
-	const permissionsArray = user ? await db.level_permission.findMany({
-		where: {
-			level_id: user.level_id ?? undefined,
-			department_id: user.department_id ?? undefined,
-		},
-	}) : [];
+
+	const cacheKey = `auth:permissions:${user?.level_id}:${user?.department_id}`;
+	const redis = await getRedis();
+	const cached = user && redis ? await redis.get(cacheKey) : null;
+	const permissionsArray: Awaited<ReturnType<typeof db.level_permission.findMany>> = user
+		? cached
+			? JSON.parse(cached) as Awaited<ReturnType<typeof db.level_permission.findMany>>
+			: await db.level_permission.findMany({
+				where: {
+					level_id: user.level_id ?? undefined,
+					department_id: user.department_id ?? undefined,
+				},
+			})
+		: [];
+
+	if (user && redis && !cached) {
+		await redis.set(cacheKey, JSON.stringify(permissionsArray), { EX: 600 });
+	}
 
 	// Convert permissions array to a map for fast access
 	const permissions = permissionsArray.reduce((map, permission) => {

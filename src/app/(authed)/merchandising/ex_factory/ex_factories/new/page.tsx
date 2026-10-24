@@ -1,20 +1,45 @@
 'use client';
 
 import { Button, Form, Wrapper } from "~/components";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { parseTRPCError } from "~/utils/parseTRPCError";
 import { useExfactoryForm } from "../config/useExfactoryForm";
 import OrderDetails from "../components/orderComponents/OrderDetails";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { shipment_modes } from "@prisma/client";
 
 const NewExFactoryPage = () => {
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const orderId = searchParams.get("order_id");
+    const buyerId = searchParams.get("buyer_id");
+    const factoryId = searchParams.get("factory_id");
+    const paymentTermId = searchParams.get("payment_term_id");
+
+    const prefillValues = useMemo(() => {
+        if (!orderId && !buyerId && !factoryId && !paymentTermId) {
+            return undefined;
+        }
+
+        return {
+            buyer_id: buyerId ?? '',
+            factory_id: factoryId ?? '',
+            payment_type: paymentTermId ?? '',
+            orders: orderId ? [
+                {
+                    db_id: undefined,
+                    order_id: orderId ?? '',
+                    shipments: [],
+                },
+            ] : [],
+        };
+    }, [buyerId, factoryId, orderId, paymentTermId]);
 
     // Form setup
-    const { methods, handleSubmit, formFields, validationError, control } = useExfactoryForm();
+    const { methods, handleSubmit, formFields, validationError, control } = useExfactoryForm(undefined, prefillValues);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +50,14 @@ const NewExFactoryPage = () => {
         onSuccess: async () => {
             setError(null);
             toast.success("Ex Factory added successfully!");
-            await utils.exFactory.getExFactories.invalidate();
+
+            await Promise.all ([ 
+                utils.exFactory.getExFactories.invalidate(),
+                utils.exFactory.getOrdersForExFactory.invalidate(),
+                utils.exFactory.getShipmentsForExFactoryOrder.invalidate(),
+                utils.exFactory.checkCommercialProcedure.invalidate(),
+            ]);
+            
         }
     });
 

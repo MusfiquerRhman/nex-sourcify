@@ -27,7 +27,10 @@ const NewDocumentSubmissionPage = () => {
             toast.success("Document Submission added successfully!");
             await Promise.all([
                 utils.documentSubmission.getDocumentSubmission.invalidate(),
-                utils.documentSubmission.searchDocumentSubmissions.invalidate()
+                utils.documentSubmission.searchDocumentSubmissions.invalidate(),
+                utils.documentSubmission.getScLcForDocumentSubmission.invalidate(),
+                utils.documentSubmission.getRdlInvoiceDetails.invalidate(),
+                utils.documentSubmission.getRdlInvoiceForDocumentSubmission.invalidate(),
             ]);
         }
     });

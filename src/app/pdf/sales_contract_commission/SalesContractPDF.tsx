@@ -1,6 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, styles } from "../components/pdfConfig";
-import { PrintByAndDate, NexSourcifyLogo, ReportTitle } from "../components";
+import { PrintByAndDate, RenaissanceLogo, ReportTitle } from "../components";
 import { formatDate } from "~/utils/localDateString";
 import type { inferRouterOutputs } from '@trpc/server';
 import type { salesContractsRouter } from "~/server/api";
@@ -19,16 +19,16 @@ const SalesContractPDF = ({ data }: { data: GetPDFDataOutput }) => {
     return (
         <Document
             title={data.pdfHeader?.sales_contract_no}
-            author="Nex Sourcify"
+            author="NexSourcify Nexus"
             subject="Sales Contract PDF"
-            keywords="Sales, Contract, PDF, Nex Sourcify, ERP"
+            keywords="Sales, Contract, PDF, NexSourcify Nexus, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="Nex Sourcify"
+            producer="NexSourcify Nexus"
             pageMode='useOutlines'
 			creationDate={new Date()}
         >
             <Page orientation="landscape" size="A4" style={styles.body}>
-				<NexSourcifyLogo />
+				<RenaissanceLogo />
 				<PrintByAndDate />
 				<ReportTitle title="SALES CONTRACT COMMISSION" />
 
@@ -54,20 +54,18 @@ const SalesContractPDF = ({ data }: { data: GetPDFDataOutput }) => {
                 </View>
 
                 {!data.hasAmendment && (
-                    <SalesContractCommissionTable data={data.nonAmendData ?? []} />
+                    <SalesContractCommissionTable
+                        data={data.nonAmendData ?? []}
+                        grandTotal={data.grandTotal}
+                    />
                 )}
 
                 {data.hasAmendment && (
                     data.amendData?.map((amendment, index) => {
-                        const shipment_details = Array.isArray(amendment.shipment_details)
-                            ? ([] as any[]).concat(...amendment.shipment_details)
-                            : amendment.shipment_details ?? [];
-
-                        const row = { ...amendment, ref_no: amendment.ref_no ?? "", shipment_details };
-
                         return (
                             <SalesContractCommissionTable key={index} 
-                                data={[row]} 
+                                data={amendment.orders}
+                                grandTotal={amendment.grandTotal}
                                 amendment_no={amendment.amendment_no ?? undefined} 
                                 amendment_date={amendment.amendment_date} 
                             />

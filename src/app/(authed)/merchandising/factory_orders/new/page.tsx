@@ -24,7 +24,10 @@ const NewFactoryOrderPage = () => {
         onSuccess: async () => {
             setError(null);
             toast.success("Factory Order added successfully!");
-            await utils.factoryOrder.getFactoryOrders.invalidate();
+            await Promise.all([
+                utils.factoryOrder.getBuyerOrderDetailsByFactoryOrderId.invalidate(),
+                utils.factoryOrder.getFactoryOrders.invalidate()
+            ])
         },
     });
 

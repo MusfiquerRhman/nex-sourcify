@@ -32,9 +32,13 @@ export { default as commissionIcon } from './icons/commission.png';
 export { default as excelIcon } from './icons/excel.png';
 export { default as settingIcon } from './icons/settings.png';
 export { default as codeIcon } from './icons/code.png';
+export { default as pdfIcon } from './icons/pdf-file.png'
+export { default as checkMarkIcon } from './icons/check-mark.png';
+export { default as copyIcon } from './icons/copy.png';
+export { default as commissionWhiteIcon } from './icons/commission_white.png';
 
 // images
 export { default as unauthorizedImage } from "./img/denied.jpg";
-export { default as nexSourcifyImage } from "./img/nexSourcify.jpg";
+export { default as renaissanceImage } from "./img/Renaissance.png";
 export { default as authorized } from "./img/authorized.png";
 export { default as notFound } from "./img/not_found.png";

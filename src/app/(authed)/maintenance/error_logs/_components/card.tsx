@@ -24,7 +24,7 @@ type ErrorCardProps = {
     error: ErrorLog;
 };
 
-const errorCodes: Record<string, string> = {
+const prismaErrorCodes: Record<string, string> = {
     'P2000': 'COLUMN VALUE TOO LONG',
     'P2002': 'UNIQUE CONSTRAINT VIOLATION',
     'P2003': 'FOREIGN KEY CONSTRAINT VIOLATION',
@@ -39,17 +39,27 @@ const errorCodes: Record<string, string> = {
     'P1010': 'FORBIDDEN',
     'P1008': 'TIMED OUT',
     'P2010': 'RAW QUERY FAILED',
+    'P2039': 'GENERAL DRIVER ADAPTER ERROR',
     'UnknownCode': 'UNKNOWN ERROR CODE'
 }
 
+// TRPC codes
+const httpCodes: Record<string, string> = {
+    'FORBIDDEN': '403',
+    'NOT_FOUND': '404',
+    'UNKNOWN': 'UNKNOWN'
+}
+
 export default function ErrorCard({ error }: ErrorCardProps) {
+    const isTRPCError = error.error_name === 'TRPCError';
+
     return (
-        <div className="overflow-hidden rounded-xl border border-red-200 bg-white shadow mb-4 m-2">
+        <div className="overflow-hidden rounded-lg border border-red-200 bg-white shadow mb-4 m-2">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-red-200 bg-red-50 px-6 py-4">
                 <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-2xl">
-                        ⁉️
+                        { isTRPCError ? '⁉️' : '⛔'}
                     </div>
 
                     <div>
@@ -63,11 +73,11 @@ export default function ErrorCard({ error }: ErrorCardProps) {
                             </span>
 
                             <span className="rounded bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
-                                {error.error_code}
+                                {isTRPCError ? httpCodes[error.error_code ?? 'UNKNOWN'] : error.error_code}
                             </span>
 
-                            <span className="rounded bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-700">
-                                {error.error_code ? errorCodes[error.error_code] : "UNKNOWN"}
+                            <span className="rounded bg-fuchsia-100 px-2 py-1 text-xs font-semibold text-fuchsia-700">
+                                {error.error_code ? isTRPCError ? error.error_code : prismaErrorCodes[error.error_code] : "UNKNOWN"}
                             </span>
                         </div>
                     </div>
@@ -109,6 +119,3 @@ export default function ErrorCard({ error }: ErrorCardProps) {
         </div>
     );
 }
-
-
-

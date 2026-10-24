@@ -1,22 +1,25 @@
 'use client';
 import { useRouter } from "next/navigation";
 import { plusIcon } from "~/assets";
-import { Button, SearchField, Table, Wrapper, Popup } from "~/components";
+import { Button, SearchField, Table, Wrapper, Popup, Filter } from "~/components";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { tableHeaders } from "./config/columns";
 import { useSearchablePagination, useModulePermissions, useDeleteConfirmation } from "~/hooks";
+import { useState } from "react";
 
 
 const FactoryPaymentPage = () => {
     const router = useRouter();
     const utils = api.useUtils();
+    const [filter, setFilter] = useState(-1);
 
     const { page, limit, debouncedSearch, handleSearchChange, nextPage, prevPage } = useSearchablePagination();
 
     const { can_add, can_update, can_delete } = useModulePermissions();
 
     const {data: crossPayments, isLoading} = api.crossPayments.getCrossPaymentList.useQuery({
+        filter,
         limit,
         offset: page * limit,
     });
@@ -35,7 +38,9 @@ const FactoryPaymentPage = () => {
             await Promise.all([
                 utils.crossPayments.getCrossPaymentList.invalidate(),
                 utils.crossPayments.searchCrossPayments.invalidate(),
+                utils.crossPayments.getFactoryInvoicesByBuyer.invalidate(),
             ]);
+            toast.success('Cross payment deleted successfully')
         }
     });
 
@@ -70,6 +75,18 @@ const FactoryPaymentPage = () => {
                         </div>
                     ) : null
                 }
+                filters={
+                    <Filter 
+                        filter={filter}
+                        setFilter={setFilter}
+                        label='Approval Status'
+                        options={[
+                            {label: 'ALL', value: -1}, 
+                            {label: 'AUTHORIZED', value: 1},
+                            {label: 'UNAUTHORIZED', value: 0}, 
+                        ]}
+                    />
+                }
             >
                 <div className="w-full">
                     <Table
@@ -100,7 +117,7 @@ const FactoryPaymentPage = () => {
                 description={`Are you sure you want to delete "${(
                     searchQuery.data?.crossPayments && !!debouncedSearch 
                         ? searchQuery.data.crossPayments : crossPaymentList
-                ).find((crossPayment) => crossPayment.id === deleteID)?.id}"?`}
+                ).find((crossPayment) => crossPayment.id === deleteID)?.cross_payment_ref}"?`}
                 actionLabel="DELETE"
                 negativeAction={true}
                 loading={isLoadingDelete}

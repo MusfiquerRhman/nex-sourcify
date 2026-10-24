@@ -27,7 +27,8 @@ const NewProceedRealizationPage = () => {
             toast.success("Proceed Realization added successfully!");
             await Promise.all([
                 utils.proceedRealization.getProceedRealization.invalidate(),
-                utils.proceedRealization.searchProceedRealization.invalidate()
+                utils.proceedRealization.searchProceedRealization.invalidate(),
+                utils.proceedRealization.getDocumentSubmissionForProceedRealization.invalidate(),
             ]);
         }
     });

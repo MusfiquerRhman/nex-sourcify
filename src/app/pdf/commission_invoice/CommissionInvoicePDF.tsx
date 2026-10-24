@@ -1,6 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, styles, tableBorderColor } from "../components/pdfConfig";
-import { NexSourcifyLogo, ReportTitle, HeaderPart, Signature } from "../components";
+import { RenaissanceLogo, ReportTitle, HeaderPart, Signature } from "../components";
 import { formatDate } from "~/utils/localDateString";
 
 import type { HeaderData } from "~/types/pdf";
@@ -25,8 +25,8 @@ const CommissionInvoicePDF = ({ data }: { data: GetPDFDataOutput }) => {
 
     const buyerOrderData: HeaderData = [
         [
-            { label: "LC / Invoice Ref", value: data.header?.lc_sc_no ?? "" },
-            { label: "Bank Name", value: data.header?.buyer_name ?? "" },
+            { label: "LC / NexSourcify Ref", value: data.header?.lc_sc_no ?? "" },
+            { label: "Buyer Name", value: data.header?.buyer_name ?? "" },
             { label: "Bank Name", value: data.header?.bank_name ?? "" },
             { label: "Exfactory Date", value: data.header?.exfactory_date ?? "" },
         ],
@@ -92,16 +92,16 @@ const CommissionInvoicePDF = ({ data }: { data: GetPDFDataOutput }) => {
     return (
         <Document
             title={`Commission Invoice - ${data.header?.ref_no}`}
-            author="Nex Sourcify"
+            author="NexSourcify Nexus"
             subject="Commission Invoice PDF"
-            keywords="Commission, Invoice, PDF, Nex Sourcify, ERP"
+            keywords="Commission, Invoice, PDF, NexSourcify Nexus, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="Nex Sourcify"
+            producer="NexSourcify Nexus"
             pageMode="useOutlines"
             creationDate={new Date()}
         >
             <Page orientation="portrait" size="A4" style={styles.body} wrap>
-                <NexSourcifyLogo />
+                <RenaissanceLogo />
 
                 <ReportTitle title="COMMISSION INVOICE" />
 
@@ -129,20 +129,30 @@ const CommissionInvoicePDF = ({ data }: { data: GetPDFDataOutput }) => {
 
                 <InvoiceTable
                     rows={data.formattedRdlInvoices.map((item, index) => (
-                        <TableRow
-                            key={index}
-                            index={index}
-                            quantity={item.invoice_quantity}
-                            value={item.invoice_value}
-                            description={
-                                <>
-                                    <Text>Invoice No: {item.invoice_no}</Text>
-                                    <Text style={{ marginTop: 2}}>Date: {item.invoice_date}</Text>
-                                </>
-                            }
-                        />
+                        <View key={index}>
+							<TableRow
+								index={index}
+								quantity={item.invoice_quantity}
+								value={item.invoice_value}
+								description={
+									<View style={{ paddingTop: 5, ...(!item.charge && { marginBottom: 5 })}}>
+										<Text>NexSourcify Invoice No: {item.invoice_no}</Text>
+										<Text style={{ marginTop: 2}}>Date: {item.invoice_date}</Text>
+									</View>
+								}
+							/>
+							{item.charge && 
+								<TableRow
+									quantity={' '}
+									value={item.charge}
+									description={
+										<Text style={{ marginTop: 5 }}>Early Settlement Charge</Text>
+									}
+								/>
+							}
+						</View>
                     ))}
-                    summaryLabel="Total Invoice Quantity and Value"
+                    summaryLabel="Total NexSourcify Invoice Net Quantity and Value"
                     totalQuantity={data.result.rdlInvoiceResults.total_invoice_quantity}
                     totalValue={data.result.rdlInvoiceResults.total_invoice_value}
                 />
@@ -156,11 +166,11 @@ const CommissionInvoicePDF = ({ data }: { data: GetPDFDataOutput }) => {
                                 quantity={item.invoice_quantity}
                                 value={item.invoice_value}
                                 description={
-                                    <>
+                                    <View style={{paddingVertical: 5}}>
                                         <Text>Factory Invoice No: {item.invoice_no}</Text>
                                         <Text style={{ marginTop: 2 }}>Date: {item.invoice_date}</Text>
                                         <Text style={{ marginTop: 2 }}>Factory Name: {item.factory_name}</Text>
-                                    </>
+                                    </View>
                                 }
                             />
                         ))}
@@ -183,7 +193,7 @@ const CommissionInvoicePDF = ({ data }: { data: GetPDFDataOutput }) => {
 						justifyContent: 'space-between',
 					}}>
 						<Text style={{ fontSize: 9, fontWeight: "bold", padding: 5, width: 780 }}>
-							Commission
+							Net Commission
 						</Text>
 						<Text style={{ 
 							fontSize: 9,
@@ -214,6 +224,7 @@ const CommissionInvoicePDF = ({ data }: { data: GetPDFDataOutput }) => {
 				</View>
 
 				<View
+					wrap={false}
 					style={{
 						flexDirection: "row",
 						justifyContent: "space-between",

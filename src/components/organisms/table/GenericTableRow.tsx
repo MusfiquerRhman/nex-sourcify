@@ -1,6 +1,6 @@
 import { ShowPassword, Chip, TableRow, TableCell, CheckBox } from '~/components';
 import { formatDate, formatDateTime } from "~/utils/localDateString";
-import { commissionIcon, deleteIcon, editIcon, printingIcon, viewIcon } from '~/assets';
+import { commissionIcon, deleteIcon, editIcon, plusIcon, printingIcon, viewIcon } from '~/assets';
 import Link from 'next/link';
 import Image from 'next/image';
 import React from 'react';
@@ -27,11 +27,31 @@ type TableRowProps<T extends FieldValues> = {
     printURL2?: string;
     view?: boolean;
     control?: Control<T>;
+    allowAdd?: boolean;
+    addURL?: string | ((row: T) => string);
 };
 
 // TableRow component to render a row of data based on provided columns and types
 const GenericTableRow = <T extends FieldValues>(props: TableRowProps<T>) => {
-    const { rowData, columns, editURL, deleteFunction, allowDelete, allowEdit, allowPrint, allowPrint2, printURL, printURL2, view = false, control } = props;
+    const { 
+        rowData, 
+        columns, 
+        editURL, 
+        deleteFunction, 
+        allowDelete, 
+        allowEdit,
+        allowPrint, 
+        allowPrint2, 
+        printURL, 
+        printURL2, 
+        view = false, 
+        control, 
+        allowAdd,
+        addURL 
+    } = props;
+
+    // console.log(allowAdd, addURL)
+
     return (
         <TableRow>
             {columns.map((col, colIndex) => (
@@ -69,7 +89,7 @@ const GenericTableRow = <T extends FieldValues>(props: TableRowProps<T>) => {
                                 )
 
                             case 'action':
-                                return (allowEdit || allowDelete || view || allowPrint || allowPrint2) ? (
+                                return (allowEdit || allowDelete || view || allowPrint || allowPrint2 || allowAdd) ? (
                                     <div className="flex flex-row justify-between items-center h-full text-[0.9rem] border-gray/20 w-fit max-w-25 p-2">
                                         {(!!allowEdit || view) && (
                                             <Link scroll={false} href={`${editURL}/${String(rowData.id)}`}
@@ -102,6 +122,17 @@ const GenericTableRow = <T extends FieldValues>(props: TableRowProps<T>) => {
                                             >
                                                 <Image width={20} height={20} src={deleteIcon.src} alt="Delete" />
                                             </button>
+                                        )}
+                                        {allowAdd && !!addURL && (
+                                            <Link
+                                                scroll={false}
+                                                href={typeof addURL === 'function' ? addURL(rowData) : addURL}
+                                                className="ml-2 w-4 h-full hover:cursor-pointer invert"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                <Image width={20} height={20} src={plusIcon.src} alt="Add" />
+                                            </Link>
                                         )}
                                     </div>
                                 ) : null;

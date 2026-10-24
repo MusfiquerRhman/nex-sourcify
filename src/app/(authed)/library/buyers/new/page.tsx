@@ -99,24 +99,39 @@ const NewBuyerPage = () => {
     
     const submitAll = async () => {
         try {
-            const buyerData = await new Promise<FormValues>((resolve) => {
-                void handleSubmit((data) => resolve(data))();
+            const buyerData = await new Promise<FormValues>((resolve, reject) => {
+                void handleSubmit(
+                    (data) => resolve(data),
+                    () => reject(new Error("Please fix the buyer information errors.")),
+                )();
             });
     
-            const consigneeData = await new Promise<ConsigneeFormValues[]>((resolve) => {
-                void handleConsigneeSubmit((data) => resolve(data.consignees))();
+            const consigneeData = await new Promise<ConsigneeFormValues[]>((resolve, reject) => {
+                void handleConsigneeSubmit(
+                    (data) => resolve(data.consignees),
+                    () => reject(new Error("Please fix the consignee information errors.")),
+                )();
             });
 
-            const bankData = await new Promise<BankFormValues[]>((resolve) => {
-                void handleBankSubmit((data) => resolve(data.banks))();
+            const bankData = await new Promise<BankFormValues[]>((resolve, reject) => {
+                void handleBankSubmit(
+                    (data) => resolve(data.banks),
+                    () => reject(new Error("Please fix the bank information errors.")),
+                )();
             });
 
-            const clauseData = await new Promise<ClauseFormValues[]>((resolve) => {
-                void handleClauseSubmit((data) => resolve(data.clause))();
+            const clauseData = await new Promise<ClauseFormValues[]>((resolve, reject) => {
+                void handleClauseSubmit(
+                    (data) => resolve(data.clause),
+                    () => reject(new Error("Please fix the clause information errors.")),
+                )();
             });
 
-            const latePolicyData = await new Promise<LatePolicyFormValues[]>((resolve) => {
-                void handleLatePolicySubmit((data) => resolve(data.policy))();
+            const latePolicyData = await new Promise<LatePolicyFormValues[]>((resolve, reject) => {
+                void handleLatePolicySubmit(
+                    (data) => resolve(data.policy),
+                    () => reject(new Error("Please fix the late policy information errors.")),
+                )();
             });
 
             setIsLoading(true);
@@ -152,7 +167,7 @@ const NewBuyerPage = () => {
             await addBuyer.mutateAsync(payload);
         } 
         catch(e){
-            const message = parseTRPCError(error);
+            const message = parseTRPCError(e);
             toast.error(`Failed to add Buyer: ${message}`);
             setError(message);
         }finally {

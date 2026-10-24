@@ -15,9 +15,13 @@ const Burger = ({ isOpen, toggleIsOpen }: BurgerProps) => {
             animate={{ x: isOpen ? 198 : 0 }}
             transition={{ type: "tween" }}
         >
-            <button onClick={toggleIsOpen} 
+            <button onClick={toggleIsOpen}
+                type="button"
+                aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                aria-expanded={isOpen}
+                aria-controls="nex-sidebar-panel"
                 className={clsx(
-                    'absolute top-2 left-1 rounded-lg w-10 h-10 z-10 hover:cursor-pointer group', 
+                    'absolute top-2 left-1 rounded-lg w-10 h-10 z-10 hover:cursor-pointer group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300',
                     isOpen ? 'bg-primary/10 hover:bg-primary backdrop-blur-sm' : 'bg-transparent hover:bg-primary-accent'
                 )}
             >

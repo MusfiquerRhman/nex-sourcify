@@ -3,9 +3,11 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import { useDecodedUser } from "~/hooks";
 import { api } from "~/trpc/react";
-import { logoutIcon, notificationIcon } from "~/assets";
+import { logoutIcon } from "~/assets";
 import Popup from "../templates/Popup";
 import Image from "next/image";
+import OfflineBanner from "./OfflineBanner";
+import NotificationCenter from "./NotificationCenter";
 
 const TopBar = () => {        
     const { user } = useDecodedUser();
@@ -14,11 +16,18 @@ const TopBar = () => {
     const [logOutClicked, setLogOutClicked] = useState(false);
 
     const utils = api.useUtils();
+
+    const clearSearchQueries = () => {
+        Object.keys(localStorage)
+            .filter(key => key.startsWith("search-query:"))
+            .forEach(key => localStorage.removeItem(key));
+    };
     
     const signOutMutation = api.auth.logout.useMutation({
         onSuccess: async () => {
             await utils.invalidate();
             localStorage.removeItem("token");
+            clearSearchQueries();
             toast.success("Successfully Logged Out", { duration: 2000 });
             window.location.reload();
         },
@@ -32,28 +41,23 @@ const TopBar = () => {
         } catch (error) {
             toast.error("Error during logout: " + (error as Error).message);
             localStorage.removeItem("token"); // Fallback logout
+            clearSearchQueries();
             window.location.reload();
         } finally {
             setLogOutClicked(false);
         }
     }
 
-    const togglePopup = () => {
-        setIsPopupOpen(prev => !prev)
-    }
+    const togglePopup = () => setIsPopupOpen(prev => !prev);
 
     return (
-        <>
-            <div className='fixed top-1 mt-2 right-4 flex flex-row items-center justify-between rounded-full backdrop-blur-md z-50 pl-2 shadow-sm bg-background/40'>
-                <Image src={notificationIcon.src} alt="notification" width={20} height={20}
-                    className='w-9 h-9 mx-2 my-2 cursor-pointer rounded-full'
-                    onClick={() => toast('Notification panel coming soon!')}
-                />                  
-                {/* <Image src={userIcon.src} alt="notification" width={20} height={20}
-                    className='w-9 h-9 ml-2 rounded-full'
-                />                 */}
+        <div className='fixed top-1 mt-2 right-4 flex flex-row items-center justify-between rounded-full backdrop-blur-md z-50'>
+            <OfflineBanner />
+            <div className='flex flex-row items-center justify-between rounded-full backdrop-blur-md z-50 pl-2 shadow-sm bg-background/40'>
+                <NotificationCenter />
+                
                 <div className="ml-4 text-center ">
-                    <p className='font-semibold'>{user?.first_name} {user?.last_name}</p>
+                    <p className='font-semibold capitalize'>{user?.first_name} {user?.last_name}</p>
                     <span className='flex flex-row gap-2'>
                         <p className='text-sm border-r-2 border-gray-light pr-2'>{user?.department_name}</p>
                         <p className='text-sm'>{user?.level_name}</p>
@@ -73,7 +77,7 @@ const TopBar = () => {
                 action={logOut}
                 loading={logOutClicked}
             />
-        </>
+        </div>
     )
 }
 

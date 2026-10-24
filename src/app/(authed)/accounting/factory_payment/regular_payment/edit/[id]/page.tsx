@@ -78,7 +78,7 @@ const EditFactoryPaymentPage = ({ params }: ParamsProp) => {
     });
 
     const { data: crossPayments} = api.factoryPayment.checkCrossPaymentForDocumentSubmission.useQuery(
-        {document_submission_id: id}
+        {id: id}
     );
 
     // Form setup

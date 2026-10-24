@@ -7,6 +7,7 @@ import type { useDocumentSubmissionForm } from "../../config/useDocumentSubmissi
 import TableHeader, { type TableHeaderType } from "~/components/organisms/table/TableHeader";
 import type { DocumentSubmissionFormValues } from "../../config/formSchema";
 import { formFields as shipmentTableFormFields } from "../../factoryInvoiceConfig/tableFormFields";
+import { safeNumber } from "~/utils/numbers";
 
 type ShipmentRow = FieldArrayWithId<DocumentSubmissionFormValues>;
 
@@ -24,6 +25,15 @@ type Props = {
 
 const TableForm = (props: Props) => {
     const {columns, rows, disabled = false, name, methods, validationError, invoiceIndex, selectedRdlInvoiceNo} = props;
+    const factoryInvoices = methods.watch(`rdlInvoices.${invoiceIndex}.factoryInvoices`) ?? [];
+    const totalQuantity = factoryInvoices.reduce(
+        (total, factoryInvoice) => total + safeNumber(factoryInvoice.quantity),
+        0,
+    );
+    const totalValue = factoryInvoices.reduce(
+        (total, factoryInvoice) => total + safeNumber(factoryInvoice.factory_invoice_value),
+        0,
+    );
 
     return (
         <>
@@ -54,6 +64,13 @@ const TableForm = (props: Props) => {
                                 />
                             ))}
                         </TableBody>
+                        <tfoot>
+                            <tr className="font-bold text-sm border-2 border-gray/20">
+                                <td colSpan={4} className="border-r-2 border-gray/20 p-2 text-right">Total</td>
+                                <td className="bg-secondary text-center text-white border-r-2 border-gray/20 p-2">{totalQuantity}</td>
+                                <td className="bg-secondary text-center text-white border-r-2 border-gray/20 p-2">{totalValue.toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
                     </TableWrapper>
                 </div>
             </form>

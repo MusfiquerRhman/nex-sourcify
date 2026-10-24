@@ -1,10 +1,11 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
 import { m } from "~/utils/moduleMap";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { actions, Prisma } from "@prisma/client";
-import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID, ETD_DATE_DB_ID } from "~/utils/config";
+import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID, COMMERCIAL_DEPARTMENT_ID, ETD_DATE_DB_ID, HANDOVER_DATE_DB_ID, PP_MEETING_DATE, QUALITY_DEPARTMENT_ID } from "~/utils/config";
 import type { TNATemplateType, AdditionalDataType, ActionsType, EventsType } from './_types/tnaPlan';
 
 export const tnaPlanRouter = createTRPCRouter({
@@ -304,7 +305,7 @@ export const tnaPlanRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newPlan = await tx.tna_plans.create({
                         data: {
                             tna_template_id: input.template_id,
@@ -408,7 +409,7 @@ export const tnaPlanRouter = createTRPCRouter({
                 return orders;
             }
             catch (error) {
-                            handlePrismaError(error);
+                handlePrismaError(error);
             }
         }),
 
@@ -443,8 +444,8 @@ export const tnaPlanRouter = createTRPCRouter({
                             SELECT 
                                 TRUE 
                             FROM USERS AS U
-                            WHERE U.DEPARTMENT_ID = 5
-                                AND LEVEL_ID = 5
+                            WHERE U.DEPARTMENT_ID = ${ADMIN_DEPARTMENT_ID}
+                                AND LEVEL_ID = ${ADMIN_LEVEL_ID}
                                 AND U.ID = ${ctx.user.id}
                         )
                     )
@@ -479,7 +480,7 @@ export const tnaPlanRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const existingTnaPlanDetails = await tx.tna_plan_details.findMany({
                         where: { tna_plan_id: input.id },
                     });
@@ -581,7 +582,7 @@ export const tnaPlanRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedActions = [];
 
                     for (const action of input) {
@@ -622,6 +623,8 @@ export const tnaPlanRouter = createTRPCRouter({
             from_date: z.string(),
             to_date: z.string(),
             actionIds: z.array(z.number()).min(1, "At least one action must be selected"),
+            limit: z.number().optional(),
+            offset: z.number().optional()
          }))
         .query(async ({ ctx, input }) => {
             const can_update = ctx.permissions[m.TNA_EVENTS]?.can_update;
@@ -634,7 +637,7 @@ export const tnaPlanRouter = createTRPCRouter({
             }
 
             try {
-                const events = await ctx.db.$queryRaw<EventsType[]>`
+                const events = await ctx.db.$queryRaw<Array<EventsType & { total_count: bigint }>>`
                     SELECT 
                         TPD.id AS id,
                         BO.ref_no AS order_ref,
@@ -651,7 +654,8 @@ export const tnaPlanRouter = createTRPCRouter({
                         TPD.ACTUAL_DATE AS actual_date,
                         B.BUYER_NAME AS buyer_name,
                         F.NAME AS factory_name,
-                        D.NAME AS destination_name
+                        D.NAME AS destination_name,
+                        COUNT(*) OVER() AS total_count
                     FROM tna_plan_details AS TPD 
                         INNER JOIN shipment_details AS SD ON SD.id = TPD.shipment_id
                         INNER JOIN order_styles AS OS ON OS.id = SD.order_style_id
@@ -688,9 +692,114 @@ export const tnaPlanRouter = createTRPCRouter({
                         )
                         AND TPD.ACTUAL_DATE IS NULL
                         AND TA.ID IN (${Prisma.join(input.actionIds)})
-                    ORDER BY PLAN_DATE ASC;
+                    ORDER BY PLAN_DATE ASC
+                    LIMIT ${input.limit ?? 100}    
+                    OFFSET ${input.offset ?? 0};
                 `;
-                return events;
+                
+                return {
+                    events: events.map(({ total_count: _, ...row }) => row),
+                    total: Number(events[0]?.total_count ?? 0),
+                };
+            }
+            catch (error) {
+                await logError(error, ctx, input);
+                handlePrismaError(error);
+            }
+        }),
+
+    searchTnaPlansForEventUpdate: protectedProcedure
+        .input(z.object({
+            search_term: z.string(),
+            limit: z.number().optional(),
+            offset: z.number().optional()
+        }))
+    .query(async ({ ctx, input }) => {
+            const can_update = ctx.permissions[m.TNA_EVENTS]?.can_update;
+
+            console.log('input', input)
+
+            if (!can_update) {
+                throw new TRPCError({ 
+                    code: "FORBIDDEN", 
+                    message: "You do not have permission to view TNA events." 
+                });
+            }
+
+            const userDepartment = ctx.user.department_id;
+            let eventFilter = Prisma.empty;
+
+            if(userDepartment === QUALITY_DEPARTMENT_ID) {
+                eventFilter = Prisma.sql`AND TA.ID = ${PP_MEETING_DATE}`
+            }
+            else if(userDepartment === COMMERCIAL_DEPARTMENT_ID){
+                eventFilter = Prisma.sql`AND (TA.ID = ${HANDOVER_DATE_DB_ID} OR TA.ID = ${ETD_DATE_DB_ID})`
+            }
+            
+
+            try {
+                const events = await ctx.db.$queryRaw<Array<EventsType & { total_count: bigint }>>`
+                    SELECT 
+                        TPD.id AS id,
+                        BO.ref_no AS order_ref,
+                        OS.style AS style,
+                        SD.BUYER_PO AS po,
+                        TT.TEMPLATE_NAME AS tna_templates,
+                        TA.NAME AS action_name,
+                        CASE 
+                            WHEN COALESCE(TBA.action_id, 0) = ${ETD_DATE_DB_ID}
+                                THEN SD.ETD_DATE - TTA.DAYS
+                            ELSE SD.HANDOVER_DATE - TTA.DAYS
+                        END AS PLAN_DATE,
+                        TPD.REVISE_DATE AS revise_date,
+                        TPD.ACTUAL_DATE AS actual_date,
+                        B.BUYER_NAME AS buyer_name,
+                        F.NAME AS factory_name,
+                        D.NAME AS destination_name,
+                        COUNT(*) OVER() AS total_count
+                    FROM tna_plan_details AS TPD 
+                        INNER JOIN shipment_details AS SD ON SD.id = TPD.shipment_id
+                        INNER JOIN order_styles AS OS ON OS.id = SD.order_style_id
+                        INNER JOIN buyer_orders AS BO ON BO.id = OS.order_id
+                        INNER JOIN destinations AS D ON D.id = SD.destination_id
+                        INNER JOIN tna_plans AS TP ON TP.id = TPD.tna_plan_id
+                        INNER JOIN tna_templates AS TT ON TT.ID = TP.tna_template_id
+                        INNER JOIN tna_template_actions AS TTA ON TTA.ID = TPD.tna_template_action_id
+                        INNER JOIN tna_actions AS TA ON TA.ID = TTA.tna_action_id ${eventFilter}
+                        INNER JOIN FACTORIES AS F ON F.ID = BO.FACTORY_ID
+                        INNER JOIN BUYERS AS B ON B.ID = BO.buyer_id
+                        LEFT JOIN tna_base_actions AS TBA ON TBA.buyer_id = BO.buyer_id
+                    WHERE (
+                        EXISTS (
+                            SELECT 1
+                            FROM USERS AS U
+                            WHERE U.ID = ${ctx.user.id}
+                            AND U.DEPARTMENT_ID = ${ADMIN_DEPARTMENT_ID}
+                            AND U.LEVEL_ID = ${ADMIN_LEVEL_ID}
+                        )
+                        OR EXISTS (
+                            SELECT 1
+                            FROM TEAM_MEMBERS AS TM
+                            WHERE TM.TEAM_ID = BO.TEAM_ID
+                            AND TM.USER_ID = ${ctx.user.id}
+                        )
+                    )
+                    AND TPD.ACTUAL_DATE IS NULL
+                    AND (
+                        BO.ref_no ILIKE '%' || ${input.search_term} || '%' OR
+                        OS.style ILIKE '%' || ${input.search_term} || '%' OR
+                        SD.BUYER_PO ILIKE '%' || ${input.search_term} || '%' OR
+                        B.BUYER_NAME ILIKE '%' || ${input.search_term} || '%' OR
+                        F.NAME ILIKE '%' || ${input.search_term} || '%'
+                    )
+                    ORDER BY PLAN_DATE ASC
+                    LIMIT ${input.limit ?? 100}    
+                    OFFSET ${input.offset ?? 0};
+                `;
+                return {
+                    events: events.map(({ total_count: _, ...row }) => row),
+                    total: Number(events[0]?.total_count ?? 0),
+                };
             }
             catch (error) {
                 await logError(error, ctx, input);
@@ -715,7 +824,7 @@ export const tnaPlanRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedEvents = await Promise.all(
                         input.map(async (event) => {
                             return tx.tna_plan_details.update({

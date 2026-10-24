@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -8,10 +9,12 @@ import { currencyFormatter, quantityFormatter } from "~/utils/localNumberStrings
 import { formatDate } from "~/utils/localDateString";
 import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID } from "~/utils/config";
 import type { FactoryOrderRow, GetPDFDataOutput, FactoryOrdersPoDetails } from './_types/factoryOrder';
+import { notificationQueue } from "~/server/queues/notification.queue";
 
 export const factoryOrderRouter = createTRPCRouter({
     getFactoryOrders: protectedProcedure
         .input(z.object({
+            filter: z.number().min(-1).default(-1),   
             limit: z.number().min(1).default(15),
             offset: z.number().min(0).default(0),  
         }))
@@ -27,53 +30,73 @@ export const factoryOrderRouter = createTRPCRouter({
             
             try {
                 const rows = await ctx.db.$queryRaw<(FactoryOrderRow & { total_count: bigint })[]>`
-                    SELECT
-                        FO.id,
-                        BO.ref_no,
-                        B.buyer_name,
-                        F.name AS factory_name,
-                        BO.order_date,
-                        FO.factory_order_date,
-                        BD.department,
-                        CASE
-                            WHEN NOT EXISTS (
+                    WITH style_status AS (
+                        SELECT
+                            OS.order_id,
+                            COUNT(*) AS style_count,
+                            COUNT(*) FILTER (
+                                WHERE COALESCE(SQ.shipped_quantity, 0) < OS.order_quantity
+                            ) AS incomplete_style_count
+                        FROM order_styles OS
+                        LEFT JOIN (
+                            SELECT
+                                SH.order_style_id,
+                                SUM(SC.quantity) AS shipped_quantity
+                            FROM shipment_details SH
+                            INNER JOIN shipment_item_details SC ON SC.shipment_detail_id = SH.id
+                            GROUP BY SH.order_style_id
+                        ) SQ ON SQ.order_style_id = OS.id
+                        GROUP BY OS.order_id
+                    ),
+                    order_status AS (
+                        SELECT
+                            FO.id,
+                            BO.ref_no,
+                            B.buyer_name,
+                            F.name AS factory_name,
+                            BO.order_date,
+                            FO.factory_order_date,
+                            BD.department,
+                            CASE
+                                WHEN COALESCE(SS.style_count, 0) = 0 THEN -1
+                                WHEN SS.incomplete_style_count > 0 THEN -1
+                                ELSE FO.approval_status
+                            END AS approval_status,
+                            BO.added_at
+                        FROM buyer_orders BO
+                        INNER JOIN buyers B ON B.id = BO.buyer_id
+                        INNER JOIN buyer_departments BD ON BD.id = BO.department_id
+                        INNER JOIN factory_orders FO ON FO.order_id = BO.id
+                        INNER JOIN factories F ON F.id = BO.factory_id
+                        LEFT JOIN style_status SS ON SS.order_id = BO.id
+                        WHERE (
+                            EXISTS (
                                 SELECT 1
-                                FROM order_styles BOS
-                                WHERE BOS.order_id = BO.id
-                            ) THEN -1
-                            WHEN EXISTS (
+                                FROM users U
+                                WHERE U.id = ${ctx.user.id}
+                                AND U.department_id = ${ADMIN_DEPARTMENT_ID}
+                                AND U.level_id = ${ADMIN_LEVEL_ID}
+                            )
+                            OR EXISTS (
                                 SELECT 1
-                                FROM order_styles BOS
-                                LEFT JOIN shipment_details SH ON SH.order_style_id = BOS.id
-                                LEFT JOIN shipment_item_details SC ON SC.shipment_detail_id = SH.id
-                                WHERE BOS.order_id = BO.id
-                                GROUP BY BOS.id, BOS.order_quantity
-                                HAVING COALESCE(SUM(SC.quantity), 0) < BOS.order_quantity
-                            ) THEN -1
-                            ELSE FO.approval_status
-                        END AS approval_status,
-                        COUNT(*) OVER() AS total_count
-                    FROM BUYER_ORDERS AS BO
-                    INNER JOIN BUYERS AS B ON BO.buyer_id = B.id
-                    INNER JOIN BUYER_DEPARTMENTS AS BD ON BO.department_id = BD.id
-                    INNER JOIN FACTORY_ORDERS AS FO ON FO.order_id = BO.id
-                    INNER JOIN FACTORIES AS F ON F.ID = BO.factory_id
-                    WHERE (
-                        EXISTS (
-                            SELECT 1
-                            FROM USERS U
-                            WHERE U.ID = ${ctx.user.id}
-                            AND U.DEPARTMENT_ID = ${ADMIN_DEPARTMENT_ID}
-                            AND U.LEVEL_ID = ${ADMIN_LEVEL_ID}
-                        )
-                        OR EXISTS (
-                            SELECT 1
-                            FROM TEAM_MEMBERS TM
-                            WHERE TM.TEAM_ID = BO.TEAM_ID
-                            AND TM.USER_ID = ${ctx.user.id}
+                                FROM team_members TM
+                                WHERE TM.team_id = BO.team_id
+                                AND TM.user_id = ${ctx.user.id}
+                            )
                         )
                     )
-                    ORDER BY BO.added_at DESC, BO.order_date DESC
+                    SELECT
+                        order_status.*,
+                        COUNT(*) OVER() AS total_count
+                    FROM order_status
+                    WHERE ${Number(input.filter)}::INTEGER = -1
+                        OR approval_status = CASE ${Number(input.filter)}::INTEGER
+                            WHEN 0 THEN -1
+                            WHEN 1 THEN 0
+                            WHEN 2 THEN 1
+                            WHEN 3 THEN 2
+                        END
+                    ORDER BY added_at DESC, order_date DESC
                     LIMIT ${input.limit}
                     OFFSET ${input.offset};
                 `;
@@ -242,7 +265,7 @@ export const factoryOrderRouter = createTRPCRouter({
                 return buyerOrders;
             }
             catch (error) {
-                            handlePrismaError(error);
+                handlePrismaError(error);
             }
         }),
 
@@ -293,6 +316,10 @@ export const factoryOrderRouter = createTRPCRouter({
                             },
                         },
                         order_styles: {
+                            orderBy: [
+                                { serial: "asc" },
+                                { added_at: "asc" }
+                            ],
                             select: {
                                 id: true,
                                 style: true,
@@ -458,7 +485,7 @@ export const factoryOrderRouter = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const factoryOrderDate = new Date(
                         input.factory_order_date
                     );
@@ -514,6 +541,8 @@ export const factoryOrderRouter = createTRPCRouter({
                                     exfactory_date: shipment.exfactory_date,
                                     factory_rate: shipment.factory_rate,
                                     transfer_rate: shipment.transfer_rate,
+                                    shipment_detail_id: shipment.shipment_detail_id,
+                                    factory_order_id: shipment.factory_order_id,
                                     action_by: ctx.user.id,
                                     action_type: actions.ADDED,
                                 },
@@ -593,6 +622,10 @@ export const factoryOrderRouter = createTRPCRouter({
                                 id: true,
                                 ref_no: true,
                                 order_styles: {
+                                    orderBy: [
+                                        { serial: "asc" },
+                                        { added_at: "asc" }
+                                    ],
                                     select: {
                                         id: true,
                                         shipment_details: {
@@ -633,10 +666,11 @@ export const factoryOrderRouter = createTRPCRouter({
                     styles: factoryOrder.buyer_orders?.order_styles.map((os) => ({
                         db_id: os.id,
                         shipments: os.shipment_details.map((sd) => ({
-                            db_id: sd.factory_shipment_details?.[0]?.id,
-                            exfactory_date: sd.factory_shipment_details?.[0]?.exfactory_date ?? null,
-                            factory_fob: sd.factory_shipment_details?.[0]?.factory_rate ?? null,
-                            transfer_rate: sd.factory_shipment_details?.[0]?.transfer_rate ?? null,
+                            db_id: sd.factory_shipment_details?.id,
+                            shipment_id: sd.id,
+                            exfactory_date: sd.factory_shipment_details?.exfactory_date ?? null,
+                            factory_fob: sd.factory_shipment_details?.factory_rate ?? null,
+                            transfer_rate: sd.factory_shipment_details?.transfer_rate ?? null,
                             ex_factory_exists: sd.exfactory_shipments?.length > 0,
                         })),
                     })),
@@ -728,7 +762,7 @@ export const factoryOrderRouter = createTRPCRouter({
                 }
 
                 // Start transaction
-                const updatedFactoryOrder = await ctx.db.$transaction(async (tx) => {
+                const updatedFactoryOrder = await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const factoryOrder = await tx.factory_orders.update({ // Update Factory Order
                         where: { id: input.factoryOrderId },
                         data: {
@@ -780,6 +814,8 @@ export const factoryOrderRouter = createTRPCRouter({
                                     exfactory_date: new Date(shipmentInput.exfactory_date),
                                     factory_rate: shipmentInput.factory_fob,
                                     transfer_rate: shipmentInput.transfer_rate,
+                                    shipment_detail_id: shipment.shipment_detail_id,
+                                    factory_order_id: shipment.factory_order_id,
                                     action_by: ctx.user.id,
                                     action_type: actions.UPDATE,
                                 },
@@ -841,7 +877,7 @@ export const factoryOrderRouter = createTRPCRouter({
                 // Check if the factory order is complete and get its approval status
                 const authorizations = await ctx.db.$queryRaw<{is_complete: boolean, approval_status: number}[]>`
                     SELECT
-                        os_sum.total_order_qty = sid_sum.total_shipment_qty AS is_complete,
+                        os_sum.total_order_qty <= sid_sum.total_shipment_qty AS is_complete,
                         fo.approval_status
                     FROM factory_orders fo
                     JOIN (
@@ -858,6 +894,25 @@ export const factoryOrderRouter = createTRPCRouter({
                     ) sid_sum ON sid_sum.order_id = fo.order_id
                     WHERE fo.id = ${input.factoryOrderId};
                 `;
+
+                // const authorizations = await ctx.db.$queryRaw<{is_complete: boolean}[]>`
+                //     SELECT
+                //         os_sum.total_order_qty <= sid_sum.total_shipment_qty AS is_complete
+                //     FROM factory_orders fo
+                //     JOIN (
+                //         SELECT order_id, SUM(order_quantity) AS total_order_qty
+                //         FROM order_styles
+                //         GROUP BY order_id
+                //     ) os_sum ON os_sum.order_id = fo.order_id
+                //     JOIN (
+                //         SELECT os.order_id, SUM(sid.quantity) AS total_shipment_qty
+                //         FROM order_styles os
+                //         JOIN shipment_details sd ON sd.order_style_id = os.id
+                //         JOIN shipment_item_details sid ON sid.shipment_detail_id = sd.id
+                //         GROUP BY os.order_id
+                //     ) sid_sum ON sid_sum.order_id = fo.order_id
+                //     WHERE fo.id = ${input.factoryOrderId};
+                // `;
 
                 // Get the user's authorization permission for factory orders
                 const authorizationPermission = await ctx.db.$queryRaw<{department_id: number, level_id: number, approval_level: number}[]>`
@@ -950,7 +1005,7 @@ export const factoryOrderRouter = createTRPCRouter({
                 }
 
                 // Update the approval status within a transaction
-                const approvedFactoryOrder = await ctx.db.$transaction(async (tx) => {
+                const approvedFactoryOrder = await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const factoryOrder = await tx.factory_orders.update({
                         where: { id: input.factoryOrderId },
                         data: {
@@ -966,6 +1021,20 @@ export const factoryOrderRouter = createTRPCRouter({
                             action_type: actions.UPDATE,
                             order_id: factoryOrder.order_id,
                             approval_status: input.approval_status,
+                        },
+                    });
+
+                    await notificationQueue.add("factory-order-submitted", {
+                        factoryOrderId: input.factoryOrderId,
+                        approval_status: input.approval_status,
+                        previous_approval_status: input.previous_approval_status,
+                        action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
+                        level_id: ctx.user.level_id,
+                    }, {
+                        attempts: 5,
+                        backoff: {
+                            type: "exponential",
+                            delay: 1000,
                         },
                     });
 
@@ -1007,7 +1076,7 @@ export const factoryOrderRouter = createTRPCRouter({
                     });
                 }
 
-                const deletedFactoryOrder = await ctx.db.$transaction(async (tx) => {
+                const deletedFactoryOrder = await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     // Delete related factory shipment details first
                     const existingFactoryShipments = await tx.factory_shipment_details.findMany({
                         where: { factory_order_id: input.id },
@@ -1033,6 +1102,8 @@ export const factoryOrderRouter = createTRPCRouter({
                                 exfactory_date: shipment.exfactory_date,
                                 factory_rate: shipment.factory_rate,
                                 transfer_rate: shipment.transfer_rate,
+                                shipment_detail_id: shipment.shipment_detail_id,
+                                factory_order_id: shipment.factory_order_id,
                                 action_by: ctx.user.id,
                                 action_type: actions.DELETE,
                             },

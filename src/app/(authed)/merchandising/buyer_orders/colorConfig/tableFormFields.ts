@@ -1,4 +1,3 @@
-import { api } from "~/trpc/react";
 import type { ColorFormValues } from "./tableFormSchema";
 import type { BaseField } from "~/types/form";
 

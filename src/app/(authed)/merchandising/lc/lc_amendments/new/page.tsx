@@ -26,6 +26,8 @@ const NewLCAmendmentPage = () => {
             await Promise.all([
                 utils.lcAmendment.getLcAmendments.invalidate(),
                 utils.lcAmendment.getLcForAmendment.invalidate(),
+                utils.lcMaster.getOrdersForLc.invalidate(),
+                utils.lcMaster.getShipmentDetailsForOrder.invalidate(),
             ]);
             toast.success("LC Amendment added successfully!");
         },

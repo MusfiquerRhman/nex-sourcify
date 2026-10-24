@@ -32,6 +32,7 @@ const EditTnaPlanningPage = ({ params }: ParamsProp) => {
             toast.success("TNA Plan updated successfully!");
             await utils.tnaPlan.getTnaPlans.invalidate();
             await utils.tnaPlan.getTnaPlanById.invalidate({ id: id });
+            await utils.tnaPlan.getOrdersForPlanning.invalidate();
         },
     });
 

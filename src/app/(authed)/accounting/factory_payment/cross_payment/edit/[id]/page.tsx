@@ -36,7 +36,8 @@ const EditCrossPaymentPage = ({ params }: ParamsProp) => {
             await Promise.all([
                 utils.crossPayments.getCrossPaymentById.invalidate({ cross_payment_id: id }),
                 utils.crossPayments.getCrossPaymentList.invalidate(),
-                utils.crossPayments.searchCrossPayments.invalidate()
+                utils.crossPayments.searchCrossPayments.invalidate(),
+                utils.crossPayments.getFactoryInvoicesByBuyer.invalidate(),
             ]);
         }
     });
@@ -141,9 +142,9 @@ const EditCrossPaymentPage = ({ params }: ParamsProp) => {
             />
 
             <MessageBox 
-                message="This Cross payment has be authorized, it can't be updated / deleted" 
+                message="This Cross payment has been authorized." 
                 active={!!isAuthorized} 
-                type="error" 
+                type="primary" 
             />
 
             <div className="w-full flex flex-row justify-end">

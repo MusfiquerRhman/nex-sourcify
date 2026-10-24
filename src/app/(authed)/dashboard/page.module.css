@@ -1,0 +1,181 @@
+.banner {
+    container-type: inline-size;
+    animation: welcomeIn 700ms ease-out both;
+}
+
+.welcomeScript {
+    font-size: clamp(3.25rem, 22cqi, 8.5rem);
+    line-height: 1.15;
+    transform: rotate(-4deg);
+}
+
+.orb {
+    animation: drift 12s ease-in-out infinite alternate;
+}
+
+.orbSecondary {
+    animation-duration: 16s;
+    animation-delay: -6s;
+}
+
+.floatingWords {
+    position: absolute;
+    inset: 0;
+    mask-image: radial-gradient(ellipse at center, transparent 20%, black 75%);
+}
+
+.floatingWord {
+    --word-angle: -8deg;
+    --word-drift-x: 10px;
+    --word-drift-y: -12px;
+
+    position: absolute;
+    color: black;
+    font-size: clamp(1.125rem, 3.5cqi, 2.75rem);
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
+    opacity: 0.11;
+    transform: rotate(var(--word-angle));
+    animation: floatWord 18s ease-in-out infinite alternate;
+}
+
+.floatingWord:nth-child(1) {
+    top: 18%;
+    left: 5%;
+    animation-delay: -4s;
+}
+
+.floatingWord:nth-child(2) {
+    --word-angle: 7deg;
+    --word-drift-x: -8px;
+    --word-drift-y: 10px;
+
+    top: 30%;
+    right: 6%;
+    font-size: clamp(1rem, 2.8cqi, 2rem);
+    opacity: 0.08;
+    animation-duration: 24s;
+    animation-delay: -12s;
+}
+
+.floatingWord:nth-child(3) {
+    --word-angle: 6deg;
+    --word-drift-y: 8px;
+
+    bottom: 25%;
+    left: 7%;
+    font-size: clamp(1rem, 3cqi, 2.25rem);
+    opacity: 0.09;
+    animation-duration: 21s;
+    animation-delay: -8s;
+}
+
+.floatingWord:nth-child(4) {
+    --word-angle: -9deg;
+    --word-drift-x: -12px;
+
+    right: 10%;
+    bottom: 19%;
+    font-size: clamp(1.375rem, 4cqi, 3rem);
+    opacity: 0.12;
+    animation-duration: 20s;
+    animation-delay: -15s;
+}
+
+.floatingWord:nth-child(5) {
+    --word-angle: -5deg;
+    --word-drift-x: -6px;
+    --word-drift-y: 6px;
+
+    top: 9%;
+    right: 22%;
+    font-size: clamp(0.875rem, 2cqi, 1.5rem);
+    filter: blur(0.5px);
+    opacity: 0.07;
+    animation-duration: 28s;
+    animation-delay: -18s;
+}
+
+.floatingWord:nth-child(6) {
+    --word-angle: -4deg;
+    --word-drift-y: -6px;
+
+    bottom: 9%;
+    left: 23%;
+    font-size: clamp(0.875rem, 2.2cqi, 1.625rem);
+    filter: blur(0.35px);
+    opacity: 0.07;
+    animation-duration: 26s;
+    animation-delay: -6s;
+}
+
+@keyframes welcomeIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes drift {
+    from {
+        transform: translate(0, 0);
+    }
+    to {
+        transform: translate(24px, 18px);
+    }
+}
+
+@keyframes floatWord {
+    from {
+        transform: translate3d(0, 0, 0) rotate(var(--word-angle));
+    }
+    to {
+        transform: translate3d(var(--word-drift-x), var(--word-drift-y), 0) rotate(var(--word-angle));
+    }
+}
+
+@container (max-width: 30rem) {
+    .floatingWord:nth-child(1) {
+        top: 7%;
+        left: 5%;
+    }
+
+    .floatingWord:nth-child(2) {
+        top: 28%;
+        right: 3%;
+    }
+
+    .floatingWord:nth-child(3) {
+        bottom: 27%;
+        left: 3%;
+    }
+
+    .floatingWord:nth-child(4) {
+        right: 6%;
+        bottom: 7%;
+    }
+
+    .floatingWord:nth-child(5) {
+        top: 16%;
+        right: 6%;
+    }
+
+    .floatingWord:nth-child(6) {
+        bottom: 16%;
+        left: 5%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .banner,
+    .orb,
+    .floatingWord {
+        animation: none;
+    }
+}

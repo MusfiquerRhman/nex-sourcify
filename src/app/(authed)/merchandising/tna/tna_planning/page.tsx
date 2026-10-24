@@ -38,6 +38,7 @@ const TNAPlanning = () => {
             await Promise.all([
                 utils.tnaPlan.getTnaPlans.invalidate(),
                 utils.tnaPlan.searchTnaPlans.invalidate(),
+                utils.tnaPlan.getOrdersForPlanning.invalidate(),
             ]);
         },
     });

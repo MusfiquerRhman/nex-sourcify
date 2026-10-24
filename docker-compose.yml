@@ -1,6 +1,6 @@
 services:
   app:
-    image: musfiquer/rdl-nexus-test:latest
+    image: musfiquerrhman/nex-soursify:latest
 
     build:
       context: .
@@ -15,5 +15,13 @@ services:
       - NODE_ENV=production
       - PORT=7000
       - TZ=Asia/Dhaka
+      - REDIS_URL=${DOCKER_REDIS_URL:?Set DOCKER_REDIS_URL in .env}
     volumes:
       - ./public:/app/public
+    networks:
+      - nexus-network
+
+networks:
+  nexus-network:
+    external: true
+

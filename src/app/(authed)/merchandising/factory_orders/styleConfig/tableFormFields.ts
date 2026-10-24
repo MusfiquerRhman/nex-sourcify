@@ -9,36 +9,42 @@ export const formFields = (): Field<keyof StyleFormValues>[] => {
             name: "product_type_name",
             label: "Product Type",
             placeholder: "Select product type",
+            type: 'text',
             disabled: true,
         },
         {
             name: "product_name", 
             label: "Product",
             placeholder: "Select product",
+            type: 'text',
             disabled: true,
         },
         {
             name: 'style',
             label: 'Style',
             placeholder: 'Enter style',
+            type: 'text',
             disabled: true,
         },
         {
             name: "fabric_name",
             label: "Fabric",
             placeholder: "Select fabric",
+            type: 'text',
             disabled: true,
         },
         {
             name: "supplier_name",
             label: "Fabric Supplier",
             placeholder: "Select fabric supplier",
+            type: 'text',
             disabled: true,
         },
         {
             name: 'order_quantity',
             label: 'Quantity',
             placeholder: 'Enter quantity',
+            type: 'text',
             disabled: true,
         }
     ]

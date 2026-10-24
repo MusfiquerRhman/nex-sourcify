@@ -63,6 +63,9 @@ const EditLCTransferPage = ({ params }: ParamsProp) => {
             await Promise.all([
                 utils.lcTransfer.getLcTransferById.invalidate({ id }),
                 utils.lcTransfer.getLcTransferList.invalidate(),
+                utils.lcTransfer.getLCDetailsForTransfer.invalidate(),
+                utils.lcTransfer.getLCForLcTransferByUser.invalidate(),
+                utils.lcTransfer.getSalesContractForLcTransfer.invalidate(),
             ]);
         }
     });

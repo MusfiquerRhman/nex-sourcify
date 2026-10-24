@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -22,7 +23,7 @@ export const tnaBaseActionRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newTnaBaseAction = await tx.tna_base_actions.create({
                         data: {
                             buyer_id: input.buyer_id,
@@ -66,7 +67,7 @@ export const tnaBaseActionRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedTnaBaseAction = await tx.tna_base_actions.update({
                         where: { id: input.id },
                         data: {
@@ -230,7 +231,7 @@ export const tnaBaseActionRouter = createTRPCRouter({
             }
 
             try {
-                await ctx.db.$transaction(async (tx) => {
+                await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const deletedTnaBaseAction = await tx.tna_base_actions.delete({
                         where: { id: input.id },
                     });

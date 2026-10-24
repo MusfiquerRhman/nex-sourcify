@@ -24,6 +24,7 @@ export { default as Accordion } from "./molecules/Accordion";
 export { default as Portal } from "./molecules/portal";
 export { default as FormSelect } from "./molecules/FormSelect";
 export { default as MessageBox } from "./molecules/MessageBox"
+export { default as Filter } from "./molecules/Filter";
 
 // organisms
 export { default as GenericTableRow } from "./organisms/table/GenericTableRow";
@@ -31,6 +32,8 @@ export { default as TableFooter } from "./organisms/table/TableFooter";
 export { default as SideBar } from './organisms/sidebar/SideBar'
 export { default as MultiSelect } from "./organisms/MultiSelect";
 export { default as GenericFormTableRow } from "./organisms/table/GenericFormTableRow";
+export { default as ScrollToTopBottom } from "./organisms/ScrollToTopBottom";
+export { default as TopBar } from "./organisms/topBar";
 
 // templates
 export { default as SideBarWrapper } from "./templates/SidebarWrapper";
@@ -38,3 +41,4 @@ export { default as Wrapper } from "./templates/Wrapper";
 export { default as Form } from "./templates/Form";
 export { default as Table } from "./templates/Table";
 export { default as Popup } from "./templates/Popup";
+export { default as ProtectedRoute } from './templates/ProtectedRoutes';

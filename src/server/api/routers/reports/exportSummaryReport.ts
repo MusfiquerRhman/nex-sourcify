@@ -134,7 +134,7 @@ export const exportSummaryReportRouter = createTRPCRouter({
                             INNER JOIN lc_orders AS LCO ON LCO.lc_master_id = LC.id
                             INNER JOIN lc_shipments AS LCS ON LCS.lc_order_id = LCO.id
                             INNER JOIN ORDER_DETAILS AS OD ON OD.SHIPMENT_ID = LCS.shipment_details_id
-                            LEFT JOIN EXFACTORY_DETAILS AS ED ON ED.SHIPMENT_ID = LCS.shipment_details_id
+                            INNER JOIN EXFACTORY_DETAILS AS ED ON ED.SHIPMENT_ID = LCS.shipment_details_id
                             LEFT JOIN FACTORY_FDD AS FF ON FF.LC_ID = LC.ID
                             LEFT JOIN PROCEED_VALUE AS PV ON PV.lc_id = LC.ID
                         WHERE ${dateFilter} 
@@ -226,7 +226,7 @@ export const exportSummaryReportRouter = createTRPCRouter({
                             INNER JOIN buyer_orders AS BO ON BO.id = SCD.order_id
                             INNER JOIN buyers AS B ON B.id = SC.buyer_id
                             INNER JOIN ORDER_DETAILS AS OD ON OD.ORDER_ID = SCD.order_id
-                            LEFT JOIN EXFACTORY_DETAILS AS ED ON ED.ORDER_ID = SCD.order_id
+                            INNER JOIN EXFACTORY_DETAILS AS ED ON ED.ORDER_ID = SCD.order_id
                             LEFT JOIN FACTORY_FDD AS FF ON FF.SC_ID = SC.ID
                             LEFT JOIN PROCEED_VALUE AS PV ON PV.SC_ID = SC.ID
                             ${(input.buyerIds ?? []).length > 0 ? Prisma.sql`WHERE` : Prisma.empty} ${buyerFilter}
@@ -278,7 +278,6 @@ export const exportSummaryReportRouter = createTRPCRouter({
                 return {table, totals};
             }
             catch (error) {
-                console.log(error);
                 await logError(error, ctx, input);
                 handlePrismaError(error);
             }
@@ -313,7 +312,10 @@ export const exportSummaryReportRouter = createTRPCRouter({
                             id: true,
                             lc_no: true
                         }
-                    }).then(results => results.map(item => ({ id: item.id, sc_lc_no: item.lc_no })))
+                    }).then(results => results.map(item => ({ 
+                        id: item.id, 
+                        sc_lc_no: item.lc_no 
+                    })))
                 }
                 else {
                     scLcList = await ctx.db.sales_contracts.findMany({
@@ -326,7 +328,10 @@ export const exportSummaryReportRouter = createTRPCRouter({
                             id: true,
                             sales_contract_no: true
                         }
-                    }).then(results => results.map(item => ({ id: item.id, sc_lc_no: item.sales_contract_no})))
+                    }).then(results => results.map(item => ({ 
+                        id: item.id, 
+                        sc_lc_no: item.sales_contract_no
+                    })))
                 }
 
                 return scLcList;

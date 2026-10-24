@@ -14,39 +14,37 @@ type TextFieldProps = React.InputHTMLAttributes<HTMLInputElement> & {
 	disabled?: boolean;
 };
 
-const Toggle = React.forwardRef<HTMLInputElement, TextFieldProps>(
-	(props, ref) => {
-		const { label, checked, name, disabled, ...rest } = props;
+const Toggle = React.forwardRef<HTMLInputElement, TextFieldProps>((props, ref) => {
+	const { label, checked, name, disabled, ...rest } = props;
 
-		return (
-			<div className="flex h-full w-full flex-row items-center gap-4 pt-5">
-				<span className="text-sm font-medium text-gray-900">{label}</span>
-				<label className="relative inline-flex cursor-pointer items-center">
-					<input
-						type="checkbox"
-						ref={ref}
-						readOnly={disabled}
-						name={name ?? toInputName(label)}
-						className="sr-only"
-						{...rest}
+	return (
+		<div className="flex h-full w-full flex-row items-center justify-between gap-4 rounded-md border border-primary-light bg-white px-4 py-3">
+			<span className="text-sm font-medium text-primary-dark">{label}</span>
+			<label className="relative inline-flex cursor-pointer items-center">
+				<input
+					type="checkbox"
+					ref={ref}
+					readOnly={disabled}
+					name={name ?? toInputName(label)}
+					className="peer sr-only"
+					{...rest}
+				/>
+				<div
+					className={clsx(
+						"relative h-6 w-11 shrink-0 rounded-full transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary",
+						checked ? "bg-linear-to-r from-primary to-secondary" : "bg-gray-300",
+					)}
+				>
+					<motion.div
+						className="absolute top-[2px] left-[2px] h-5 w-5 rounded-full bg-white"
+						animate={{ x: checked ? 20 : 0 }}
+						transition={{ type: "tween", duration: 0.25, ease: "easeInOut" }}
 					/>
-					<div
-						className={clsx(
-							"relative h-6 w-11 rounded-full transition-colors",
-							checked ? "bg-blue-600" : "bg-gray-300",
-						)}
-					>
-						<motion.div
-							className="absolute top-[2px] left-[2px] h-5 w-5 rounded-full bg-white"
-							animate={{ x: checked ? 20 : 0 }}
-							transition={{ type: "tween", duration: 0.25, ease: "easeInOut" }}
-						/>
-					</div>
-				</label>
-			</div>
-		);
-	},
-);
+				</div>
+			</label>
+		</div>
+	);
+});
 
 Toggle.displayName = "Toggle";
 

@@ -45,8 +45,11 @@ const EditCommissionDistributionPage = ({ params }: ParamsProp) => {
         onSuccess: async () => {
             setError(null);
             toast.success("Commission Distribution updated successfully!");
-            await utils.commissionDistribution.getCommissionDistribution.invalidate();
-            await utils.commissionDistribution.getCommissionDistributionById.invalidate({ id: id });
+            await Promise.all([
+                utils.commissionDistribution.getOrderIdForCommissionDistribution.invalidate(),
+                utils.commissionDistribution.getCommissionDistribution.invalidate(),
+                utils.commissionDistribution.getCommissionDistributionById.invalidate({ id: id })
+            ]);
         },
     });
 
@@ -150,12 +153,14 @@ const EditCommissionDistributionPage = ({ params }: ParamsProp) => {
                 error={error}
                 control={control}
                 disabled={!can_update || isAuthorized || isFactoryOrderUnauthorized || isSalesContractApproved}
+                // disabled={!can_update || isAuthorized || isSalesContractApproved}
             />
 
             <CommissionDetails 
                 methods={methods}
                 validationError={validationError ?? {}}
                 disabled={!can_update || isAuthorized || isFactoryOrderUnauthorized || isSalesContractApproved}
+                // disabled={!can_update || isAuthorized || isSalesContractApproved}
              />
 
             <MessageBox 
@@ -165,7 +170,7 @@ const EditCommissionDistributionPage = ({ params }: ParamsProp) => {
             />
 
             <MessageBox 
-                message="The associated factory order is unauthorized, the following commission distribution can't be updated / authorized / unauthorized." 
+                message="The associated factory order is unauthorized, the following commission distribution can't be updated / authorized." 
                 active={!!isFactoryOrderUnauthorized} 
                 type="error" 
             />
@@ -181,6 +186,7 @@ const EditCommissionDistributionPage = ({ params }: ParamsProp) => {
                     onClick={() => onSubmitAll()}
                     label={"Update Commission Distribution"} 
                     className="text-lg tracking-wide mt-6 max-w-80 m-8"
+                    // disabled={isLoading || isLoadingSubmit || isAuthorized || !can_update || isSalesContractApproved}
                     disabled={isLoading || isLoadingSubmit || isAuthorized || !can_update || isFactoryOrderUnauthorized || isSalesContractApproved}
                 />
             </div>
@@ -194,7 +200,7 @@ const EditCommissionDistributionPage = ({ params }: ParamsProp) => {
                             onClick={() => onSetAuthorization(false)}
                             label="Unauthorize Commission Distribution"
                             className="text-lg tracking-wide mt-6 max-w-80"
-                            disabled={!canAuthorize || isFactoryOrderUnauthorized || isSalesContractApproved}
+                            disabled={!canAuthorize || isSalesContractApproved}
                         />
                     </div>
                 ) : (
@@ -205,6 +211,7 @@ const EditCommissionDistributionPage = ({ params }: ParamsProp) => {
                             onClick={() => onSetAuthorization(true)}
                             label="Authorize Commission Distribution"
                             className="text-lg tracking-wide mt-6 max-w-80"
+                            // disabled={!canAuthorize || isSalesContractApproved}
                             disabled={!canAuthorize || isFactoryOrderUnauthorized || isSalesContractApproved}
                         />
                     </div>

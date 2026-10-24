@@ -14,22 +14,14 @@ export const commissionDistributionDetails = z.object({
     commission_value: z.string().optional(),
     margin_per_piece: z.string().optional(),
     commission_percentage: z.string().optional(),
-    dhaka_commission_percentage: z.number()
-        .gt(-0.001, "Dhaka commission percentage must be non-negative")
-        .max(100, "Dhaka commission percentage cannot exceed 100"),
+    dhaka_commission_percentage: z.number().max(100, "Dhaka commission percentage cannot exceed 100"),
     dhaka_commission_amount: z.string().optional(),
-    overseas_commission_percentage: z.number()
-        .min(0, "Overseas commission percentage cannot be negative")
-        .max(100, "Overseas commission percentage cannot exceed 100"),
+    overseas_commission_percentage: z.number().max(100, "Overseas commission percentage cannot exceed 100"),
     overseas_commission_amount: z.string().optional(),
-    others_commission_percentage: z.number()
-        .min(0, "Others commission percentage cannot be negative")
-        .max(100, "Others commission percentage cannot exceed 100"),
+    others_commission_percentage: z.number().max(100, "Others commission percentage cannot exceed 100"),
     others_commission_amount: z.string().optional(),
 }).superRefine((data, ctx) => {
-    const total = data.dhaka_commission_percentage +
-        (data.overseas_commission_percentage ?? 0) +
-        (data.others_commission_percentage ?? 0);
+    const total = data.dhaka_commission_percentage + (data.overseas_commission_percentage ?? 0) + (data.others_commission_percentage ?? 0);
     
     const commissionPercentage = parseFloat(data.commission_percentage ?? "0");
 

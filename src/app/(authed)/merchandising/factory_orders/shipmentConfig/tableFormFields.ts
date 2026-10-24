@@ -9,6 +9,7 @@ export const formFields = (canViewTransferRate: Boolean, disabled: boolean, hasP
             name: 'buyer_po',
             label: 'Buyer PO',
             placeholder: 'Enter buyer PO',
+            type: 'text',
             disabled: true,
         },
         {
@@ -23,35 +24,41 @@ export const formFields = (canViewTransferRate: Boolean, disabled: boolean, hasP
             name: 'etd_date',
             label: 'ETD Date',
             placeholder: 'Select ETD date',
+            type: 'text',
             disabled: true,
         },
         {
             name: 'handover_date',
             label: 'Handover Date',
+            type: 'text',
             placeholder: 'Select handover date',
             disabled: true,
         },
         {
             name: 'destination_name',
             label: 'Destination Port',
+            type: 'text',
             placeholder: 'Select destination port',
             disabled: true,
         },
         {
             name: 'shipment_mode',
             label: 'Shipment Mode',
+            type: 'text',
             placeholder: 'Select shipment mode',
             disabled: true,
         },
         {
             name: 'payment_term',
             label: 'Payment Term',
+            type: 'text',
             placeholder: 'Enter payment term',
             disabled: true,
         },
         {
             name: 'size_name',
             label: 'Size Range',
+            type: 'text',
             placeholder: 'Select size range',
             disabled: true,
         },
@@ -64,6 +71,7 @@ export const formFields = (canViewTransferRate: Boolean, disabled: boolean, hasP
         {
             name: 'lot_quantity',
             label: 'Quantity',
+            type: 'text',
             placeholder: 'Enter quantity',
             disabled: true,
         },
@@ -78,6 +86,7 @@ export const formFields = (canViewTransferRate: Boolean, disabled: boolean, hasP
         {
             name: 'factory_value',
             label: 'Factory Value',
+            type: 'text',
             placeholder: 'Factory Value',
             disabled: true,
         },
@@ -91,6 +100,7 @@ export const formFields = (canViewTransferRate: Boolean, disabled: boolean, hasP
         {
             name: 'transfer_value',
             label: 'Transfer Value',
+            type: 'text',
             placeholder: 'Transfer Value',
             disabled: true,
         },

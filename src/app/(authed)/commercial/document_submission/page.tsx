@@ -34,6 +34,9 @@ const DocumentSubmissionPage = () => {
             await Promise.all([
                 utils.documentSubmission.getDocumentSubmission.invalidate(),
                 utils.documentSubmission.searchDocumentSubmissions.invalidate(),
+                utils.documentSubmission.getScLcForDocumentSubmission.invalidate(),
+                utils.documentSubmission.getRdlInvoiceDetails.invalidate(),
+                utils.documentSubmission.getRdlInvoiceForDocumentSubmission.invalidate(),
             ]);
         },
     });
@@ -53,7 +56,7 @@ const DocumentSubmissionPage = () => {
                 subSectionLeft={
                     <SearchField
                         placeholder="Search Document Submissions..."
-                        infoText="Document Submission No, Buyer Name, Payment Term, Invoice No, Factory Invoice No"
+                        infoText="Document Submission No, Buyer Name, Payment Term, NexSourcify Invoice No, Factory Invoice No"
                         handleSearchChange={handleSearchChange}
                     />
                 }

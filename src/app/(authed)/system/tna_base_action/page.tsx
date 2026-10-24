@@ -30,7 +30,7 @@ const BuyerWiseTNAActions = () => {
         { enabled: debouncedSearch.length > 0 }
     );
     
-    const editURL = '/maintenance/tna_base_action/edit/';
+    const editURL = '/system/tna_base_action/edit/';
 
     const deleteMutation = api.tnaBaseAction.deleteTnaBaseAction.useMutation({
         onSuccess: async () => {
@@ -68,7 +68,7 @@ const BuyerWiseTNAActions = () => {
                                 variant="secondary"
                                 label="Add New TNA Action"
                                 leftIcon={plusIcon}
-                                onClick={() => router.push('/maintenance/tna_base_action/new')}
+                                onClick={() => router.push('/system/tna_base_action/new')}
                             />
                         </div>
                     ) : null

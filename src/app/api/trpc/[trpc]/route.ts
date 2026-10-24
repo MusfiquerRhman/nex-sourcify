@@ -22,7 +22,6 @@ const createContext = async (req: NextRequest) => {
             userAgent: req.headers.get("user-agent"),
             referer: req.headers.get("referer"),
             origin: req.headers.get("origin"),
-            startTime: performance.now(),
         },
     });
 };

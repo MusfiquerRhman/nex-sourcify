@@ -1,30 +1,20 @@
 'use client';
 
-import { Button, Form, Info, SearchField, Table, Wrapper } from "~/components";
-import React, { useCallback, useEffect, useState } from "react";
+import { Form, SearchField, Table, Wrapper } from "~/components";
+import React, { useCallback, useState } from "react";
 import { api } from "~/trpc/react";
-import { toast } from 'sonner';
-import { parseTRPCError } from "~/utils/parseTRPCError";
 import { useNavigationStore, usePermissionStore } from "~/store";
 import { useDebouncedValue, useModulePath, useTablePagination } from "~/hooks";
-// import OrderDetails from "../../components/orderComponents/OrderDetails";
-import type { shipment_modes } from "@prisma/client";
 import { usePendingExFactoryForm } from "./config/usePendingExFactoryForm";
 import { skipToken } from "@tanstack/react-query";
 import { tableHeaders } from "./config/columns";
-
 
 const PendingExFactories = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const { methods, formFields, validationError, control } = usePendingExFactoryForm();
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
     const { page, limit, nextPage, prevPage, setPage } = useTablePagination();
-
-    // TRPC utils    
-    const utils = api.useUtils();
 
     // Debounced search term
     const debouncedSearch = useDebouncedValue(searchTerm);
@@ -70,6 +60,18 @@ const PendingExFactories = () => {
 
     const searchTableData = toTableData(searchQuery?.results ?? []);
     const searchCount = searchQuery?.count ?? 0;
+    const activeTableData = debouncedSearch.length > 0 ? searchTableData : tableData;
+
+    const getAddURL = (row: Record<string, unknown>) => {
+        const params = new URLSearchParams({
+            order_id: String(row.order_id ?? ''),
+            buyer_id: String(row.buyer_id ?? ''),
+            factory_id: String(row.factory_id ?? ''),
+            payment_term_id: String(row.payment_term_id ?? ''),
+        }).toString();
+
+        return `/merchandising/ex_factory/ex_factories/new/?${params}`;
+    };
 
     const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
         setPage(0); 
@@ -82,9 +84,7 @@ const PendingExFactories = () => {
                 fields={formFields} 
                 buttonLabel="Add New Ex Factory" 
                 register={methods.register}
-                isLoading={isLoading}
                 validationError={validationError ?? {}}
-                error={error}
                 control={control}
             />
 
@@ -98,12 +98,12 @@ const PendingExFactories = () => {
 
            <div className="w-full">
                 <Table
-                    data={debouncedSearch.length > 0 ? searchTableData : tableData}
-                    isLoading={isLoading || isSearchLoading || isPendingExFactoriesLoading}
+                    data={activeTableData}
+                    isLoading={isSearchLoading || isPendingExFactoriesLoading}
                     columns={tableHeaders}
                     nextPage={nextPage}
                     prevPage={prevPage}
-                    total={total || searchCount}
+                    total={debouncedSearch.length > 0 ? searchCount : total}
                     page={page}
                     limit={limit}
                     editURL={''}
@@ -111,6 +111,8 @@ const PendingExFactories = () => {
                     allowEdit={false}
                     allowPrint={false}
                     view={!can_view}
+                    allowAdd={true}
+                    addURL={getAddURL}
                 />
             </div>
         </Wrapper>

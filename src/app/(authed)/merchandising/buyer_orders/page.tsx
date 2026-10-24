@@ -1,15 +1,17 @@
 'use client';
 import { useRouter } from "next/navigation";
 import { plusIcon } from "~/assets";
-import { Button, SearchField, Table, Wrapper, Popup } from "~/components";
+import { Button, SearchField, Table, Wrapper, Popup, Filter } from "~/components";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { tableHeaders } from "./config/columns";
 import { useSearchablePagination, useModulePermissions, useDeleteConfirmation } from "~/hooks";
+import { useState } from "react";
 
 const BuyerOrders = () => {
     const router = useRouter();
     const utils = api.useUtils();
+    const [filter, setFilter] = useState(-1);
 
     const { page, limit, debouncedSearch, handleSearchChange, nextPage, prevPage } = useSearchablePagination();
 
@@ -17,6 +19,7 @@ const BuyerOrders = () => {
 
     // Fetch paginated data
     const {data: buyerOrders, isLoading} = api.buyerOrders.getBuyerOrders.useQuery({
+        filter: filter,
         limit,
         offset: page * limit,
     });
@@ -27,7 +30,7 @@ const BuyerOrders = () => {
     // Search query (enabled only when there's a search term)
     const searchQuery = api.buyerOrders.searchBuyerOrders.useQuery(
         { query: debouncedSearch, limit, offset: page * limit },
-        { enabled: debouncedSearch.length > 0 }
+        { enabled: debouncedSearch.length > 0 },
     );
 
     const editURL = '/merchandising/buyer_orders/edit/';
@@ -58,7 +61,7 @@ const BuyerOrders = () => {
                 subSectionLeft={
                     <SearchField
                         placeholder="Search Buyer Orders..."
-                        infoText="Buyer Name, Order Reference, Style, PO, Department, Season, and Team name."
+                        infoText="Search Buyer Name, Order Reference, Style, PO, Department, Season, and Team name."
                         handleSearchChange={handleSearchChange}
                     />
                 }
@@ -73,6 +76,19 @@ const BuyerOrders = () => {
                             />
                         </div>
                     ) : null
+                }
+                filters={
+                    <Filter 
+                        filter={filter}
+                        setFilter={setFilter}
+                        label='Approval Status'
+                        options={[
+                            {label: 'ALL', value: -1}, 
+                            {label: 'APPROVED', value: 2}, 
+                            {label: 'PENDING', value: 1}, 
+                            {label: 'INCOMPLETE', value: 0}, 
+                        ]}
+                    />
                 }
             >
                 <div className="w-full">

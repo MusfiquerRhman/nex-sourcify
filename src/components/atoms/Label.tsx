@@ -13,10 +13,10 @@ const Label = ({ label, htmlFor, isErrored = false, optional, className }: Label
 	const variantClasses = {
 		error: 'text-red',
 		default: 'text-inherit'
-	}[isErrored ? 'error' : 'default']
+	}[isErrored ? 'error' : 'default'];
 
 	return (
-		<label htmlFor={htmlFor} className={clsx("py-0.5", variantClasses, className)}>
+		<label htmlFor={htmlFor} className={clsx("nex-field-label py-0.5", variantClasses, className)}>
 			{label} {!optional ? "*" : ''}
 		</label>
 	);

@@ -24,7 +24,8 @@ const rowStyle = {
 type FlatRow =
     | { type: "ref"; ref_no: string }
     | { type: "shipment"; data: any }
-    | { type: "subtotal"; results: any };
+    | { type: "subtotal"; results: any }
+    | { type: "grandtotal"; results: any };
 
 const TableHeaders = ({ tableColumns }: { tableColumns: TableColumns }) => {
     const headerStyles = useMemo(() =>
@@ -52,24 +53,25 @@ const TableHeaders = ({ tableColumns }: { tableColumns: TableColumns }) => {
 
 interface SalesContractCommissionTableProps {
     data: GetPDFDataOutput;
+    grandTotal?: any;
     amendment_no?: number;
     amendment_date?: Date;
 }
 
-const SalesContractCommissionTable = ({data, amendment_no, amendment_date}: SalesContractCommissionTableProps) => {
+const SalesContractCommissionTable = ({data, grandTotal, amendment_no, amendment_date}: SalesContractCommissionTableProps) => {
     const tableColumns = useMemo(() => [
         { key: 'style', label: 'Style', width: 123.3 },
         { key: 'buyer_po', label: 'PO', width: 123.3 },
         { key: 'quantity', label: 'Qty/Unit', width: 83.3 },
-        { key: 'fob_rate', label: 'FOB', width: 40.9 },
-        { key: 'rdl_value', label: 'Value', width: 83.3 },
+        { key: 'fob_rate', label: 'NexSourcify FOB', width: 40.9 },
+        { key: 'rdl_value', label: 'NexSourcify Value', width: 83.3 },
         { key: 'factory_rate', label: 'Fac FOB', width: 40.9 },
         { key: 'factory_value', label: 'Factory Value', width: 83.3 },
         { key: 'commissionValue', label: 'Commission Value', width: 83.3 },
         { key: 'commissionPercentage', label: 'Commission Percentage', width: 83.3 },
         { key: 'overseasCommission', label: 'Overseas Commission', width: 83.3 },
         { key: 'othersCommission', label: 'Other Commission', width: 83.3 },
-        { key: 'dhakaCommission', label: 'Commission', width: 83.3 },
+        { key: 'dhakaCommission', label: 'NexSourcify Commission', width: 83.3 },
     ], []);
 
     const useColumnStyles = (columns: any[]) => {
@@ -82,7 +84,7 @@ const SalesContractCommissionTable = ({data, amendment_no, amendment_date}: Sale
         ), [columns]);
     };
 
-    const useFlattenedRows = (orderData: GetPDFDataOutput) => {
+    const useFlattenedRows = (orderData: GetPDFDataOutput, total: any) => {
         return useMemo(() => {
             const rows: FlatRow[] = [];
 
@@ -122,12 +124,19 @@ const SalesContractCommissionTable = ({data, amendment_no, amendment_date}: Sale
                 });
             }
 
+            if (total) {
+                rows.push({
+                    type: "grandtotal",
+                    results: total,
+                });
+            }
+
             return rows;
-        }, [orderData]);
+        }, [orderData, total]);
     };
     
     const columnStyles = useColumnStyles(tableColumns);
-    const flattenedRows = useFlattenedRows(data);
+    const flattenedRows = useFlattenedRows(data, grandTotal);
 
     return (
         <View style={{...styles.tableContainer, marginTop: 10}}>
@@ -173,9 +182,10 @@ const SalesContractCommissionTable = ({data, amendment_no, amendment_date}: Sale
                         <View key={`ship-${index}`} style={styles.row} wrap={false}>
                         {tableColumns.map((column, i) => (
                             <View key={column.key} style={{...columnStyles[i], flexWrap: "wrap"}}>
-                                {row.data[column.key]?.split("").map((s: string, idx: number) => {
-                                    return <Text key={idx}>{s}</Text>
-                                })}
+                                {/* {row.data[column.key]} */}
+                                <Text>
+                                    {String(row.data[column.key] ?? '')}
+                                </Text>
                             </View>
                         ))}
                         </View>
@@ -192,6 +202,61 @@ const SalesContractCommissionTable = ({data, amendment_no, amendment_date}: Sale
                         >
                             <View style={{ ...styles.cell, padding: 4, width: 246.6 }}>
                                 <Text>SUB TOTAL</Text>
+                            </View>
+
+                            <View style={{ ...styles.cell, padding: 4, width: 83.3 }}>
+                                <Text>{row.results.totalQuantity}</Text>
+                            </View>
+
+                            <View style={{ ...styles.cell, padding: 4, width: 40.9 }}>
+                                <Text />
+                            </View>
+
+                            <View style={{ ...styles.cell, padding: 4, width: 83.3 }}>
+                                <Text>{row.results.totalRdlValue}</Text>
+                            </View>
+
+                            <View style={{ ...styles.cell, padding: 4, width: 40.9 }}>
+                                <Text />
+                            </View>
+
+                            <View style={{ ...styles.cell, padding: 4, width: 83.3 }}>
+                                <Text>{row.results.totalFactoryValue}</Text>
+                            </View>
+
+                            <View style={{ ...styles.cell, padding: 4, width: 83.3 }}>
+                                <Text>{row.results.totalCommissionValue}</Text>
+                            </View>
+
+                            <View style={{ ...styles.cell, padding: 4, width: 83.3 }}>
+                                <Text>{row.results.commissionPercentage}</Text>
+                            </View>
+
+                            <View style={{ ...styles.cell, padding: 4, width: 83.3 }}>
+                                <Text>{`${row.results.totalOverseasCommission} (${row.results.totalOverseasCommissionPercentage})`}</Text>
+                            </View>
+
+                            <View style={{ ...styles.cell, padding: 4, width: 83.3 }}>
+                                <Text>{`${row.results.totalOthersCommission} (${row.results.totalOthersCommissionPercentage})`}</Text>
+                            </View>
+
+                            <View style={{ ...styles.cell, padding: 4, width: 83.3 }}>
+                                <Text>{`${row.results.totalDhakaCommission} (${row.results.totalDhakaCommissionPercentage})`}</Text>
+                            </View>
+                        </View>
+                    );
+                }
+
+                // GRAND TOTAL ROW
+                else if (row.type === "grandtotal") {
+                    return (
+                        <View
+                            key={`grand-${index}`}
+                            style={[styles.row, { fontWeight: "bold", fontFamily: "Amasis" }]}
+                            wrap={false}
+                        >
+                            <View style={{ ...styles.cell, padding: 4, width: 246.6 }}>
+                                <Text>GRAND TOTAL</Text>
                             </View>
 
                             <View style={{ ...styles.cell, padding: 4, width: 83.3 }}>

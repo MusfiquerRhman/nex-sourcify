@@ -27,7 +27,8 @@ const NewDebitNotePage = () => {
             toast.success("Debit Note added successfully!");
             await Promise.all([
                 utils.debitNotes.getAllDebitNotes.invalidate(),
-                utils.debitNotes.searchDebitNotes.invalidate()
+                utils.debitNotes.searchDebitNotes.invalidate(),
+                utils.debitNotes.getShipmentDetailsForDebitNote.invalidate(),
             ]);
         }
     });

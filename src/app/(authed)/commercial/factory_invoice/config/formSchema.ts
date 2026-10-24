@@ -31,7 +31,7 @@ export const FactoryInvoiceFormSchema = z.object({
     consignee_ids: z.array(z.number()).optional(),
     notifyParties: z.array(z.number()).optional(),
     port_of_loading: z.number().optional(),
-    shipment_mode: z.string().optional(),
+    shipment_mode: z.string().min(1, 'Shipment Mode is Required'),
     discount: z.preprocess(
         (val) => {
             if (val === "" || val === null || val === undefined) return undefined;
@@ -43,7 +43,7 @@ export const FactoryInvoiceFormSchema = z.object({
     invoice_quantity: z.string().optional(),
     invoice_value: z.string().optional(),
     total_value: z.string().optional(),
-    details: z.array(FactoryInvoiceDetails).optional(),
+    details: z.array(FactoryInvoiceDetails).min(1, "At least one detail is required"),
 });
 
 export type FactoryInvoiceFormValues = z.infer<typeof FactoryInvoiceFormSchema>;

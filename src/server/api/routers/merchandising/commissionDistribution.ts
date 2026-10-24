@@ -1,17 +1,20 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
 import { m } from "~/utils/moduleMap";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { actions } from "@prisma/client";
+import { actions, Prisma } from "@prisma/client";
 import { currencyFormatter, quantityFormatter } from "~/utils/localNumberStrings";
 import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID } from "~/utils/config";
 import type { CommissionDistribution, CommissionDistributionDetail, PDFHeader, PDFDetail } from './_types/commissionDestribution';
+import { notificationQueue } from "~/server/queues/notification.queue";
 
 export const commissionDistributionRouter = createTRPCRouter({
     getCommissionDistribution: protectedProcedure
         .input(
             z.object({
+                filter: z.number().min(-1).default(-1),  
                 limit: z.number().optional(),
                 offset: z.number().optional(),
             })
@@ -53,6 +56,9 @@ export const commissionDistributionRouter = createTRPCRouter({
                                 AND TM.USER_ID = ${ctx.user.id}
                             )
                         )
+                        ${input.filter === -1 
+                            ? Prisma.empty
+                            : Prisma.sql`AND CD.approval_status = ${input.filter === 0}`}
                     )
                     SELECT 
                         id,
@@ -175,7 +181,7 @@ export const commissionDistributionRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const isApproved = await tx.commission_distributions.findUnique({
                         where: { id: input.id },
                         select: { approval_status: true },
@@ -224,6 +230,20 @@ export const commissionDistributionRouter = createTRPCRouter({
                             action_by: ctx.user.id,
                         }
                     });
+
+                    await tx.early_settlement_details.deleteMany({
+                        where: {
+                            early_settlement: {
+                                order_id: deletedCommissionDistribution.order_id
+                            }
+                        }
+                    });
+
+                    await tx.early_settlement.deleteMany({
+                        where: {
+                            order_id: deletedCommissionDistribution.order_id
+                        }
+                    })
                 }, {timeout: 30000})
             }
             catch (error) {
@@ -284,6 +304,7 @@ export const commissionDistributionRouter = createTRPCRouter({
                 return orders;
             }
             catch (error) {
+                await logError(error, ctx);
                 handlePrismaError(error);
             }
         }),
@@ -305,7 +326,7 @@ export const commissionDistributionRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newDistribution = await tx.commission_distributions.create({
                         data: {
                             order_id: input.order_id,
@@ -343,11 +364,9 @@ export const commissionDistributionRouter = createTRPCRouter({
                                 CASE 
                                     WHEN (SD.fob_rate / COALESCE(NULLIF(BO.currency_rate, 0), 1)) = 0 
                                         THEN 0
-                                    ELSE (
-                                        (
+                                    ELSE ((
                                             (SD.fob_rate / COALESCE(NULLIF(BO.currency_rate, 0), 1)) - FSD.factory_rate
-                                        )
-                                        / (SD.fob_rate / COALESCE(NULLIF(BO.currency_rate, 0), 1))
+                                        ) / (SD.fob_rate / COALESCE(NULLIF(BO.currency_rate, 0), 1))
                                     ) * 100 - COALESCE(CP.overseas_percentage, 0) - COALESCE(CP.other_percentage, 0)
                                 END
                             FROM commission_distributions AS CD
@@ -360,14 +379,30 @@ export const commissionDistributionRouter = createTRPCRouter({
                             ON CONFLICT (shipment_details_id)
                                 DO UPDATE SET dhaka_commission_percentage = EXCLUDED.dhaka_commission_percentage;
                         `,
-                        
-                        await tx.early_settlement.create({
-                            data: {
-                                order_id: input.order_id,
-                            }
-                        })
                     ]);
+                    
+                    const buyerOrder = await ctx.db.buyer_orders.findUnique({
+                        where: {
+                            id: input.order_id
+                        },
+                        select: {
+                            buyer_id: true
+                        }
+                    });
 
+                    if (buyerOrder?.buyer_id == null) {
+                        throw new TRPCError({
+                            code: "BAD_REQUEST",
+                            message: "Buyer order does not have a valid buyer associated."
+                        });
+                    }
+
+                    await tx.early_settlement.create({
+                        data: {
+                            order_id: input.order_id,
+                            buyer_id: buyerOrder.buyer_id
+                        }
+                    });
 
                     // Generate Early Settlement per order PO
                     await tx.$queryRaw`
@@ -388,6 +423,19 @@ export const commissionDistributionRouter = createTRPCRouter({
                             INNER JOIN early_settlement_percentage AS ESP ON ESP.buyer_id = BO.buyer_id
                         WHERE CD.id = ${newDistribution.id};
                     `;
+
+                    await notificationQueue.add("commission-distribution-submitted", {
+                        commission_distribution_id: newDistribution.id,
+                        approval_status: -1,
+                        action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
+                        level_id: ctx.user.level_id,
+                    }, {
+                        attempts: 5,
+                        backoff: {
+                            type: "exponential",
+                            delay: 1000,
+                        },
+                    });
 
                     return newDistribution;
                 }, {timeout: 30000});
@@ -472,14 +520,7 @@ export const commissionDistributionRouter = createTRPCRouter({
                         INNER JOIN destinations AS D ON D.id = SD.destination_id
                         INNER JOIN buyer_department_sizes AS BDS ON BDS.id = SD.size_id
                         WHERE CD.id = ${input.id}
-                        GROUP BY SD.BUYER_PO, 
-                            CDD.ID, 
-                            OS.STYLE, 
-                            D.NAME, 
-                            BDS.SIZE, 
-                            SD.FOB_RATE, 
-                            BO.CURRENCY_RATE, 
-                            FSD.FACTORY_RATE
+                        GROUP BY SD.BUYER_PO, CDD.ID, OS.STYLE, D.NAME, BDS.SIZE, SD.FOB_RATE, BO.CURRENCY_RATE, FSD.FACTORY_RATE
                     )
                     SELECT
                         DB_ID,
@@ -547,7 +588,7 @@ export const commissionDistributionRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedDistribution =
                         await tx.commission_distributions.update({
                             where: {
@@ -677,19 +718,18 @@ export const commissionDistributionRouter = createTRPCRouter({
                 const userDepartment = ctx.user.department_id;
                 const isAdmin = userLevel === ADMIN_LEVEL_ID && userDepartment === ADMIN_DEPARTMENT_ID;
 
-                const isCommissionDistributionAuthorized = await ctx.db.$queryRaw<{approval_status: boolean}[]>`
+                const isFactoryOrderAuthorized = await ctx.db.$queryRaw<{approval_status: boolean}[]>`
                     SELECT FO.approval_status = 2 AS approval_status FROM commission_distributions AS CD
                         INNER JOIN factory_orders AS FO ON FO.order_id = CD.order_id
                     WHERE CD.id = ${input.id};
                 `;
 
-                if(!isCommissionDistributionAuthorized[0]?.approval_status) {
+                if(!isFactoryOrderAuthorized[0]?.approval_status && input.approval_status === true) {
                     throw new TRPCError({
-                        code: "FORBIDDEN",
+                        code: "BAD_REQUEST",
                         message: "Authorize factory order first.",
                     });
                 }
-
 
                 const can_approve = await ctx.db.$queryRaw<{ can_approve: boolean }[]>`
                     SELECT 
@@ -708,22 +748,36 @@ export const commissionDistributionRouter = createTRPCRouter({
                     });
                 }
 
-                const updatedDistribution = await ctx.db.commission_distributions.update({
-                    where: { id: input.id },
-                    data: {
-                        approval_status: input.approval_status,
-                    }
-                });
+                const updatedDistribution = await transactionWithQueuedHistory(ctx.db, async (tx) => {
+                    const updated = await tx.commission_distributions.update({
+                        where: { id: input.id },
+                        data: { approval_status: input.approval_status },
+                    });
 
-                await ctx.db.commission_distribution_history.create({
-                    data: {
-                        commission_distribution_id: updatedDistribution.id,
-                        order_id: updatedDistribution.order_id,
-                        plan_date: updatedDistribution.plan_date,
-                        approval_status: updatedDistribution.approval_status,
-                        action_type: actions.UPDATE,
-                        action_by: ctx.user.id,
-                    }
+                    await tx.commission_distribution_history.create({
+                        data: {
+                            commission_distribution_id: updated.id,
+                            order_id: updated.order_id,
+                            plan_date: updated.plan_date,
+                            approval_status: updated.approval_status,
+                            action_type: actions.UPDATE,
+                            action_by: ctx.user.id,
+                        },
+                    });
+
+                    await notificationQueue.add("commission-distribution-submitted", {
+                        commission_distribution_id: input.id,
+                        approval_status: input.approval_status ? 1 : 0,
+                        action_by: `${ctx.user.first_name} ${ctx.user.last_name}`
+                    }, {
+                        attempts: 5,
+                        backoff: {
+                            type: "exponential",
+                            delay: 1000,
+                        },
+                    });
+
+                    return updated;
                 });
 
                 return updatedDistribution;
@@ -796,13 +850,7 @@ export const commissionDistributionRouter = createTRPCRouter({
                             JOIN order_styles AS OS ON OS.id = SD.order_style_id
                             JOIN buyer_orders AS BO ON BO.id = OS.order_id
                             JOIN factory_shipment_details AS FSD ON FSD.shipment_detail_id = SD.id
-                        GROUP BY 
-                            SD.id,
-                            OS.style,
-                            SD.buyer_po,
-                            SD.fob_rate,
-                            BO.currency_rate,
-                            FSD.factory_rate
+                        GROUP BY SD.id, OS.style, SD.buyer_po, SD.fob_rate, BO.currency_rate, FSD.factory_rate
                     )
                     SELECT
                         SA.style AS style,

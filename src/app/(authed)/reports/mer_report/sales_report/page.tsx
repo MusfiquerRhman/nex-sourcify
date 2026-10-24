@@ -3,6 +3,7 @@
 import { Button, Form, Wrapper } from "~/components";
 import React from "react";
 import { useSalesReportForm } from "./config/useSalesReportForm";
+import { pdfIcon } from "~/assets";
 
 const SalesReportPage = () => {
 	// Form setup
@@ -49,8 +50,10 @@ const SalesReportPage = () => {
 
 			<div className="w-full flex flex-row justify-end">
 				<Button type="button" 
+					leftIcon={pdfIcon}
 					onClick={() => onSubmitAll()}
 					label={"Generate Sales Report"} 
+					variant="secondary"
 					className="text-lg tracking-wide mt-6 max-w-80 m-8"
 				/>
 			</div>

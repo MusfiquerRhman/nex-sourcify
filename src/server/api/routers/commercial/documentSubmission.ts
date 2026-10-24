@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -165,7 +166,7 @@ export const documentSubmissionRouter = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const documentSubmissionDetails = await tx.document_submissions_details.findMany({
                         where: {
                             document_submissions: {
@@ -262,7 +263,7 @@ export const documentSubmissionRouter = createTRPCRouter({
             term_id: z.number(),
             buyer_id: z.number(),
             submission_date: z.date(),
-            fdbc_no: z.string().optional(),
+            fdbc_no: z.string().min(1, 'FDBC No is mandatory'),
             fdbc_value: z.number().optional(),
             fdbc_date: z.date().optional(),
             lc_sc_id: z.string().optional(),
@@ -304,7 +305,7 @@ export const documentSubmissionRouter = createTRPCRouter({
 
                 const isTT = terms.name.toLowerCase() === 'tt';
 
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newDocumentSubmission = await tx.document_submissions.create({
                         data: {
                             term_id: input.term_id,
@@ -616,12 +617,24 @@ export const documentSubmissionRouter = createTRPCRouter({
             if (!can_delete) {
                 throw new TRPCError({ 
                     code: 'FORBIDDEN', 
-                    message: "You do not have permission to delete Invoices from document submissions." 
+                    message: "You do not have permission to delete NexSourcify Invoices from document submissions." 
                 });
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
+                    const relatedFactoryInvoices = await tx.document_submission_factory_invoices.findMany({
+                        where: {
+                            document_submissions_details_id: input.db_id
+                        }
+                    });
+
+                    await tx.document_submission_factory_invoices.deleteMany({
+                        where: {
+                            document_submissions_details_id: input.db_id
+                        }
+                    });
+
                     const deletedRdlInvoice = await tx.document_submissions_details.delete({
                         where: {
                             id: input.db_id
@@ -639,22 +652,10 @@ export const documentSubmissionRouter = createTRPCRouter({
                         }
                     });
 
-                    const relatedFactoryInvoices = await tx.document_submission_factory_invoices.findMany({
-                        where: {
-                            document_submissions_details_id: input.db_id
-                        }
-                    });
-
-                    await tx.document_submission_factory_invoices.deleteMany({
-                        where: {
-                            document_submissions_details_id: input.db_id
-                        }
-                    });
-
                     await tx.document_submission_factory_invoices_history.createMany({
                         data: relatedFactoryInvoices.map(invoice => ({
                             document_submission_factory_invoices_id: invoice.id,
-                            document_submission_details_id: invoice.document_submissions_details_id,
+                            document_submissions_details_id: invoice.document_submissions_details_id,
                             factory_invoice_id: invoice.factory_invoice_id,
                             action_type: actions.DELETE,
                             action_by: ctx.user.id,
@@ -864,6 +865,7 @@ export const documentSubmissionRouter = createTRPCRouter({
         .input(z.object({
             id: z.string(),
             submission_date: z.date().optional(),
+            fdbc_no: z.string().min(1, 'FDBC No is mandatory'),
             fdbc_value: z.number().optional(),
             awb_no: z.string().optional(),
             awb_date: z.date().optional(),
@@ -890,11 +892,17 @@ export const documentSubmissionRouter = createTRPCRouter({
                     });
                 }
 
-                return await ctx.db.$transaction(async (tx) => {
+                input.rdlInvoices?.forEach((rdlInvoice) => {
+                    console.log("Updating document submission with input:", rdlInvoice.factoryInvoices);
+                })
+
+
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedDocumentSubmission = await tx.document_submissions.update({
                         where: { id: input.id },
                         data: {
                             submission_date: input.submission_date,
+                            fdbc_no: input.fdbc_no,
                             fdbc_value: input.fdbc_value,
                             awb_no: input.awb_no,
                             awb_date: input.awb_date,
@@ -951,6 +959,15 @@ export const documentSubmissionRouter = createTRPCRouter({
                                             await tx.document_submission_factory_invoices.update({
                                                 where: { id: factoryInvoice.db_id },
                                                 data: {
+                                                    factory_fdbc_no: factoryInvoice.factory_fdbc_no,
+                                                }
+                                            });
+                                        }
+                                        else {
+                                            await tx.document_submission_factory_invoices.create({
+                                                data: {
+                                                    document_submissions_details_id: rdlInvoice.db_id!,
+                                                    factory_invoice_id: factoryInvoice.factory_invoice_id,
                                                     factory_fdbc_no: factoryInvoice.factory_fdbc_no,
                                                 }
                                             });

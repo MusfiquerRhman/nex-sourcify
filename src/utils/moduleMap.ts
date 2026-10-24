@@ -83,6 +83,12 @@ enum moduleMap {
     ERROR_LOGS = 87,
     USER_SESSIONS = 88,
     EARLY_SETTLEMENT = 89,
+    COMMISSION_REPORT = 90,
+    ACCOUNTS_REPORTS = 91,
+    LC_TRANSFER_REPORT = 92,
+    CROSS_PAYMENT_REPORT = 93,
+    NOTIFICATIONS = 94,
+    ORDER_CHECKLIST = 58,
 }
 
 export { moduleMap as m };

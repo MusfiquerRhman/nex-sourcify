@@ -26,11 +26,15 @@ export interface ExfactoryShipments {
 
 export interface PendingExFactory {
     order_id: string;
+    buyer_id: string;
     buyer_name: string;
+    factory_id: string;
     factory_name: string;
     order_ref: string;
     style: string;
+    po_id: string;
     po: string;
+    payment_term_id: string;
     exfactory_date: Date;
     total_quantity: string;
     total_delivery_quantity: string;

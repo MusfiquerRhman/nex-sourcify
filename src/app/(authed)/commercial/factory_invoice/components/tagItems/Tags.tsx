@@ -1,13 +1,12 @@
 import { Button, Portal } from "~/components";
 import TagShipmentDetails from "./TagDetails";
 import { tagIcon } from "~/assets";
-import { formatDateForInput } from "~/utils/localDateString";
+import { formatDate } from "~/utils/localDateString";
 import React, { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import type { FactoryInvoiceDetailsFormValues } from "../../config/formSchema";
 import { skipToken } from "@tanstack/react-query";
 import { api } from "~/trpc/react";
-import { toast } from "sonner";
 import type { useFactoryInvoiceForm } from "../../config/useFactoryInvoiceForm";
 import { safeNumber } from "~/utils/numbers";
 
@@ -53,7 +52,7 @@ const Tags = ({ methods, isLoading, disabled }: Props) => {
                 order_no: shipment.order_no,
                 style: shipment.style,
                 po: shipment.po,
-                exfactory_date: formatDateForInput(shipment.exfactory_date),
+                exfactory_date: formatDate(shipment.exfactory_date),
                 destination: shipment.destination,
                 order_quantity: shipment.order_quantity,
                 delivery_quantity: shipment.delivery_quantity,
@@ -69,19 +68,14 @@ const Tags = ({ methods, isLoading, disabled }: Props) => {
 
     const syncUncheckedShipments = () => {
         // IDs of unchecked rows
-        const uncheckedShipmentIds = watchedShipments
-            .filter(shipment => !shipment.checked)
-            .map(shipment => shipment.exfactory_shipment_id);
+        const uncheckedShipmentIds = watchedShipments.filter(shipment => !shipment.checked).map(shipment => shipment.exfactory_shipment_id);
 
         // Current parent details
         const currentDetails = methods.getValues("details") || [];
 
         // Remove unchecked shipments from parent form
         const updatedDetails = currentDetails.filter(
-            detail =>
-                !uncheckedShipmentIds.includes(
-                    detail.exfactory_shipment_id
-                )
+            detail => !uncheckedShipmentIds.includes(detail.exfactory_shipment_id)
         );
 
         methods.setValue("details", updatedDetails);

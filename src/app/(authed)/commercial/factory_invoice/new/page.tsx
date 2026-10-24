@@ -28,13 +28,15 @@ const NewFactoryInvoicePage = () => {
             toast.success("Factory Invoice added successfully!");
             await Promise.all([
                 utils.factoryInvoice.getFactoryInvoiceList.invalidate(),
-                utils.exFactory.checkCommercialProcedure.invalidate()
+                utils.exFactory.checkCommercialProcedure.invalidate(),
+                utils.factoryInvoice.getExfactoryDetailsForShipment.invalidate(),
+                utils.factoryInvoice.getScLcForFactoryInvoice.invalidate(),
             ]);
         }   
     });
 
     // Handle form submission for all fields
-    const onSubmitAll =  handleSubmit(async (factoryInvoiceData) => {
+    const onSubmitAll = handleSubmit(async (factoryInvoiceData) => {
         try {
             setIsLoading(true);
             const payload = {
@@ -68,6 +70,10 @@ const NewFactoryInvoicePage = () => {
         }
         finally {
             setIsLoading(false);
+        }
+    }, () => {
+        if (!methods.getValues("details")?.length) {
+            toast.error("At least one shipment is required");
         }
     });
 

@@ -8,4 +8,5 @@ export type BaseField<ValueKeys extends string> = {
   checked?: boolean;
   disabled?: boolean;
   minDate?: number;
+  freeze?: boolean;
 };

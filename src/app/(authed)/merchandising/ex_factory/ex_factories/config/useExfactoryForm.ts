@@ -7,21 +7,27 @@ import { useFormFields } from "./useFormFields";
 import { formatDateForInput } from "~/utils/localDateString";
 import type { GetExFactoryByIdTypes } from "~/types/merchandisingAPITypes";
 import { api } from "~/trpc/react";
+import { useDecodedUser } from "~/hooks";
 
 type Orders = NonNullable<GetExFactoryByIdTypes['orders']>[number];
 
-export const useExfactoryForm = (initialData?: GetExFactoryByIdTypes) => {
+type PrefillValues = Partial<ExFactoryFormValues['exfactory']>;
+
+export const useExfactoryForm = (
+    initialData?: GetExFactoryByIdTypes,
+    prefillValues?: PrefillValues,
+) => {
     const getDefaultValues = useCallback((): ExFactoryFormValues => {
         if (!initialData) {
             return {
                 exfactory: {
-                    buyer_id: '',
-                    factory_id: '',
+                    buyer_id: String(prefillValues?.buyer_id ?? ''),
+                    factory_id: String(prefillValues?.factory_id ?? ''),
                     exfactory_date: formatDateForInput(new Date()),
                     exfactory_no: '',
                     remarks: "",
-                    payment_type: '',
-                    orders: [],
+                    payment_type: String(prefillValues?.payment_type ?? ''),
+                    orders: prefillValues?.orders ?? [],
                 },
             };
         }
@@ -45,17 +51,19 @@ export const useExfactoryForm = (initialData?: GetExFactoryByIdTypes) => {
                 })) ?? [],
             },
         };
-    }, [initialData]);
+    }, [initialData, prefillValues]);
 
     const isEdit = Boolean(initialData);
 
     // Tolerance state, default to 10% if not fetched, no buyer selected, or error occurs
-    const [tolerance, setTolerance] = useState<number>(10)
+    const [tolerance, setTolerance] = useState<number>(10);
+
+    const { isAdmin } = useDecodedUser();
 
     // Create Zod schema with current tolerance
     const exFactorySchema = useMemo(
-        () => createExFactoryFormSchema(tolerance ?? 0),
-        [tolerance]
+        () => createExFactoryFormSchema(tolerance ?? 0, isAdmin),
+        [tolerance, isAdmin]
     );
 
     // Initialize form with Zod resolver and default values
@@ -91,11 +99,6 @@ export const useExfactoryForm = (initialData?: GetExFactoryByIdTypes) => {
             setTolerance(tolerance_level);
         }
     }, [tolerance_level]);
-
-    // Re-run validation when tolerance changes to ensure shipment quantity checks are updated
-    // useEffect(() => {
-    //     trigger(); 
-    // }, [tolerance, trigger]);
 
     return {
         methods,

@@ -37,10 +37,10 @@ export function useDecodedUser() {
 		void loadUser();
 	}, []);
 
-  useEffect(() => {
-    const isAdmin = safeNumber(user?.department_id) === ADMIN_DEPARTMENT_ID && safeNumber(user?.level_id) === ADMIN_LEVEL_ID; 
-    setIsAdmin(isAdmin);
-  }, [user]);
+	useEffect(() => {
+		const isAdmin = safeNumber(user?.department_id) === ADMIN_DEPARTMENT_ID && safeNumber(user?.level_id) === ADMIN_LEVEL_ID; 
+		setIsAdmin(isAdmin);
+	}, [user]);
 
   return { user, setUser, isAdmin};
 }

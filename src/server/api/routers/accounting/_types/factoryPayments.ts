@@ -11,6 +11,7 @@ export interface FactoryPaymentResult extends FactoryPayments {
     id: string;
     paid_count: number;
     pending_count: number;
+    has_cross_payment: boolean;
     total_count: bigint;
 }
 

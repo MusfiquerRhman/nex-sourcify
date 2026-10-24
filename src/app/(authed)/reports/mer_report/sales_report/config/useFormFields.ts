@@ -131,7 +131,7 @@ export const useFormFields = ({buyer_ids, brand_ids}: PropsType): Field<keyof Sa
         },
         {
             name: 'rdl_value',
-            label: 'Value',
+            label: 'NexSourcify Value',
             type: "checkbox",
             optional: true
         },

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Heading, Loader, TableBody, TableHead, TableHeadCells, TableWrapper, GenericFormTableRow } from "~/components";
-import { type Control, type FieldArrayWithId, type FieldValues, type Path, type UseFormRegister } from "react-hook-form";
+import { type Control, type FieldArrayWithId, type FieldValues, type UseFormRegister } from "react-hook-form";
 import { plusIcon } from "~/assets";
 import type { BaseField } from "~/types/form";
 import Image from "next/image";
@@ -15,7 +15,7 @@ type TableHeader<T> = {
 
 type Props<T extends FieldValues> = {
     fields: BaseField<string>[];
-    validationError?: {[key: string]: any};
+    validationError?: Record<string, unknown>;
     isLoading?: boolean;
     error?: string | null;
     disabled?: boolean;
@@ -46,8 +46,8 @@ const TableForm = <T extends FieldValues, >(props: Props<T>) => {
 
             <Heading as='h2' className="mx-8"> {title} </Heading>
 
-            <form className="flex flex-col justify-start w-full px-8 pb-8">
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(400px,1fr))] items-center gap-4 w-full">
+            <form className="nex-table-form flex w-full min-w-0 flex-col justify-start px-5 pb-6 sm:px-8">
+                <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-4 w-full">
                     <TableWrapper>
                         {rows.length !== 0 ? (
                             <TableHead>

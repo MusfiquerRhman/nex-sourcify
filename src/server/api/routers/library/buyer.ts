@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -270,7 +271,7 @@ export const buyerRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const buyer = await tx.buyers.create({
                         data: {
                             buyer_name: input.buyer_name.trim(),
@@ -538,7 +539,7 @@ export const buyerRouter = createTRPCRouter({
 
             // Delete buyer and all related records in a transaction
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                 // fetch everything for history 
                     const [ 
                         banks, paymentTerms, destinations, consignees, clauses, latePolicies, buyerBrands, buyerDepartments, buyerDepartmentSizes
@@ -759,7 +760,7 @@ export const buyerRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     await tx.buyers_history.create({
                         data: {
                             buyers_id: input.id,
@@ -1299,7 +1300,7 @@ export const buyerRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const consignee = await tx.buyer_consignee.delete({ where: { id: input.id } });
 
                     await tx.buyer_consignee_history.create({
@@ -1340,7 +1341,7 @@ export const buyerRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const bank = await tx.buyer_banks.delete({ where: { id: input.id } });
 
                     await tx.buyer_banks_history.create({
@@ -1383,7 +1384,7 @@ export const buyerRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const clause = await tx.buyer_additional_clause.delete({ where: { id: input.id } });
 
                     await tx.buyer_additional_clause_history.create({
@@ -1422,7 +1423,7 @@ export const buyerRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const policy = await tx.buyer_late_policies.delete({ where: { id: input.id } });
 
                     await tx.buyer_late_policies_history.create({
@@ -1461,7 +1462,7 @@ export const buyerRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const sizes = await tx.buyer_department_sizes.findMany({
                         where: {
                             buyer_departments: {
@@ -1551,7 +1552,7 @@ export const buyerRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const sizes = await tx.buyer_department_sizes.findMany({ 
                         where: { buyer_department_id: input.id } 
                     });
@@ -1607,7 +1608,7 @@ export const buyerRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const sizeSet = await tx.buyer_department_sizes.delete({ where: { id: input.id } });
                     await tx.buyer_department_sizes_history.create({
                         data: {

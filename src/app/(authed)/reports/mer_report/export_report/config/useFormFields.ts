@@ -76,7 +76,7 @@ export const useFormFields = ({buyer_ids, brand_ids}: PropsType): Field<keyof Ex
         {
             name: "factory_ids",
             label: "Select Factories",
-            placeholder: "Select factories, or leave blank for all",
+            placeholder: "Select factories, or leave blank for none",
             type: "multiselect",
             options: factories.map((f) => ({ label: f.name, value: f.id.toString() })),
             optional: true,
@@ -121,7 +121,7 @@ export const useFormFields = ({buyer_ids, brand_ids}: PropsType): Field<keyof Ex
         },
         {
             name: 'rdl_value',
-            label: 'Value',
+            label: 'NexSourcify Value',
             type: "checkbox",
             optional: true
         },

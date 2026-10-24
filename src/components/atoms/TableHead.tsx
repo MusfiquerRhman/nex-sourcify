@@ -2,8 +2,8 @@ import React from "react";
 
 const TableHead = ({ children, variant = 'header' }: { children: React.ReactNode, variant?: 'header' | 'placeholder' }) => {
     const variants = {
-        header: 'bg-primary-dark text-white rounded-lg',
-        placeholder: 'bg-gray-light text-gray rounded-lg',
+        header: 'nex-table-head sticky top-0 z-10',
+        placeholder: 'nex-table-placeholder',
     }[variant];
 
     return (

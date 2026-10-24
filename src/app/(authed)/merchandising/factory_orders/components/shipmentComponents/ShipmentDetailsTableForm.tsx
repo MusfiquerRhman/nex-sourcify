@@ -68,11 +68,13 @@ const TableForm = (props: Props) => {
                                     canViewTransferRate={canViewTransferRate}
                                 />
                             ))}
+                        </TableBody>
+                        <tfoot>
                             <ShipmentSummaryRow methods={methods} 
                                 styleIndex={styleIndex} 
                                 canViewTransferRate={canViewTransferRate} 
                             />
-                        </TableBody>
+                        </tfoot>
                     </TableWrapper>
                 </div>
             </form>

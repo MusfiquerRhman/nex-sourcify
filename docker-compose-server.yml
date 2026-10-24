@@ -1,0 +1,61 @@
+services:
+  app:
+    image: musfiquerrhman/nex-soursify:latest
+    restart: unless-stopped
+    init: true
+    ports:
+      - "7000:7000"
+    environment:
+      NODE_ENV: production
+      PORT: "7000"
+      HOSTNAME: "0.0.0.0"
+      TZ: Asia/Dhaka
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to your existing Nexus PostgreSQL database}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to your Nexus signing secret}
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - nexus-uploads:/app/public/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - nexus-network
+
+  automation:
+    image: musfiquerrhman/nexus-automation:letest
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 60s
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Dhaka
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to your existing Nexus PostgreSQL database}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - nexus-network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - nexus-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - nexus-network
+
+volumes:
+  nexus-uploads:
+  nexus-redis-data:
+
+networks:
+  nexus-network:
+    external: true

@@ -132,9 +132,8 @@ const EditBuyerPage = ({ params }: ParamsProp) => {
                 (data) => {
                     buyerData = data;
                 },
-                (errors) => {
-                    toast.error(`Please fix the validation errors before submitting. ${JSON.stringify(errors)}`);
-                    throw new Error(JSON.stringify(errors));
+                () => {
+                    throw new Error("Please fix the buyer information errors.");
                 }
             )();
 
@@ -142,9 +141,8 @@ const EditBuyerPage = ({ params }: ParamsProp) => {
                 (data) => {
                     consigneeData = data.consignees;
                 },
-                (errors) => {
-                    toast.error(`Please fix the validation errors before submitting. ${JSON.stringify(errors)}`);
-                    throw new Error(JSON.stringify(errors)); 
+                () => {
+                    throw new Error("Please fix the consignee information errors.");
                 }
             )();
 
@@ -152,9 +150,8 @@ const EditBuyerPage = ({ params }: ParamsProp) => {
                 (data) => {
                     bankData = data.banks;
                 },
-                (errors) => {
-                    toast.error(`Please fix the validation errors before submitting. ${JSON.stringify(errors)}`);
-                    throw new Error(JSON.stringify(errors)); 
+                () => {
+                    throw new Error("Please fix the bank information errors.");
                 }
             )();
 
@@ -162,9 +159,8 @@ const EditBuyerPage = ({ params }: ParamsProp) => {
                 (data) => {
                     clauseData = data.clause;
                 },
-                (errors) => {
-                    toast.error(`Please fix the validation errors before submitting. ${JSON.stringify(errors)}`);
-                    throw new Error(JSON.stringify(errors)); 
+                () => {
+                    throw new Error("Please fix the clause information errors.");
                 }
             )();
 
@@ -172,9 +168,8 @@ const EditBuyerPage = ({ params }: ParamsProp) => {
                 (data) => {
                     latePolicyData = data.policy;
                 },
-                (errors) => {
-                    toast.error(`Please fix the validation errors before submitting. ${JSON.stringify(errors)}`);
-                    throw new Error(JSON.stringify(errors)); 
+                () => {
+                    throw new Error("Please fix the late policy information errors.");
                 }
             )();
 
@@ -219,7 +214,7 @@ const EditBuyerPage = ({ params }: ParamsProp) => {
         }
         catch (error) {
             const message = parseTRPCError(error);
-            toast.error(`Error updating Buyer: ${message}`);
+            toast.error(`Error: ${message}`);
             setError(message);
         }
         finally {

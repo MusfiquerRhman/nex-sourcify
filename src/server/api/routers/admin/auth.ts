@@ -135,7 +135,6 @@ export const authRouter = createTRPCRouter({
 			const token = cookiesStore.get("access-token")?.value;
 
 			if (token) {
-				console.log("Logging out user with token:", new Date().toLocaleString());
 				await ctx.db.user_sessions.updateMany({
 					where: { session_token: token },
 					data: { 

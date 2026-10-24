@@ -44,7 +44,8 @@ const DistributionSummaryRow = ({methods}: Props) => {
     return (
         totalOrderQuantity > 0 && (
             <TableRow>
-                <TableCell colSpan={4}>&nbsp;</TableCell>
+                <TableCell colSpan={1} className="freeze-col">&nbsp;</TableCell>
+                <TableCell colSpan={3}>&nbsp;</TableCell>
                 <TableCell className='text-left px-3 py-2 bg-secondary text-white'>
                     {totalOrderQuantity}
                 </TableCell>

@@ -54,6 +54,11 @@ const TableForm = (props: Props) => {
 
     const showAddButton = invoiceType || (!invoiceType && numberOfFactoryInvoiceDetails === 0);
 
+    const details = useWatch({ control: methods.control, name: 'details'});
+
+    const totalQuantities = details?.reduce((sum, item) => sum + (item?.quantity ?? 0), 0) ?? 0;
+    const totalValue = details?.reduce((sum, item) => sum = sum + (item?.factory_value ?? 0), 0) ?? 0;
+
     return (
         <>
             <Heading as ='h2' className="mx-8">
@@ -78,6 +83,14 @@ const TableForm = (props: Props) => {
                                 />
                             ))}
                         </TableBody>
+                        {totalQuantities > 0 && <tfoot>
+                            <tr className="font-bold text-sm border-2 border-gray/20">
+                                <td colSpan={2} className="border-r-2 border-gray/20 p-2 text-right">Total</td>
+                                <td className="bg-secondary text-center text-white border-r-2 border-gray/20 p-2">{totalQuantities}</td>
+                                <td className="bg-secondary text-center text-white border-r-2 border-gray/20 p-2">{totalValue}</td>
+                                <td className="border-r-2 border-gray/20 p-2" />
+                            </tr>
+                        </tfoot>}
                     </TableWrapper>
                 </div>
                 {!disabled && showAddButton && 

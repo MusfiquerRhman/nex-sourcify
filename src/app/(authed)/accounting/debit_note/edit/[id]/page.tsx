@@ -36,7 +36,8 @@ const EditDebitNotePage = ({ params }: ParamsProp) => {
             await Promise.all([
                 utils.debitNotes.getDebitNoteById.invalidate({ debit_note_id: id }),
                 utils.debitNotes.getAllDebitNotes.invalidate(),
-                utils.debitNotes.searchDebitNotes.invalidate()
+                utils.debitNotes.searchDebitNotes.invalidate(),
+                utils.debitNotes.getShipmentDetailsForDebitNote.invalidate(),
             ]);
         }
     });

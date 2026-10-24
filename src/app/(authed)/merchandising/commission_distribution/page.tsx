@@ -1,15 +1,17 @@
 'use client';
 import { useRouter } from "next/navigation";
 import { plusIcon } from "~/assets";
-import { Button, SearchField, Table, Wrapper, Popup } from "~/components";
+import { Button, SearchField, Table, Wrapper, Popup, Filter } from "~/components";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { tableHeaders } from "./config/columns";
 import { useSearchablePagination, useModulePermissions, useDeleteConfirmation } from "~/hooks";
+import { useState } from "react";
 
 const CommissionDistribution = () => {
     const router = useRouter();
     const utils = api.useUtils();
+    const [filter, setFilter] = useState(-1);
 
     const { page, limit, debouncedSearch, handleSearchChange, nextPage, prevPage } = useSearchablePagination();
 
@@ -17,6 +19,7 @@ const CommissionDistribution = () => {
 
     // Fetch paginated data
     const {data: commissionDistributions, isLoading} = api.commissionDistribution.getCommissionDistribution.useQuery({
+        filter,
         limit,
         offset: page * limit,
     });
@@ -39,6 +42,7 @@ const CommissionDistribution = () => {
             await Promise.all([
                 utils.commissionDistribution.getCommissionDistribution.invalidate(),
                 utils.commissionDistribution.searchCommissionDistribution.invalidate(),
+                utils.commissionDistribution.getOrderIdForCommissionDistribution.invalidate()
             ]);
         },
     });
@@ -58,7 +62,7 @@ const CommissionDistribution = () => {
                 subSectionLeft={
                     <SearchField
                         placeholder="Search Commission Distributions..."
-                        infoText="Buyer Name, Order Reference, Style, PO, and Plan Date."
+                        infoText="Search Buyer Name, Order Reference, Style, PO, and Plan Date."
                         handleSearchChange={handleSearchChange}
                     />
                 }
@@ -73,6 +77,18 @@ const CommissionDistribution = () => {
                             />
                         </div>
                     ) : null
+                }
+                filters={
+                    <Filter 
+                        filter={filter}
+                        setFilter={setFilter}
+                        label='Approval Status'
+                        options={[
+                            {label: 'ALL', value: -1}, 
+                            {label: 'AUTHORIZED', value: 1}, 
+                            {label: 'UNAUTHORIZED', value: 0}, 
+                        ]}
+                    />
                 }
             >
                 <div className="w-full">

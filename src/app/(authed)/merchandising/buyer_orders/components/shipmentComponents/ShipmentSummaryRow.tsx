@@ -29,7 +29,7 @@ const ShipmentSummaryRow = ({methods, styleIndex}: Props) => {
     return (
             totalShipmentQuantity > 0 && (
             <TableRow>
-                <TableCell colSpan={8}>&nbsp;</TableCell>
+                <TableCell colSpan={9}>&nbsp;</TableCell>
                 <TableCell className='text-left px-3 py-2 bg-secondary text-white' colSpan={1}>
                     {totalShipmentQuantity}
                 </TableCell>

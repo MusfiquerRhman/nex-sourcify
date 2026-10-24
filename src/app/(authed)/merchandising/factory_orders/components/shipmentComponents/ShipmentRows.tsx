@@ -32,9 +32,11 @@ const ShipmentRows = (props: Props) => {
 
     const { isAdmin } = useDecodedUser();
 
+    const canUpdateTransferRate = (!!hasPermission.data || isAdmin) && !exfactoryExists;
+
     return (
         <GenericFormTableRow
-            fields={shipmentTableFormFields(canViewTransferRate, disabled, !!hasPermission.data || isAdmin)}
+            fields={shipmentTableFormFields(canViewTransferRate, disabled, canUpdateTransferRate)}
             register={methods.register}
             disabled={exfactoryExists}
             validationError={validationError?.styles?.[styleIndex]?.shipments ?? {}}

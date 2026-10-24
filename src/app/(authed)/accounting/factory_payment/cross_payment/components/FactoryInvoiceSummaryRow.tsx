@@ -24,6 +24,7 @@ const FactoryInvoiceSummaryRow = ({methods}: Props) => {
                 <TableCell className='text-left px-3 py-2 bg-secondary text-white' colSpan={1}>
                     {totalFactoryValueUsd.toFixed(2)}
                 </TableCell>
+                <TableCell colSpan={3}>&nbsp;</TableCell>
             </TableRow>
         )
     )

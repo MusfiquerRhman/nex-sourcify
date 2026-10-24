@@ -6,6 +6,7 @@ export type TableHeaderType<T> = {
   key: keyof T | (string & {});
   label: string;
   type?: string;
+  freeze?: boolean;
 };
 
 type TableHeaderProps<T> = {
@@ -21,7 +22,7 @@ const TableHeader = <T,>(props: TableHeaderProps<T>) => {
             <TableHead>
                 <tr>
                     {columns.map((col, index) => (
-                        <TableHeadCells key={index} isAction={col.type === 'action'}>
+                        <TableHeadCells key={index} isAction={col.type === 'action'} className={col.freeze ? 'freeze-head' : ''}>
                             {col.label}
                         </TableHeadCells>
                     ))}

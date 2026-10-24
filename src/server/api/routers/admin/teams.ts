@@ -1,9 +1,11 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
 import { m } from "~/utils/moduleMap";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { actions } from "@prisma/client";
+import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID } from "~/utils/config";
 
 export const teamsRouter = createTRPCRouter({
     getTeams: protectedProcedure
@@ -130,7 +132,7 @@ export const teamsRouter = createTRPCRouter({
         }
 
         try {
-            return await ctx.db.$transaction(async (tx) => {
+            return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                 const newTeam = await tx.teams.create({
                     data: {
                         team_name: input.team_name,
@@ -191,7 +193,7 @@ export const teamsRouter = createTRPCRouter({
         }
 
         try {
-            return await ctx.db.$transaction(async (tx) => {
+            return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                 const teamMembersToDelete = await tx.team_members.findMany({
                     where: { team_id: input.id },
                 });
@@ -262,7 +264,7 @@ export const teamsRouter = createTRPCRouter({
         }
 
         try {
-            await ctx.db.$transaction(async (tx) => {
+            await transactionWithQueuedHistory(ctx.db, async (tx) => {
                 const updatedTeam = await tx.teams.update({
                     where: { id: input.id },
                     data: {
@@ -398,7 +400,7 @@ export const teamsRouter = createTRPCRouter({
             });
         }
 
-        return await ctx.db.$transaction(async (tx) => {
+        return await transactionWithQueuedHistory(ctx.db, async (tx) => {
             const memberToDelete = await tx.team_members.delete({
                 where: { id: input.id },
             })
@@ -441,8 +443,24 @@ export const teamsRouter = createTRPCRouter({
         .input(
             z.array(z.number().min(1))
         ).query(async ({ input, ctx }) => {
+            const userLevel = ctx.user.level_id;
+            const userDepartment = ctx.user.department_id;
+
+            const isAdmin = (userLevel === ADMIN_LEVEL_ID && userDepartment === ADMIN_DEPARTMENT_ID);
+
             const teams = await ctx.db.teams.findMany({
-                where: { buyer_id: { in: input } },
+                where: { 
+                    buyer_id: { 
+                        in: input 
+                    },
+                    ...(!isAdmin && {
+                        team_members: {
+                            some: {
+                                user_id: ctx.user.id
+                            }
+                        }
+                    }),
+                },
                 select: {
                     id: true,
                     team_name: true,

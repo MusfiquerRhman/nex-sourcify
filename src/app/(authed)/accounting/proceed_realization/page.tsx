@@ -36,6 +36,7 @@ const ProceedRealizationPage = () => {
             await Promise.all([
                 utils.proceedRealization.getProceedRealization.invalidate(),
                 utils.proceedRealization.searchProceedRealization.invalidate(),
+                utils.proceedRealization.getDocumentSubmissionForProceedRealization.invalidate(),
             ]);
         }
     });
@@ -56,7 +57,7 @@ const ProceedRealizationPage = () => {
                 subSectionLeft={
                     <SearchField
                         placeholder="Search Proceed Realizations..."
-                        infoText="FDBC No, Buyer Name, Term and Invoice."
+                        infoText="FDBC No, Buyer Name, Term and NexSourcify Invoice."
                         handleSearchChange={handleSearchChange}
                     />
                 }

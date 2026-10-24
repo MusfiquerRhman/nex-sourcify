@@ -6,7 +6,7 @@ export const tableFormColumns = [
     { key: 'exfactory_date', label: 'Ex-Factory Date' },
     { key: 'destination', label: 'Destination' },
     { key: 'quantity', label: 'Quantity' },
-    { key: 'rdl_fob', label: 'FOB' },
-    { key: 'rdl_value', label: 'Value' },
+    { key: 'rdl_fob', label: 'NexSourcify FOB' },
+    { key: 'rdl_value', label: 'NexSourcify Value' },
     { key: 'factory_transfer_value', label: 'Factory Transfer Value' },
 ]

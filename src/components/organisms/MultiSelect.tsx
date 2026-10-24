@@ -1,3 +1,5 @@
+"use client";
+
 import clsx from "clsx";
 import { clearIcon } from "~/assets";
 import React, { useState, useRef, useEffect } from "react";
@@ -47,11 +49,11 @@ const MultiSelect: React.FC<Props> = ({ label, options, value = [], onChange, er
     };
 
     return (
-        <div ref={wrapperRef} className="w-full">
-            <p className="py-0.5">{label}</p>
+        <div ref={wrapperRef} className="relative w-full min-w-0">
+            <p className="nex-field-label py-0.5">{label}</p>
             <div onClick={() => setOpen((prev) => !prev)}
                 className={clsx(
-                    "emboss-inner flex min-h-[40px] cursor-pointer flex-wrap items-center gap-2 rounded-lg px-2 py-2",
+                    "nex-input flex min-h-11 cursor-pointer flex-wrap items-center gap-2 px-4 py-2.5",
                     error?.message ? "border-red-500" : "border-gray-300",
                 )}
             >
@@ -62,10 +64,10 @@ const MultiSelect: React.FC<Props> = ({ label, options, value = [], onChange, er
                     const item = options.find((o) => o.value === v);
                     return (
                         <span key={i}
-                            className="emboss flex items-center gap-2 rounded-lg px-3 py-1 text-sm text-black"
+                            className="flex items-center gap-2 rounded-md border border-primary-light bg-white px-3 py-1 text-sm text-primary-dark"
                         >
                             {item?.label}
-                            <button className="text-primary hover:text-primary-dark"
+                            <button type="button" className="text-primary hover:text-primary-dark"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     toggleValue(v);
@@ -85,13 +87,13 @@ const MultiSelect: React.FC<Props> = ({ label, options, value = [], onChange, er
 
             {/* Dropdown */}
             {(open && !disabled) && (
-                 <div className="emboss absolute z-20 mt-4 mb-8 w-fit rounded-lg px-2 py-3 shadow-lg">
+                 <div className="emboss absolute z-20 mt-4 mb-8 w-fit rounded-md px-2 py-3 shadow-lg">
                     {/* Search input */}
                     <input type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Search..."
-                        className="emboss-inner mb-2 w-full rounded-lg p-2 text-sm outline-none"
+                        className="emboss-inner mb-2 w-full rounded-md p-2 text-sm outline-none"
                         autoFocus
                     />
 

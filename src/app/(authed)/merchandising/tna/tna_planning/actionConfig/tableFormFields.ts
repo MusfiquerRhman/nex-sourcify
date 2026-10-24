@@ -49,7 +49,7 @@ export const formFields = (action: string, user_department: number | undefined, 
             label: "Revise Date",
             type: "date",
             optional: true,
-            minDate: 2 // allow selecting dates up to 3 days (today included) in the past
+            minDate: 2000 // allow selecting dates up to 3 days (today included) in the past
         },
         {
             name: "actual_date",

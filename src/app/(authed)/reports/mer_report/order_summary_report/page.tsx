@@ -42,6 +42,7 @@ const OrderSummaryReportPage = () => {
 				brandIds: orderSummaryReportData.brand_ids?.map(Number),
 				departmentIds: orderSummaryReportData.department_ids?.map(Number),
 				seasonIds: orderSummaryReportData.season_ids?.map(Number),
+				teamIds: orderSummaryReportData.team_id?.map(Number)
 			};
 
             const res = await getPdfDataMutation.mutateAsync(payload);
@@ -92,7 +93,8 @@ const OrderSummaryReportPage = () => {
 					leftIcon={excelIcon}
 					onClick={() => onSubmitAll()}
 					label={"Generate Order Summary Report"} 
-					className="bg-secondary text-lg tracking-wide mt-6 max-w-80 m-8"
+					variant="secondary"
+					className="text-lg tracking-wide mt-6 max-w-80 m-8"
 				/>
 			</div>
 		</Wrapper>

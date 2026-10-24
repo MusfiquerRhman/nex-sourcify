@@ -1,0 +1,5 @@
+# Combine with ../redis/docker-compose.yml to expose Redis to local Nexus.
+services:
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"

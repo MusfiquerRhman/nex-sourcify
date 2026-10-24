@@ -1,12 +1,25 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
 import { m } from "~/utils/moduleMap";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { actions } from "@prisma/client";
+import { historyQueue } from "~/server/queues/history.queue";
+import { getRedis } from "~/server/redis";
+
+const cacheKey = "colors:all";
 
 export const colorsRouter = createTRPCRouter({
     getAll: protectedProcedure.query(async ({ ctx }) => {
+
+        const redis = await getRedis();
+        const cached = redis ? await redis.get(cacheKey) : null;
+
+        if (cached) {
+            return JSON.parse(cached) as { id: number; name: string }[];
+        }
+        
         const colors = await ctx.db.colors.findMany({
             select: {
                 id: true,
@@ -14,6 +27,9 @@ export const colorsRouter = createTRPCRouter({
             },
             orderBy: { name: "asc" },
         })
+
+        if (redis) await redis.set(cacheKey, JSON.stringify(colors), {EX: 900});
+
         return colors;
     }),
 
@@ -79,42 +95,48 @@ export const colorsRouter = createTRPCRouter({
     addColors: protectedProcedure
         .input(z.object({
             name: z.string().min(1),
-        })
-    ).mutation(async ({ ctx, input }) => {
-        const can_add = ctx.permissions[m.COLORS]?.can_add;
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const can_add = ctx.permissions[m.COLORS]?.can_add;
 
-        if (!can_add) {
-            throw new TRPCError({ 
-                code: "FORBIDDEN", 
-                message: "You do not have permission to add colors." 
-            });
-        }
+            if (!can_add) {
+                throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message: "You do not have permission to add colors.",
+                });
+            }
 
-        try {
-            return await ctx.db.$transaction(async (tx) => {
-                const color = await tx.colors.create({
-                    data: {
-                        name: input.name.trim(),
+            try {
+                const color = await transactionWithQueuedHistory(ctx.db, async (tx) => {
+                    return await tx.colors.create({
+                        data: {
+                            name: input.name.trim(),
+                        },
+                    });
+                });
+
+                await historyQueue.add("color-added", {
+                    color_id: color.id,
+                    name: color.name,
+                    action_type: actions.ADDED,
+                    action_by: ctx.user.id,
+                }, {
+                    attempts: 5,
+                    backoff: {
+                        type: "exponential",
+                        delay: 1000,
                     },
                 });
 
-                await tx.color_history.create({
-                    data: {
-                        color_id: color.id,
-                        name: color.name.trim(),
-                        action_type: actions.ADDED,
-                        action_by: ctx.user.id,
-                    },
-                });
+                const redis = await getRedis();
+                if (redis) await redis.del(cacheKey);
 
                 return color;
-            });
-        }
-        catch (error) {
-            await logError(error, ctx, input);
-            handlePrismaError(error);
-        }
-    }),
+            } catch (error) {
+                await logError(error, ctx, input);
+                handlePrismaError(error);
+            }
+        }),
 
     deleteColors: protectedProcedure
         .input(z.object({
@@ -131,7 +153,7 @@ export const colorsRouter = createTRPCRouter({
         }
 
         try {
-            return ctx.db.$transaction(async (tx) => {
+            return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                 const color = await tx.colors.delete({
                     where: { id: input.id },
                 });
@@ -142,6 +164,9 @@ export const colorsRouter = createTRPCRouter({
                         message: "Color not found." 
                     });
                 }
+
+                const redis = await getRedis();
+                if (redis) await redis.del(cacheKey);
 
                 await tx.color_history.create({
                     data: {
@@ -177,7 +202,7 @@ export const colorsRouter = createTRPCRouter({
             }
 
             try {
-                return ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     await tx.color_history.create({
                         data: {
                             color_id: input.id,
@@ -193,6 +218,9 @@ export const colorsRouter = createTRPCRouter({
                             name: input.name.trim(),
                         },
                     });
+
+                    const redis = await getRedis();
+                    if (redis) await redis.del(cacheKey);
 
                     return res;
                 });

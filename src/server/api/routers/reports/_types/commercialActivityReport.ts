@@ -26,6 +26,8 @@ export interface CiAndRealizationData {
     rdl_invoice_date: string;
     rdl_invoice_quantity: number;
     rdl_invoice_value: number;
+    lc_no: string;
+    sc_no: string;
     fdbc_no: string;
     document_submission_date: string;
     ci_no: string;
@@ -45,6 +47,13 @@ export interface FactoryInvoiceData {
     factory_invoice_quantity: number;
     factory_invoice_value: number;
     FDBC_NO: string;
+    rdl_invoice_no: string;
     factory_payment: number;
     FACTORY_PAYMENT_DATE: string;
+}
+
+export interface CommissionInvoices {
+    ref_no: string;
+    invoice_date: Date;
+    invoice_value: string;
 }

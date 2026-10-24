@@ -54,7 +54,7 @@ const ShipmentDetails = (props: props) => {
     const shipmentQuantitiesString = useMemo(() => JSON.stringify(shipmentQuantities), [shipmentQuantities]);
     const shipmentTransferRateString = useMemo(() => JSON.stringify(shipmentTransferRate), [shipmentTransferRate]);
 
-    // Auto calculate values when FOB or Quantity change
+    // Auto calculate NexSourcify values when FOB or Quantity change
     useEffect(() => {
         if (!shipments?.length) return;
 

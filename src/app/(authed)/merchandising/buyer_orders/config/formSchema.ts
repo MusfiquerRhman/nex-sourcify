@@ -29,7 +29,7 @@ export const orderFormSchema = z.object({
     style.shipments?.forEach((shipment, shipmentIndex) => {
       const etdDate = new Date(shipment.etd_date);
 
-      if (etdDate <= orderDate) {
+      if (etdDate < orderDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["order", "styles", styleIndex, "shipments", shipmentIndex, "etd_date"],

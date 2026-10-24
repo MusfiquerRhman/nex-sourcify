@@ -1,16 +1,17 @@
 'use client';
 import { useRouter } from "next/navigation";
 import { plusIcon } from "~/assets";
-import { Button, SearchField, Table, Wrapper, Popup } from "~/components";
+import { Button, SearchField, Table, Wrapper, Popup, Filter } from "~/components";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { tableHeaders } from "./config/columns";
 import { useSearchablePagination, useModulePermissions, useDeleteConfirmation } from "~/hooks";
-
+import { useState } from "react";
 
 const SalesContracts = () => {
     const router = useRouter();
     const utils = api.useUtils();
+    const [filter, setFilter] = useState(-1);
 
     const { page, limit, debouncedSearch, handleSearchChange, nextPage, prevPage } = useSearchablePagination();
 
@@ -18,6 +19,7 @@ const SalesContracts = () => {
 
     // Fetch paginated data
     const {data: salesContracts, isLoading} = api.salesContracts.getSalesContracts.useQuery({
+        filter,
         limit,
         offset: page * limit,
     });
@@ -34,7 +36,7 @@ const SalesContracts = () => {
     // URLs for actions
     const editURL = '/merchandising/sales_contract/sales_contracts/edit/';
     const printURL = `/pdf/sales_contract/`;
-    const printURL2 = `/pdf/sales_contract_commission/`;
+    const commissionPrintURL = `/pdf/sales_contract_commission/`;
 
     const deleteMutation = api.salesContracts.deleteSalesContract.useMutation({
         onSuccess: async () => {
@@ -77,6 +79,19 @@ const SalesContracts = () => {
                         </div>
                     ) : null
                 }
+                filters={
+                    <Filter 
+                        filter={filter}
+                        setFilter={setFilter}
+                        label='Approval Status'
+                        options={[
+                            {label: 'ALL', value: -1}, 
+                            {label: 'AUTHORIZED', value: 2},
+                            {label: 'READY FOR APPROVAL', value: 1}, 
+                            {label: 'UNAUTHORIZED', value: 0}, 
+                        ]}
+                    />
+                }
             >
                 <div className="w-full">
                     <Table
@@ -99,7 +114,7 @@ const SalesContracts = () => {
                         allowPrint={true}
                         printURL={printURL}
                         allowPrint2={true}
-                        printURL2={printURL2}
+                        printURL2={commissionPrintURL}
                         view={!can_update}
                     />
                 </div>

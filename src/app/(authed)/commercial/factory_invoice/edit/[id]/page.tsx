@@ -41,7 +41,9 @@ const EditFactoryInvoicePage = ({ params }: ParamsProp) => {
                 utils.factoryInvoice.getFactoryInvoiceById.invalidate({ id }),
                 utils.factoryInvoice.getFactoryInvoiceList.invalidate(),
                 utils.factoryInvoice.getShipmentDetailsForTagShipments.invalidate(),
-                utils.exFactory.checkCommercialProcedure.invalidate()
+                utils.exFactory.checkCommercialProcedure.invalidate(),
+                utils.factoryInvoice.getExfactoryDetailsForShipment.invalidate(),
+                utils.factoryInvoice.getScLcForFactoryInvoice.invalidate(),
             ]);
         }
     });
@@ -71,7 +73,11 @@ const EditFactoryInvoicePage = ({ params }: ParamsProp) => {
         finally {
             setIsLoadingSubmit(false);
         }
-    }), [id, updateFactoryInvoice, handleSubmit]);
+    }, () => {
+        if (!methods.getValues("details")?.length) {
+            toast.error("At least one shipment is required");
+        }
+    }), [id, updateFactoryInvoice, handleSubmit, methods]);
 
     const db_id = useWatch({ control, name: "db_id" });
 
@@ -119,7 +125,7 @@ const EditFactoryInvoicePage = ({ params }: ParamsProp) => {
             />
 
             <MessageBox 
-                message="This Factory Invoice has associated Invoice and cannot be updated or deleted." 
+                message="This Factory Invoice has associated NexSourcify Invoice and cannot be updated or deleted." 
                 active={exists} 
                 type="primary" 
             />

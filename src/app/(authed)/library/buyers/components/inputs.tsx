@@ -10,7 +10,7 @@ export const Input = ({ placeholder, value, setValue, onEnter, disabled }: Input
     return (
         <input
             className="mb-1 py-2 px-3 rounded-lg focus:outline-none emboss-inner w-full border-2 border-transparent disabled:opacity-50"
-            placeholder={`${placeholder} | Press Enter or click the add icon to add`}
+            placeholder={placeholder}
             value={value}
             disabled={disabled}
             onChange={(e) => setValue(e.target.value?.toUpperCase())}

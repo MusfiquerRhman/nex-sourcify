@@ -16,7 +16,7 @@ export type GetShipmentDetailsForTagShipmentsTypes = FactoryInvoiceRouterOutput[
 
 export type GetFactoryInvoiceByIdTypes = FactoryInvoiceRouterOutput['getFactoryInvoiceById'];
 
-// RDL Invoice types
+// NexSourcify Invoice types
 type RdlInvoiceRouterOutput = inferRouterOutputs<typeof rdlInvoiceRouter>;
 
 export type GetRdlInvoiceByIdTypes = RdlInvoiceRouterOutput['getRdlInvoiceById'];

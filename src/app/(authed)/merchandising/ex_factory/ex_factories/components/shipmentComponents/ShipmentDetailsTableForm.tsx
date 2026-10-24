@@ -61,8 +61,10 @@ const TableForm = (props: Props) => {
                                     orderIndex={orderIndex}
                                 />
                             ))}
-                            <ShipmentSummaryRow methods={methods} orderIndex={orderIndex} />
                         </TableBody>
+                        <tfoot>
+                            <ShipmentSummaryRow methods={methods} orderIndex={orderIndex} />
+                        </tfoot>
                     </TableWrapper>
                 </div>
             </form>

@@ -5,6 +5,7 @@ import { m } from "~/utils/moduleMap";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { actions, order_status, shipment_modes } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { currencyFormatter, quantityFormatter } from "~/utils/localNumberStrings";
 import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID } from "~/utils/config";
 import type { BuyerOrderRow, GetPDFHeaderOutput, GetPDFPoOutput } from "./_types/buyerOrder";
@@ -70,6 +71,12 @@ async function deleteShipment(tx: Prisma.TransactionClient, shipmentId: string, 
     // delete associated colors
     await deleteColorsByShipmentId(tx, shipmentId, userId);
 
+    await tx.lc_amendment_shipments.deleteMany({
+        where: {
+            shipment_details_id: shipmentId
+        }
+    })
+
     const existingCommissionDistributionDetails = await tx.commission_distributions_details.findMany({
         where: { shipment_details_id: shipmentId },
     });
@@ -80,7 +87,7 @@ async function deleteShipment(tx: Prisma.TransactionClient, shipmentId: string, 
 
     await tx.commission_distribution_details_history.createMany({
         data: existingCommissionDistributionDetails.map(detail => ({
-            commission_distributions_details_id: detail.id,
+            commission_distribution_details_id: detail.id,
             shipment_details_id: detail.shipment_details_id,
             dhaka_commission_percentage: detail.dhaka_commission_percentage ?? 0,
             overseas_commission_percentage: detail.overseas_commission_percentage ?? 0,
@@ -203,8 +210,9 @@ async function deleteStyle(tx: Prisma.TransactionClient, styleId: string, userId
 export const buyerOrdersRouter = createTRPCRouter({
     getBuyerOrders: protectedProcedure
         .input(z.object({
+            filter: z.number().min(-1).default(-1),   
             limit: z.number().min(1).default(15),
-            offset: z.number().min(0).default(0),            
+            offset: z.number().min(0).default(0),  
         }))
         .query(async ({ ctx, input }) => {
             const can_view = ctx.permissions[m.BUYER_ORDERS]?.can_view;
@@ -218,60 +226,79 @@ export const buyerOrdersRouter = createTRPCRouter({
             
             try {
                 const result = await ctx.db.$queryRaw<BuyerOrderRow[]>`
-                    SELECT
-                        BO.id,
-                        BO.order_date,
-                        BO.added_at,
-                        B.buyer_name,
-                        BO.ref_no,
-                        BD.department,
-                        S.season_name AS season,
-                        T.team_name AS team,
-                        CASE
-                            WHEN NOT EXISTS (
+                    WITH style_status AS (
+                        SELECT
+                            OS.order_id,
+                            COUNT(*) AS style_count,
+                            COUNT(*) FILTER (
+                                WHERE COALESCE(SQ.shipped_quantity, 0) < OS.order_quantity
+                            ) AS incomplete_style_count
+                        FROM order_styles OS
+                        LEFT JOIN (
+                            SELECT
+                                SH.order_style_id,
+                                SUM(SC.quantity) AS shipped_quantity
+                            FROM shipment_details SH
+                            INNER JOIN shipment_item_details SC ON SC.shipment_detail_id = SH.id
+                            GROUP BY SH.order_style_id
+                        ) SQ ON SQ.order_style_id = OS.id
+                        GROUP BY OS.order_id
+                    ),
+                    buyer_order_status AS (
+                        SELECT
+                            BO.id,
+                            BO.order_date,
+                            BO.added_at,
+                            B.buyer_name,
+                            BO.ref_no,
+                            BD.department,
+                            S.season_name AS season,
+                            T.team_name AS team,
+                            CASE
+                                WHEN COALESCE(SS.style_count, 0) = 0 THEN 'INCOMPLETE'
+                                WHEN SS.incomplete_style_count > 0 THEN 'INCOMPLETE'
+                                WHEN FO.approval_status = 2 THEN 'APPROVED'
+                                ELSE 'PENDING'
+                                -- ELSE 'COMPLETE'
+                            END AS status
+                        FROM buyer_orders BO
+                        INNER JOIN teams T ON T.id = BO.team_id
+                        INNER JOIN buyers B ON B.id = BO.buyer_id
+                        INNER JOIN buyer_departments BD ON BD.id = BO.department_id
+                        INNER JOIN seasons S ON S.id = BO.season_id
+                        LEFT JOIN factory_orders FO ON FO.order_id = BO.id
+                        LEFT JOIN style_status SS ON SS.order_id = BO.id
+                        WHERE (
+                            EXISTS (
                                 SELECT 1
-                                FROM order_styles BOS
-                                WHERE BOS.order_id = BO.id
-                            ) THEN 'INCOMPLETE'
-                            WHEN EXISTS (
+                                FROM users U
+                                WHERE U.id = ${ctx.user.id}
+                                AND U.department_id = ${ADMIN_DEPARTMENT_ID}
+                                AND U.level_id = ${ADMIN_LEVEL_ID}
+                            )
+                            OR EXISTS (
                                 SELECT 1
-                                FROM order_styles BOS
-                                LEFT JOIN shipment_details SH ON SH.order_style_id = BOS.id
-                                LEFT JOIN shipment_item_details SC ON SC.shipment_detail_id = SH.id
-                                WHERE BOS.order_id = BO.id
-                                GROUP BY BOS.id, BOS.order_quantity
-                                HAVING COALESCE(SUM(SC.quantity), 0) < BOS.order_quantity
-                            ) THEN 'INCOMPLETE'
-                            WHEN FO.approval_status = 2 THEN 'APPROVED'
-                            ELSE 'PENDING'
-                        END AS status,
-                        COUNT(*) OVER() AS total_count
-                    FROM BUYER_ORDERS BO
-                        INNER JOIN TEAMS T ON T.ID = BO.TEAM_ID
-                        INNER JOIN BUYERS B ON BO.buyer_id = B.id
-                        INNER JOIN BUYER_DEPARTMENTS BD ON BO.department_id = BD.id
-                        INNER JOIN SEASONS S ON S.id = BO.season_id
-                        LEFT JOIN FACTORY_ORDERS FO ON FO.order_id = BO.id
-                    WHERE (
-                        EXISTS (
-                            SELECT 1
-                            FROM USERS U
-                            WHERE U.ID = ${ctx.user.id}
-                            AND U.DEPARTMENT_ID = ${ADMIN_DEPARTMENT_ID}
-                            AND U.LEVEL_ID = ${ADMIN_LEVEL_ID}
-                        )
-                        OR EXISTS (
-                            SELECT 1
-                            FROM TEAM_MEMBERS TM
-                            WHERE TM.TEAM_ID = BO.TEAM_ID
-                            AND TM.USER_ID = ${ctx.user.id}
+                                FROM team_members TM
+                                WHERE TM.team_id = BO.team_id
+                                AND TM.user_id = ${ctx.user.id}
+                            )
                         )
                     )
-
-                    ORDER BY BO.added_at DESC, BO.order_date DESC
-                    LIMIT ${input.limit}    
+                    SELECT
+                        buyer_order_status.*,
+                        COUNT(*) OVER() AS total_count
+                    FROM buyer_order_status
+                    WHERE ${Number(input.filter)}::INTEGER = -1
+                        OR status = CASE ${Number(input.filter)}::INTEGER
+                            WHEN 0 THEN 'INCOMPLETE'
+                            WHEN 1 THEN 'PENDING'
+                            WHEN 2 THEN 'APPROVED'
+                        END
+                    ORDER BY added_at DESC, order_date DESC
+                    LIMIT ${input.limit}
                     OFFSET ${input.offset};
                 `;
+
 
                 const total = result.length > 0 ? Number(result[0]?.total_count) : 0;
 
@@ -336,7 +363,7 @@ export const buyerOrdersRouter = createTRPCRouter({
                     });
                 }
 
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const factoryOrders = await tx.factory_orders.findMany({
                         where: { order_id: input.id },
                     });
@@ -449,7 +476,7 @@ export const buyerOrdersRouter = createTRPCRouter({
                     await tx.buyer_orders_history.create({
                         data: {
                             buyer_order_id: deletedBuyerOrder.id,
-                            action_type: 'DELETE',
+                            action_type: actions.DELETE,
                             action_by: ctx.user.id,
                             ref_no: deletedBuyerOrder.ref_no,
                             buyer_id: deletedBuyerOrder.buyer_id,
@@ -518,6 +545,7 @@ export const buyerOrdersRouter = createTRPCRouter({
                         ) THEN 'INCOMPLETE'
                         WHEN FO.approval_status = 2 THEN 'APPROVED'
                         ELSE 'PENDING'
+                        -- ELSE 'COMPLETE'
                     END AS status,
                     COUNT(*) OVER() AS total_count
                 FROM BUYER_ORDERS BO
@@ -617,7 +645,7 @@ export const buyerOrdersRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const currentYear = new Date().getFullYear();
 
                     const meta = await tx.buyer_order_ref_metadata.upsert({
@@ -642,7 +670,7 @@ export const buyerOrdersRouter = createTRPCRouter({
                         },
                     });
 
-                    const newRefNo = `NEX/${buyerShortName?.short_name}/${currentYear}/${String(meta.last_serial).padStart(4, '0')}`;
+                    const newRefNo = `NexSourcify/${buyerShortName?.short_name}/${currentYear}/${String(meta.last_serial).padStart(4, '0')}`;
 
                     const newBuyerOrder = await tx.buyer_orders.create({
                         data: {
@@ -977,6 +1005,8 @@ export const buyerOrdersRouter = createTRPCRouter({
             try {
                 const can_edit = ctx.permissions[m.BUYER_ORDERS]?.can_update;
 
+                console.log('input', input);
+
                 if (!can_edit) {
                     throw new TRPCError({
                         code: 'FORBIDDEN',
@@ -1018,7 +1048,7 @@ export const buyerOrdersRouter = createTRPCRouter({
                     });
                 }
 
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const existingOrder = await tx.buyer_orders.findUnique({
                         where: {
                             id: input.db_id,
@@ -1207,13 +1237,10 @@ export const buyerOrdersRouter = createTRPCRouter({
                                             await tx.shipment_item_details_history.create({
                                                 data: {
                                                     shipment_item_details_id: itemDetail.id,
-                                                    action_type: colorEntry.db_id
-                                                        ? actions.UPDATE
-                                                        : actions.ADDED,
+                                                    action_type: colorEntry.db_id ? actions.UPDATE : actions.ADDED,
                                                     action_by: ctx.user.id,
                                                     quantity: itemDetail.quantity,
-                                                    shipment_detail_id:
-                                                        itemDetail.shipment_detail_id,
+                                                    shipment_detail_id: itemDetail.shipment_detail_id,
                                                     color_id: itemDetail.color_id,
                                                 },
                                             });
@@ -1262,7 +1289,13 @@ export const buyerOrdersRouter = createTRPCRouter({
                 });
             }
 
-            return ctx.db.$transaction(tx => deleteStyle(tx, input.style_id, ctx.user.id), {timeout: 30000});
+            try {
+                return await transactionWithQueuedHistory(ctx.db, tx => deleteStyle(tx, input.style_id, ctx.user.id), {timeout: 30000});
+            }
+            catch (error){
+                await logError(error, ctx, input);
+                handlePrismaError(error);
+            }
         }),
 
 
@@ -1278,7 +1311,15 @@ export const buyerOrdersRouter = createTRPCRouter({
                 });
             }
 
-            return ctx.db.$transaction(tx => deleteShipment(tx, input.shipment_id, ctx.user.id), {timeout: 30000});
+            try {
+                return await transactionWithQueuedHistory(ctx.db, tx => deleteShipment(tx, input.shipment_id, ctx.user.id), {timeout: 30000});
+            }
+            catch (error){
+                console.log('In buyer order', error)
+                await logError(error, ctx, input);
+                handlePrismaError(error);
+            }
+
         }),
 
 
@@ -1287,7 +1328,7 @@ export const buyerOrdersRouter = createTRPCRouter({
             color_id: z.string().uuid(),
         }))
         .mutation(async ({ ctx, input }) => {
-            const can_delete = ctx.permissions[m.BUYER_ORDERS]?.can_delete;
+            const can_delete = ctx.permissions[m.BUYER_ORDERS]?.can_update;
 
             if (!can_delete) {
                 throw new TRPCError({ 
@@ -1297,7 +1338,7 @@ export const buyerOrdersRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const existingColor = await tx.shipment_item_details.findUnique({
                         where: { id: input.color_id },
                     });
@@ -1333,6 +1374,29 @@ export const buyerOrdersRouter = createTRPCRouter({
                 await logError(error, ctx, input);
                 handlePrismaError(error);
             }
+        }),
+
+    hasCommissionDistribution: protectedProcedure
+        .input(z.object({
+            id: z.string().uuid(),
+        }))
+        .query(async ({ ctx, input }) => {
+            const can_view = ctx.permissions[m.BUYER_ORDERS]?.can_view;
+
+            if (!can_view) {
+                throw new TRPCError({ 
+                    code: 'FORBIDDEN', 
+                    message: 'You do not have permission to view buyer orders.' 
+                });
+            }
+
+            const hasCommissionDistribution = await ctx.db.commission_distributions.findUnique({
+                where: {
+                    order_id: input.id,
+                },
+            });
+
+            return !!hasCommissionDistribution?.id;
         }),
 
     getPDFData: protectedProcedure

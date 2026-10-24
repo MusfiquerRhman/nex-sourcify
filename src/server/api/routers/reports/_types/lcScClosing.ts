@@ -36,3 +36,12 @@ export interface DebitNotes {
     debit_note_value: number;
     factory_name: string;
 }
+
+export interface CommissionDistributions {
+    dhaka_value: number;
+    overseas_value: number;
+    other_value: number;
+    dhaka_percentage: number;
+    overseas_percentage: number;
+    other_percentage: number;
+}

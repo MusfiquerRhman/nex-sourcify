@@ -153,7 +153,6 @@ export const exportReportRouter = createTRPCRouter({
                     Prisma.sql`INNER JOIN factory_shipment_details AS FSD ON FSD.shipment_detail_id = ES.shipment_details_id`,
                     Prisma.sql`INNER JOIN shipment_details AS SD ON SD.id = ES.shipment_details_id`,
                     Prisma.sql`INNER JOIN buyer_orders AS BO ON BO.id = EO.order_id`,
-                    Prisma.sql`INNER JOIN factory_orders AS FO ON FO.order_id = BO.id`,
                     Prisma.sql`INNER JOIN buyers AS B ON B.id = BO.buyer_id`,
                     Prisma.sql`INNER JOIN factories AS F ON F.id = BO.factory_id`,
                     Prisma.sql`INNER JOIN teams AS T ON T.id = BO.team_id`,
@@ -171,15 +170,9 @@ export const exportReportRouter = createTRPCRouter({
                     );
                 }
 
-                if(input.commissionValue) {
-                    joins.push(
-                        Prisma.sql`LEFT JOIN commission_distributions_details AS CDD ON SD.id = CDD.shipment_details_id`
-                    );
-                }
-
                 if(isProductTypeDimension) {
                     joins.push(
-                        Prisma.sql`LEFT JOIN order_styles AS OS ON OS.order_id = BO.id`,
+                        Prisma.sql`LEFT JOIN order_styles AS OS ON OS.id = SD.order_style_id`,
                         Prisma.sql`LEFT JOIN product_types AS PT ON PT.id = OS.product_type_id`
                     );
                 }
@@ -226,10 +219,7 @@ export const exportReportRouter = createTRPCRouter({
                     );
                 }
 
-                const filterClause =
-                    filters.length > 0
-                        ? Prisma.join(filters, " AND ")
-                        : Prisma.sql`1=1`;
+                const filterClause = filters.length > 0 ? Prisma.join(filters, " AND ") : Prisma.sql`1=1`;
 
                 // -----------------------------------------------------------------------------
                 // QUERY
@@ -294,24 +284,45 @@ export const exportReportRouter = createTRPCRouter({
                         SUM(quantity) AS quantity,
                         SUM(rdl_value) AS rdl_value,
                             SUM(factory_value) AS factory_value
-                            ${input.commissionValue ? Prisma.sql`, SUM(commission_value) AS commission_value` : Prisma.sql``}
+                            ${input.commissionValue 
+                                ? Prisma.sql`, SUM(commission_value) AS commission_value` 
+                                : Prisma.sql``
+                            }
                     FROM report_base
                     GROUP BY
-                            ${Prisma.join(outerGroupByFields, ", ")}
+                        ${Prisma.join(outerGroupByFields, ", ")}
                     ORDER BY buyer_name ASC;
                 `;
 
                 const exportReportData = result.map((row) => ({
                     buyer_name: row.buyer_name,
-                    ...(isFactoryDimension ? { factory_name: row.factory_name ?? "" } : {}),
-                    ...(isTeamDimension ? { team_name: row.team_name ?? "" } : {}),
-                    ...(isBrandDimension ? { brand: row.brand ?? "" } : {}),
-                    ...(isDepartmentDimension ? { department: row.department ?? "" } : {}),
-                    ...(input.productTypeIds ? { product_type: row.product_type ?? "" } : {}),
-                    ...(input.quantity ? { quantity: quantityFormatter(Number(row.quantity) ?? 0) } : {}),
-                    ...(input.rdlValue ? { rdl_value: currencyFormatter(Number(row.rdl_value) ?? 0, '$') } : {}),
-                    ...(input.factoryValue ? { factory_value: currencyFormatter(Number(row.factory_value) ?? 0, '$') } : {}),
-                    ...(input.commissionValue ? { commission_value: currencyFormatter(Number(row.commission_value) ?? 0, '$') } : {}),
+                    ...(isFactoryDimension ? 
+                        { factory_name: row.factory_name ?? "" } : {}
+                    ),
+                    ...(isTeamDimension ? 
+                        { team_name: row.team_name ?? "" } : {}
+                    ),
+                    ...(isBrandDimension ? 
+                        { brand: row.brand ?? "" } : {}
+                    ),
+                    ...(isDepartmentDimension ? 
+                        { department: row.department ?? "" } : {}
+                    ),
+                    ...(input.productTypeIds ? 
+                        { product_type: row.product_type ?? "" } : {}
+                    ),
+                    ...(input.quantity ? 
+                        { quantity: quantityFormatter(Number(row.quantity) ?? 0) } : {}
+                    ),
+                    ...(input.rdlValue ? 
+                        { rdl_value: currencyFormatter(Number(row.rdl_value) ?? 0, '$') } : {}
+                    ),
+                    ...(input.factoryValue ? 
+                        { factory_value: currencyFormatter(Number(row.factory_value) ?? 0, '$') } : {}
+                    ),
+                    ...(input.commissionValue ? 
+                        { commission_value: currencyFormatter(Number(row.commission_value) ?? 0, '$') } : {}
+                    ),
                 }));
 
                 const totalQuantity = result.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
@@ -320,10 +331,18 @@ export const exportReportRouter = createTRPCRouter({
                 const totalCommissionValue = result.reduce((sum, row) => sum + Number(row.commission_value ?? 0), 0);
                 
                 const results = {
-                    ...(input.quantity ? { quantity: input.quantity ? quantityFormatter(totalQuantity) : undefined } : {}),
-                    ...(input.rdlValue ? { rdl_value: input.rdlValue ? currencyFormatter(totalRdlValue, '$') : undefined } : {}),
-                    ...(input.factoryValue ? { factory_value: input.factoryValue ? currencyFormatter(totalFactoryValue, '$') : undefined } : {}),
-                    ...(input.commissionValue ? { commission_value: input.commissionValue ? currencyFormatter(totalCommissionValue, '$') : undefined } : {}),
+                    ...(input.quantity ? 
+                        { quantity: input.quantity ? quantityFormatter(totalQuantity) : undefined } : {}
+                    ),
+                    ...(input.rdlValue ? 
+                        { rdl_value: input.rdlValue ? currencyFormatter(totalRdlValue, '$') : undefined } : {}
+                    ),
+                    ...(input.factoryValue ? 
+                        { factory_value: input.factoryValue ? currencyFormatter(totalFactoryValue, '$') : undefined } : {}
+                    ),
+                    ...(input.commissionValue ? 
+                        { commission_value: input.commissionValue ? currencyFormatter(totalCommissionValue, '$') : undefined } : {}
+                    ),
                 };
 
                 return {exportReportData, totals: results};
@@ -333,5 +352,4 @@ export const exportReportRouter = createTRPCRouter({
                 handlePrismaError(error);
             }
         })
-
 })

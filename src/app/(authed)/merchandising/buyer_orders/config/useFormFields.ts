@@ -18,22 +18,26 @@ export const useFormFields = ({buyerID, brandID}: Props): Field<keyof OrderFormV
     const fobType = api.fobTypes.getAll.useQuery().data ?? [];
 
     const { data: seasons = [] } = api.seasons.getSeasonsByBuyer.useQuery(
-        !!buyerID ? buyerID : skipToken
+        !!buyerID ? buyerID : skipToken,
+        { staleTime: 900 * 1000 }
     );
 
     const { data: teams = [] } = api.teams.getTeamsByBuyer.useQuery(
-        !!buyerID ? buyerID : skipToken
+        !!buyerID ? buyerID : skipToken,
+        { staleTime: 900 * 1000 }
     );
 
     const { data: brands = [] } = api.buyers.getBrandsByBuyer.useQuery(
-        !!buyerID ? buyerID : skipToken
+        !!buyerID ? buyerID : skipToken,
+        { staleTime: 900 * 1000 }
     );
 
     const { data: departments = [] } = api.buyers.getDepartmentsByBrand.useQuery(
-        !!brandID ? brandID : skipToken
+        !!brandID ? brandID : skipToken,
+        { staleTime: 900 * 1000 }
     );
 
-    const { data: currencies = [] } = api.currencies.getAll.useQuery();
+    const { data: currencies = [] } = api.currencies.getAll.useQuery(undefined, { staleTime: 900 * 1000 });
 
     return [
         {

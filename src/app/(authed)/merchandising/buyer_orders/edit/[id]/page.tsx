@@ -12,6 +12,7 @@ import type { shipment_modes } from "@prisma/client";
 import { printingWhiteIcon } from "~/assets";
 import PhotoContainer from "../../components/photoComponents/PhotoContainer";
 import type { ParamsProp } from "~/types/params";
+import { skipToken } from "@tanstack/react-query";
 
 const EditBuyerOrderPage = ({ params }: ParamsProp) => {
     const { id } = React.use(params);
@@ -19,7 +20,7 @@ const EditBuyerOrderPage = ({ params }: ParamsProp) => {
     
     const [isLoadingSubmit, setIsLoadingSubmit] = useState(false);
 
-    const { data: buyerOrderData, isLoading } = api.buyerOrders.getBuyerOrderById.useQuery({ id: id });
+    const { data: buyerOrderData, isLoading } = api.buyerOrders.getBuyerOrderById.useQuery({ id: id }, { staleTime: 900 * 1000 });
 
     // Form setup
     const { methods, handleSubmit, formFields, validationError, control } = useBuyerOrderForm(
@@ -43,6 +44,12 @@ const EditBuyerOrderPage = ({ params }: ParamsProp) => {
             ]);
         },
     });
+
+    const order_id = methods.getValues("order.db_id");
+    
+    const { data: hasCommissionDistribution } = api.buyerOrders.hasCommissionDistribution.useQuery(
+        !!order_id ? {id: order_id } : skipToken 
+    )
 
     // Handle form submission for all fields
     const onSubmitAll = useCallback(handleSubmit(async (buyerOrderData) => {
@@ -74,25 +81,28 @@ const EditBuyerOrderPage = ({ params }: ParamsProp) => {
                     supplier_id: Number(style.supplier_id),
                     order_quantity: style.order_quantity ?? undefined,
                     shipments: style?.shipments?.map((shipment, shipmentIndex) => ({
-                          db_id: shipment?.db_id,
-                          delivery_no: shipmentIndex + 1,
-                          buyer_po: shipment.buyer_po,
-                          etd_date: new Date(shipment.etd_date),
-                          handover_date: new Date(shipment.handover_date),
-                          destination_id: Number(shipment.destination_id),
-                          shipment_mode: shipment.shipment_mode as shipment_modes,
-                          size_id: Number(shipment.size_id),
-                          fob_rate: shipment.fob_rate,
-                          payment_term_id: Number(shipment.payment_term_id),
-                          colors: shipment.colors.map((color) => ({
-                              db_id: color?.db_id,
-                              color_id: Number(color.color_id),
-                              quantity: color.quantity,
-                          }))
-                    })),
+                        db_id: shipment?.db_id,
+                        delivery_no: shipmentIndex + 1,
+                        buyer_po: shipment.buyer_po,
+                        etd_date: new Date(shipment.etd_date),
+                        handover_date: new Date(shipment.handover_date),
+                        destination_id: Number(shipment.destination_id),
+                        shipment_mode: shipment.shipment_mode as shipment_modes,
+                        size_id: Number(shipment.size_id),
+                        fob_rate: shipment.fob_rate,
+                        payment_term_id: Number(shipment.payment_term_id),
+                        colors: shipment.colors.map((color) => ({
+                            db_id: color?.db_id,
+                            color_id: Number(color.color_id),
+                            quantity: color.quantity,
+                        }))
+                    })).filter(item => item.buyer_po !== undefined),
+                    // buyer_po -> has exfactory and the shipment is disabled
                 })),
                 ref_no: buyerOrderData.order.ref_no,
             };
+
+            console.log('payload', payload);
 
             await updateBuyerOrder.mutateAsync(payload);
 
@@ -132,6 +142,7 @@ const EditBuyerOrderPage = ({ params }: ParamsProp) => {
                 control={control}
                 disabled={!can_update || isApprovedInFactoryOrder}
             />
+
             <StylesDetails 
                 methods={methods}
                 validationError={validationError.order ?? {}}
@@ -145,6 +156,12 @@ const EditBuyerOrderPage = ({ params }: ParamsProp) => {
                 message="Factory order has been approved for this order and cannot be updated." 
                 active={isApprovedInFactoryOrder} 
                 type="secondary" 
+            />
+
+            <MessageBox 
+                message="This order has commission distribution, no new styles or shipments can be added." 
+                active={!!hasCommissionDistribution} 
+                type="error" 
             />
             
             <div className="w-full flex flex-row justify-end">

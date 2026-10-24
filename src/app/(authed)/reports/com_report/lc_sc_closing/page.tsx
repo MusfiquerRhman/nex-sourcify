@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import { parseTRPCError } from "~/utils/parseTRPCError";
 import { useLcScClosingReport } from "./config/useLcScClosingReport";
+import { pdfIcon } from "~/assets";
 
 const LcScClosingReportPage = () => {
 	const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +24,7 @@ const LcScClosingReportPage = () => {
 			Object.entries({
 				base: exportSummaryReportData.base,
 				buyer: exportSummaryReportData.buyer_id,
-				lcId: exportSummaryReportData.lcId,
+				lcScId: exportSummaryReportData.lcId,
 				from_date: exportSummaryReportData.from_date,
 				to_date: exportSummaryReportData.to_date
 			}).forEach(([key, value]) => {
@@ -44,9 +45,7 @@ const LcScClosingReportPage = () => {
         }
 	});
 
-	if(isLoading) {
-		return <Loader />;
-	}
+	if(isLoading) return <Loader />;
 
 	return (
 		<Wrapper heading='LC/SC Closing Report' >
@@ -65,9 +64,11 @@ const LcScClosingReportPage = () => {
 				
 			<div className="w-full flex flex-row justify-end">
 				<Button type="button" 
+					leftIcon={pdfIcon}
 					onClick={() => onSubmitAll()}
 					label={"Generate Closing Report"} 
-					className="bg-secondary text-lg tracking-wide mt-6 max-w-80 m-8"
+					variant="secondary"
+					className="text-lg tracking-wide mt-6 max-w-80 m-8"
 				/>
 			</div>
 		</Wrapper>

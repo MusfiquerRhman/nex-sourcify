@@ -24,10 +24,12 @@ const NewRDLInvoicePage = () => {
     const addRDLInvoice = api.rdlInvoice.addRdlInvoice.useMutation({
         onSuccess: async () => {
             setError(null);
-            toast.success("Invoice added successfully!");
+            toast.success("NexSourcify Invoice added successfully!");
             await Promise.all([
                 utils.rdlInvoice.getRdlInvoice.invalidate(),
-                utils.rdlInvoice.searchRdlInvoices.invalidate()
+                utils.rdlInvoice.searchRdlInvoices.invalidate(),
+                utils.rdlInvoice.getFactoryInvoiceForRDLInvoice.invalidate(),
+                utils.rdlInvoice.getScLcForRDLInvoice.invalidate(),
             ]);
         }
     });
@@ -68,7 +70,7 @@ const NewRDLInvoicePage = () => {
         }   
         catch (error) {
             const message = parseTRPCError(error);
-            toast.error(`Failed to add Invoice: ${message}`);
+            toast.error(`Failed to add NexSourcify Invoice: ${message}`);
         }
         finally {
             setIsLoading(false);
@@ -78,10 +80,10 @@ const NewRDLInvoicePage = () => {
 
 
     return (
-        <Wrapper heading='Add Invoice' >
+        <Wrapper heading='Add NexSourcify Invoice' >
             <Form 
                 fields={formFields} 
-                buttonLabel="Add New Invoice" 
+                buttonLabel="Add New NexSourcify Invoice" 
                 register={methods.register}
                 isLoading={isLoading}
                 validationError={validationError ?? {}}
@@ -101,7 +103,7 @@ const NewRDLInvoicePage = () => {
             <div className="w-full flex flex-row justify-end">
                 <Button type="button" 
                     onClick={() => onSubmitAll()}
-                    label={"Add Invoice"} 
+                    label={"Add NexSourcify Invoice"} 
                     className="text-lg tracking-wide mt-6 max-w-80 m-8"
                     disabled={isLoading}
                 />

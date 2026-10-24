@@ -8,6 +8,8 @@ import { api } from "~/trpc/react";
 import { tableFormColumns } from "../../factoryInvoiceConfig/tableFormColumns";
 import { skipToken } from "@tanstack/react-query";
 import { formatDate } from "~/utils/localDateString";
+import { Portal, TableWrapper } from "~/components";
+import { safeNumber } from "~/utils/numbers";
 
 type props = {
     invoiceIndex: number;
@@ -68,17 +70,60 @@ const FactoryInvoiceDetails = (props: props) => {
         );
     }, [rdlInvoiceDetails, invoiceIndex]);
 
+    const rdlInvoices = methods.watch("rdlInvoices") ?? [];
+
+    const lastFactoryInvoiceIndex = rdlInvoices.reduce(
+        (lastIndex, rdlInvoice, index) => rdlInvoice.rdl_invoice_id ? index : lastIndex,
+        -1,
+    );
+
+    const grandTotalQuantity = rdlInvoices.reduce(
+        (total, rdlInvoice) => total + (rdlInvoice.factoryInvoices ?? []).reduce(
+            (invoiceTotal, factoryInvoice) => invoiceTotal + safeNumber(factoryInvoice.quantity),
+            0,
+        ),
+        0,
+    );
+    
+    const grandTotalValue = rdlInvoices.reduce(
+        (total, rdlInvoice) => total + (rdlInvoice.factoryInvoices ?? []).reduce(
+            (invoiceTotal, factoryInvoice) => invoiceTotal + safeNumber(factoryInvoice.factory_invoice_value),
+            0,
+        ),
+        0,
+    );
+
     return (
-        <TableForm 
-            selectedRdlInvoiceNo={selectedRdlInvoiceNo}
-            name={`rdlInvoices.${invoiceIndex}.factoryInvoices`}
-            rows={shipmentFields}
-            columns={tableFormColumns}
-            disabled={disabled}
-            methods={methods}
-            validationError={validationError}
-            invoiceIndex={invoiceIndex}
-        />
+        <>
+            <TableForm 
+                selectedRdlInvoiceNo={selectedRdlInvoiceNo}
+                name={`rdlInvoices.${invoiceIndex}.factoryInvoices`}
+                rows={shipmentFields}
+                columns={tableFormColumns}
+                disabled={disabled}
+                methods={methods}
+                validationError={validationError}
+                invoiceIndex={invoiceIndex}
+            />
+            {invoiceIndex === lastFactoryInvoiceIndex && (
+                <Portal containerId="document_submissions_rdl_invoice_portal">
+                    <div className="w-full px-8 pb-8">
+                        <TableWrapper>
+                            <colgroup>
+                                <col span={6} style={{ width: "16.6667%" }} />
+                            </colgroup>
+                            <tfoot>
+                                <tr className="font-bold text-sm">
+                                    <td colSpan={4} className="border-r-2 border-gray/20 p-2 text-right">Factory Invoice Grand Total</td>
+                                    <td className="bg-secondary text-white border-r-2 border-gray/20 p-2">{grandTotalQuantity} </td>
+                                    <td className="bg-secondary text-white border-r-2 border-gray/20 p-2">{grandTotalValue.toFixed(2)}</td>
+                                </tr>
+                            </tfoot>
+                        </TableWrapper>
+                    </div>
+                </Portal>
+            )}
+        </>
     )
 }
 

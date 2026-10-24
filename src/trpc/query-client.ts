@@ -20,13 +20,14 @@ export const createQueryClient = () => {
 		
 		defaultOptions: {
 			queries: {
-				staleTime: 300 * 1000, // 5 minutes
-				retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff up to 30 seconds
+				staleTime: 30 * 1000,
+				refetchOnWindowFocus: false,
+				refetchOnReconnect: false,
+				retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
 
-				// Don't retry if it's a forbidden error, otherwise retry up to 3 times
 				retry: (failureCount, error) => {
 					if (error instanceof TRPCClientError && error.data?.code === "FORBIDDEN") {
-						return false; // Fail fast on forbidden errors
+						return false;
 					}
 
 					return failureCount < 5;

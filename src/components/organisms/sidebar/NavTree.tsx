@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Accordion } from '~/components';
+import Accordion from '../../molecules/Accordion';
 import Link from 'next/link';
 import sideBarConfig, { icons } from '~/utils/url.config';
 import clsx from 'clsx';
@@ -17,37 +17,41 @@ const NavTree = ({ data }: { data: TreeNode[] }) => {
 
     return (
         <>
-            {data.map((node) => (
-                <React.Fragment key={node.id}>
-                    {node.children.length === 0 ? ( 
-                        <div className={clsx(
-                            "py-3 px-4 cursor-pointer flex flex-1 gap-3 hover:bg-primary-accent flex-row z-50 text-[0.9rem]", 
-                            pathname.includes(sideBarConfig[node.id]?.href ?? '#') ? "bg-primary tracking-wide" : ""
-                        )}>
-                            {!!icons[node.id]?.src && 
-                                <Image alt='nav icons' 
-                                    src={icons[node.id]?.src ?? ''} 
-                                    className='inline-block w-6'  
-                                    width={20} 
-                                    height={20} 
-                                />
-                            }
-                            <Link scroll={false} href={sideBarConfig[node.id]?.href ?? '#'} className='w-full'> 
-                                {node.name} 
+            {data.map((node) => {
+                const href = sideBarConfig[node.id]?.href;
+                const isActive = Boolean(href && (pathname === href || pathname.startsWith(`${href}/`)));
+
+                return (
+                    <React.Fragment key={node.id}>
+                        {node.children.length === 0 ? (
+                            <Link
+                                scroll={false}
+                                href={href ?? '#'}
+                                aria-current={isActive ? 'page' : undefined}
+                                className={clsx('nex-sidebar-link', isActive && 'is-active')}
+                            >
+                                {!!icons[node.id]?.src &&
+                                    <Image alt=""
+                                        src={icons[node.id]?.src ?? ''}
+                                        className="nex-sidebar-nav-icon"
+                                        width={20}
+                                        height={20}
+                                    />
+                                }
+                                <span className="nex-sidebar-label">{node.name}</span>
                             </Link>
-                        </div>
-                    ) : (
-                        <Accordion id={node.id} icon={icons[node.id]} 
-                            label={node.name} 
-                            isLinkOpen={pathname.includes(sideBarConfig[node.id]?.href ?? '#')} 
-                            items={[ 
-                                // Render children recursively
-                                <NavTree key={node.id} data={node.children}/> 
-                            ]}
-                        />
-                    )}
-                </React.Fragment>
-            ))}      
+                        ) : (
+                            <Accordion id={node.id} icon={icons[node.id]}
+                                label={node.name}
+                                isLinkOpen={isActive}
+                                items={[
+                                    <NavTree key={node.id} data={node.children} />
+                                ]}
+                            />
+                        )}
+                    </React.Fragment>
+                );
+            })}
         </>
     );
 };

@@ -8,4 +8,5 @@ export const tableHeaders= [
     { key: 'exfactory_date', label: 'Ex-Factory Date', type: 'date' },
     { key: 'total_quantity', label: 'Total Quantity' },
     { key: 'total_delivery_quantity', label: 'Delivery Quantity' },
+    { key: 'actions', label: '', type: 'action' }
 ]

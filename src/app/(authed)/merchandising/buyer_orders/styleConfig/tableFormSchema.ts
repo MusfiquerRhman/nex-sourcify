@@ -17,27 +17,23 @@ export const styleFormSchema = z.object({
     shipments: z.array(shipmentSchema).optional(),
 })
 .superRefine((style, ctx) => {
-  if (!style.order_quantity) return;
+	if (!style.order_quantity) return;
 
-  let runningTotal = 0;
+	let runningTotal = 0;
 
-  style?.shipments?.forEach((shipment, shipmentIndex) => {
-    shipment.colors.forEach((color) => {
-      runningTotal += color.quantity;
+	style?.shipments?.forEach((shipment, shipmentIndex) => {
+		shipment.colors.forEach((color) => {
+			runningTotal += color.quantity;
 
-      if (runningTotal > style.order_quantity!) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [
-            "shipments",
-            shipmentIndex,
-            "lot_quantity"
-          ],
-          message: `Exceeds order quantity (${style.order_quantity})`,
-        });
-      }
-    });
-  });
+			if (runningTotal > style.order_quantity!) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: [	"shipments", shipmentIndex, "lot_quantity"],
+					message: `Exceeds order quantity (${style.order_quantity})`,
+				});
+			}
+		});
+	});
 });
 
 export type StyleFormValues = z.infer<typeof styleFormSchema>;

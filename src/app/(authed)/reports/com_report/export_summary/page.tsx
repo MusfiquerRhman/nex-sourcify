@@ -66,7 +66,8 @@ const OrderSummaryReportPage = () => {
 					leftIcon={excelIcon}
 					onClick={() => onSubmitAll()}
 					label={"Export Summary Report"} 
-					className="bg-secondary text-lg tracking-wide mt-6 max-w-80 m-8"
+					variant="secondary"
+					className="text-lg tracking-wide mt-6 max-w-80 m-8"
 				/>
 			</div>
 		</Wrapper>

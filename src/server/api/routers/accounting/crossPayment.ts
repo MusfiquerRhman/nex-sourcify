@@ -1,11 +1,13 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
 import { m } from "~/utils/moduleMap";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { actions, Prisma } from "@prisma/client";
-import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID } from "~/utils/config";
+import { ACCOUNTING_DEPARTMENT_ID, ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID, COMMERCIAL_DEPARTMENT_ID } from "~/utils/config";
 import type { CrossPaymentDetails, CrossPaymentList } from './_types/crossPayment';
+import { notificationQueue } from "~/server/queues/notification.queue";
 
 export const crossPaymentsRouter = createTRPCRouter({
     addCrossPayment: protectedProcedure
@@ -34,7 +36,7 @@ export const crossPaymentsRouter = createTRPCRouter({
             try {
                 const currentYear = new Date().getFullYear();
                 
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx, queueHistoryJob) => {
                     const meta = await tx.cross_payments_metadata.upsert({
                         where: { 
                             year_buyer_id: {
@@ -101,23 +103,33 @@ export const crossPaymentsRouter = createTRPCRouter({
                         await tx.cross_payment_details.createMany({
                             data: crossPaymentDetailsData,
                         });
+
+                        queueHistoryJob({
+                            name: "cross_payment_details_added",
+                            data: {
+                                cross_payment_id: crossPayment.id,
+                                details: input.details.map((detail) => ({
+                                    factory_invoice_id: detail.factory_invoice_id,
+                                    factory_payment_no: detail.factory_payment_no ?? null,
+                                    factory_payment_date: detail.factory_payment_date ?? null,
+                                    value: detail.value,
+                                })),
+                                action_by: ctx.user.id,
+                            },
+                        });
                     }
 
-                    const addedDetails = await tx.cross_payment_details.findMany({
-                        where: { cross_payment_id: crossPayment.id },
-                    });
-
-                    await tx.cross_payment_details_history.createMany({
-                        data: addedDetails.map((detail) => ({
-                            cross_payment_details_id: detail.id,
-                            cross_payment_id: crossPayment.id,
-                            factory_invoice_id: detail.factory_invoice_id,
-                            factory_payment_no: detail.factory_payment_no,
-                            factory_payment_date: detail.factory_payment_date,
-                            value: detail.value,
-                            action_type: actions.ADDED,
-                            action_by: ctx.user.id,
-                        })),
+                    await notificationQueue.add("cross-payment-Submitted", {
+                        cross_payment_id: crossPayment.id,
+                        cross_payment_ref: crossPayment.cross_payment_ref,
+                        approval_status: -1,
+                        action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
+                    }, {
+                        attempts: 5,
+                        backoff: {
+                            type: "exponential",
+                            delay: 1000,
+                        },
                     });
 
                     return crossPayment;
@@ -263,6 +275,7 @@ export const crossPaymentsRouter = createTRPCRouter({
 
     getCrossPaymentList: protectedProcedure
         .input(z.object({
+            filter: z.number().min(-1).default(-1),
             offset: z.number().optional(),
             limit: z.number().optional(),
         }))
@@ -275,7 +288,7 @@ export const crossPaymentsRouter = createTRPCRouter({
                     message: "You do not have permission to view cross payments.",
                 });
             }
-            
+
             try {
                 const result = await ctx.db.$queryRaw<CrossPaymentList[]>`
                     WITH CROSS_PAYS AS (
@@ -289,23 +302,36 @@ export const crossPaymentsRouter = createTRPCRouter({
                             CP.IS_AUTHORIZED,
                             CP.ADDED_AT
                         FROM CROSS_PAYMENTS AS CP
-                            INNER JOIN CROSS_PAYMENT_DETAILS AS CPD ON CPD.cross_payment_id = CP.id
+                            LEFT JOIN CROSS_PAYMENT_DETAILS AS CPD ON CPD.cross_payment_id = CP.id
                             INNER JOIN BUYERS AS B ON B.id = CP.buyer_id
                             INNER JOIN TERMS AS T ON T.id = CP.term_id
-                        WHERE EXISTS ( -- Admin
-                            SELECT 1
-                            FROM USERS AS U
-                            WHERE U.ID = ${ctx.user.id}
-                                AND U.DEPARTMENT_ID = ${ADMIN_DEPARTMENT_ID}
-                                AND U.LEVEL_ID = ${ADMIN_LEVEL_ID}
+                        WHERE (
+                            EXISTS ( -- Admin
+                                SELECT 1
+                                FROM USERS AS U
+                                WHERE U.ID = ${ctx.user.id}
+                                    AND U.DEPARTMENT_ID = ${ADMIN_DEPARTMENT_ID}
+                                    AND U.LEVEL_ID = ${ADMIN_LEVEL_ID}
+                            )
+                            OR EXISTS ( -- Team Member
+                                SELECT 1
+                                FROM TEAM_MEMBERS AS TM 
+                                    INNER JOIN TEAMS AS T ON T.ID = TM.TEAM_ID
+                                    INNER JOIN USERS AS U ON U.ID = TM.USER_ID
+                                WHERE T.BUYER_ID = B.id
+                                    AND TM.USER_ID = ${ctx.user.id}
+                                    AND (
+                                        U.DEPARTMENT_ID = ${COMMERCIAL_DEPARTMENT_ID}
+                                        OR (
+                                            U.DEPARTMENT_ID = ${ACCOUNTING_DEPARTMENT_ID}
+                                            AND CP.IS_AUTHORIZED = TRUE
+                                        )
+                                    )
+                            )
                         )
-                        OR EXISTS ( -- Team Member
-                            SELECT 1
-                            FROM TEAM_MEMBERS AS TM 
-                                INNER JOIN TEAMS AS T ON T.ID = TM.TEAM_ID
-                            WHERE T.BUYER_ID = B.id
-                                AND TM.USER_ID = ${ctx.user.id}
-                        )
+                        ${input.filter === -1 
+                            ? Prisma.empty
+                            : Prisma.sql`AND COALESCE(CP.IS_AUTHORIZED, FALSE) = ${input.filter === 1}`}
                         GROUP BY CP.ID, B.ID, T.ID
                     )
                     SELECT 
@@ -357,7 +383,7 @@ export const crossPaymentsRouter = createTRPCRouter({
                             CP.IS_AUTHORIZED,
                             CP.ADDED_AT
                         FROM CROSS_PAYMENTS AS CP
-                            INNER JOIN CROSS_PAYMENT_DETAILS AS CPD ON CPD.cross_payment_id = CP.id
+                            LEFT JOIN CROSS_PAYMENT_DETAILS AS CPD ON CPD.cross_payment_id = CP.id
                             INNER JOIN BUYERS AS B ON B.id = CP.buyer_id
                             INNER JOIN TERMS AS T ON T.id = CP.term_id
                             INNER JOIN FACTORY_INVOICE AS FI ON FI.id = CPD.factory_invoice_id
@@ -373,8 +399,16 @@ export const crossPaymentsRouter = createTRPCRouter({
                                 SELECT 1
                                 FROM TEAM_MEMBERS AS TM 
                                     INNER JOIN TEAMS AS T ON T.ID = TM.TEAM_ID
+                                    INNER JOIN USERS AS U ON U.ID = TM.USER_ID
                                 WHERE T.BUYER_ID = B.id
                                     AND TM.USER_ID = ${ctx.user.id}
+                                    AND (
+                                        U.DEPARTMENT_ID = ${COMMERCIAL_DEPARTMENT_ID} -- Commercial
+                                        OR ( -- Accounts
+                                            U.DEPARTMENT_ID = ${ACCOUNTING_DEPARTMENT_ID}
+                                            AND CP.IS_AUTHORIZED = TRUE
+                                        )
+                                    )
                             )
                         )
                         AND (
@@ -429,7 +463,9 @@ export const crossPaymentsRouter = createTRPCRouter({
                 }
             });
 
-            if(!getAuthorization?.is_authorized) {
+            console.log(getAuthorization);
+
+            if(getAuthorization?.is_authorized) {
                 throw new TRPCError({
                     code: 'CONFLICT',
                     message: "This Cross Payment has been approved and can't be deleted"
@@ -437,13 +473,9 @@ export const crossPaymentsRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const crossPaymentDetails = await tx.cross_payment_details.findMany({
                         where: { cross_payment_id: input.cross_payment_id },
-                    });
-
-                    const deletedCrossPayment = await tx.cross_payments.delete({
-                        where: { id: input.cross_payment_id },
                     });
                     
                     await Promise.all([
@@ -463,18 +495,22 @@ export const crossPaymentsRouter = createTRPCRouter({
                                 action_by: ctx.user.id,
                             })),
                         }),
-    
-                        await tx.cross_payments_history.create({
-                            data: {
-                                cross_payments_id: deletedCrossPayment.id,
-                                buyer_id: deletedCrossPayment.buyer_id,
-                                cross_payment_date: deletedCrossPayment.cross_payment_date,
-                                cross_payment_ref: deletedCrossPayment.cross_payment_ref,
-                                action_type: actions.DELETE,
-                                action_by: ctx.user.id,
-                            },
-                        }),
                     ]);
+
+                    const deletedCrossPayment = await tx.cross_payments.delete({
+                        where: { id: input.cross_payment_id },
+                    });
+
+                    await tx.cross_payments_history.create({
+                        data: {
+                            cross_payments_id: deletedCrossPayment.id,
+                            buyer_id: deletedCrossPayment.buyer_id,
+                            cross_payment_date: deletedCrossPayment.cross_payment_date,
+                            cross_payment_ref: deletedCrossPayment.cross_payment_ref,
+                            action_type: actions.DELETE,
+                            action_by: ctx.user.id,
+                        },
+                    });
                 })
             }
             catch (error) {
@@ -564,7 +600,7 @@ export const crossPaymentsRouter = createTRPCRouter({
                     });
                 }
 
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedCrossPayment = await tx.cross_payments.update({
                         where: { id: input.cross_payment_id },
                         data: {
@@ -659,7 +695,7 @@ export const crossPaymentsRouter = createTRPCRouter({
                     });
                 }
 
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const detailToDelete = await tx.cross_payment_details.findUnique({
                         where: { id: input.db_id },
                     });
@@ -688,58 +724,6 @@ export const crossPaymentsRouter = createTRPCRouter({
                         where: { id: input.db_id },
                     });
                 })
-            }
-            catch (error) {
-                await logError(error, ctx, input);
-                handlePrismaError(error);
-            }
-        }),
-
-    checkCrossPaymentStatus: protectedProcedure
-        .input(z.object({
-            cross_payment_id: z.string(),
-        }))
-        .query(async ({ ctx, input }) => {
-            const can_view = ctx.permissions[m.CROSS_PAYMENT]?.can_view;
-
-            if (!can_view) {
-                throw new TRPCError({
-                    code: "FORBIDDEN",
-                    message: "You do not have permission to view cross payment status.",
-                });
-            }
-            
-            try {
-                const crossPayment = await ctx.db.$queryRaw`
-                    SELECT
-                        CPD.id,
-                        FI.invoice_no,
-                        CASE
-                            WHEN NOT EXISTS (
-                                SELECT 1
-                                FROM document_submission_factory_invoices AS DSFI
-                                WHERE DSFI.factory_invoice_id = FI.id
-                            ) THEN -2
-                            WHEN NOT EXISTS (
-                                SELECT 1
-                                FROM rdl_invoice_details AS RID
-                                INNER JOIN proceed_realization_details AS PRD ON PRD.rdl_invoice_id = RID.rdl_invoice_id
-                                WHERE RID.factory_invoice_id = FI.id
-                            ) THEN -1
-                            WHEN EXISTS (
-                                SELECT 1
-                                FROM factory_payments AS FP
-                                WHERE FP.factory_invoice_id = FI.id
-                            ) THEN 1
-                            ELSE 0
-                        END AS STATUS
-                    FROM cross_payments AS CP
-                    INNER JOIN cross_payment_details AS CPD ON CPD.cross_payment_id = CP.id
-                    INNER JOIN factory_invoice AS FI ON FI.id = CPD.factory_invoice_id
-                    WHERE CP.id = ${input.cross_payment_id};
-                `;
-            
-                return crossPayment;
             }
             catch (error) {
                 await logError(error, ctx, input);
@@ -824,24 +808,38 @@ export const crossPaymentsRouter = createTRPCRouter({
                     });
                 }
 
-                const updatedCrossPayment = await ctx.db.cross_payments.update({
-                    where: { id: input.id },
-                    data: {
-                        is_authorized: input.approval_status,
-                    }
+                const updatedCrossPayment = await transactionWithQueuedHistory(ctx.db, async (tx) => {
+                    const updated = await tx.cross_payments.update({
+                        where: { id: input.id },
+                        data: { is_authorized: input.approval_status },
+                    });
+
+                    await tx.cross_payments_history.create({
+                        data: {
+                            cross_payments_id: updated.id,
+                            cross_payment_ref: updated.cross_payment_ref,
+                            cross_payment_date: updated.cross_payment_date,
+                            buyer_id: updated.buyer_id,
+                            term_id: updated.term_id,
+                            is_authorized: updated.is_authorized,
+                            action_type: actions.UPDATE,
+                            action_by: ctx.user.id,
+                        },
+                    });
+                    return updated;
                 });
 
-                await ctx.db.cross_payments_history.create({
-                    data: {
-                        cross_payments_id: updatedCrossPayment.id,
-                        cross_payment_ref: updatedCrossPayment.cross_payment_ref,
-                        cross_payment_date: updatedCrossPayment.cross_payment_date,
-                        buyer_id: updatedCrossPayment.buyer_id,
-                        term_id: updatedCrossPayment.term_id,
-                        is_authorized: updatedCrossPayment.is_authorized,
-                        action_type: actions.UPDATE,
-                        action_by: ctx.user.id,
-                    }
+                await notificationQueue.add("cross-payment-Submitted", {
+                    cross_payment_id: input.id,
+                    cross_payment_ref: updatedCrossPayment.cross_payment_ref,
+                    approval_status: input.approval_status ? 1 : 0,
+                    action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
+                }, {
+                    attempts: 5,
+                    backoff: {
+                        type: "exponential",
+                        delay: 1000,
+                    },
                 });
 
                 return updatedCrossPayment;

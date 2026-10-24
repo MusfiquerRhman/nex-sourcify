@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -110,7 +111,7 @@ export const paymentTermsRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const paymentTerm = await tx.payment_terms.create({
                         data: {
                             term_id: input.terms_id,
@@ -158,7 +159,7 @@ export const paymentTermsRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedPaymentTerm = await tx.payment_terms.update({
                         where: { id: input.id },
                         data: {
@@ -206,7 +207,7 @@ export const paymentTermsRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const paymentTerm = await tx.payment_terms.delete({
                         where: { id: input.id },
                     });

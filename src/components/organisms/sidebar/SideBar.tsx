@@ -7,6 +7,7 @@ import Burger from './Burger';
 import clsx from 'clsx';
 import Image from 'next/image';
 import { useSidebarStore } from '~/store/useSidebarStore';
+import { shirtIcon } from '~/assets';
 
 type NavData = { 
     name: string; 
@@ -55,31 +56,37 @@ const SideBar = ({navData, children}: SideBarProps) => {
     const isOpen = useSidebarStore((state) => state.isOpen);
     const toggleIsOpen = useSidebarStore((state) => state.toggleIsOpen);
 
-    // temporary filter to remove the DOES NOT EXIST item with id 64
-    // this is for the DB migration phase, to maintain data integrity
-    // this should be removed once all the modules are properly set up in the backend
-    // If a module of the old system is missing in the new system, it's 64
-    const filteredNavData = navData.filter(item => item.id !== 64);
-
-    const dataTree = buildTree(filteredNavData);
+    const dataTree = buildTree(navData);
 
     return (
         <div className="flex flex-row">
-            <div className='fixed'>
-                <motion.div className="h-[99.4dvh] w-62 bg-sidebar text-white m-0.75 rounded-lg 
-                                       overflow-hidden shadow-[2px_1px_5px_rgba(2,20,100,.3)]"
+            <div className="nex-sidebar-shell">
+                <motion.aside
+                    id="nex-sidebar-panel"
+                    aria-label="Workspace sidebar"
+                    aria-hidden={!isOpen}
+                    inert={!isOpen}
+                    className="nex-sidebar"
                     initial={{ width: isOpen ? 248 : 0, opacity: isOpen ? 1 : 0 }} // 248px = w-62
                     animate={{ width: isOpen ? 248 : 0, opacity: isOpen ? 1 : 0 }}
                     transition={{ type: "tween", duration: 0.25, ease: 'linear' }}
                 >
-                    <Image width={300} height={300} src="/nexus.jpg" alt="Logo" className='py-5 bg-white'/>
+                    <header className="nex-sidebar-brand">
+                        <Image width={1024} height={1024} src="/nexsourcify-logo.png" alt="NexSourcify" className="nex-sidebar-logo" />
+                    </header>
 
-                    <div className='h-[calc(100dvh-150px)] pb-36 overflow-y-scroll [&::-webkit-scrollbar]:hidden 
-                                    [-ms-overflow-style:none] [scrollbar-width:none] custom-scrollbar'
-                    >
+                    <nav aria-label="Main navigation" className="nex-sidebar-nav">
                         <NavTree data={dataTree} />
-                    </div>
-                </motion.div>
+                    </nav>
+
+                    <footer className="nex-sidebar-footer">
+                        <div className="nex-sidebar-footer-title">
+                            <Image src={shirtIcon} alt="" width={24} height={24} />
+                            <span>Garments ERP</span>
+                        </div>
+                        <p>Smarter Production. Better Tomorrow.</p>
+                    </footer>
+                </motion.aside>
 
                 <Burger isOpen={isOpen} toggleIsOpen={toggleIsOpen} />
             </div>
@@ -92,7 +99,7 @@ const SideBar = ({navData, children}: SideBarProps) => {
                 }}
                 transition={{ type: false }}
                 className={clsx(
-                    "my-0.75 mx-4 rounded-lg transition-all h-[99.4dvh] w-full",
+                    "my-0.75 mx-4 rounded-lg transition-all h-[99.3dvh] w-full",
                     isOpen ? "mr-4" : "mx-8"
                 )}
             >

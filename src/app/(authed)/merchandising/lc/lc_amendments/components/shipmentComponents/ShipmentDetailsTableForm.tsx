@@ -5,7 +5,6 @@ import { Heading, TableBody, TableWrapper } from "~/components";
 import { type FieldArrayWithId, type FieldErrors } from "react-hook-form";
 import type { useLCAmendmentForm } from "../../config/useLCAmendmentForm";
 import ShipmentRows from "./ShipmentRows";
-// import ShipmentSummaryRow from "./ShipmentSummaryRow";
 import TableHeader, { type TableHeaderType } from "~/components/organisms/table/TableHeader";
 import type { FormValues } from "../../config/formSchema";
 
@@ -60,7 +59,6 @@ const TableForm = (props: Props) => {
                                     orderIndex={orderIndex}
                                 />
                             ))}
-                            {/* <ShipmentSummaryRow methods={methods} orderIndex={orderIndex} /> */}
                         </TableBody>
                     </TableWrapper>
                 </div>

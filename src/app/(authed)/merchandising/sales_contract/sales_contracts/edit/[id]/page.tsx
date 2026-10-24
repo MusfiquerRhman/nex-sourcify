@@ -10,6 +10,7 @@ import { useNavigationStore, usePermissionStore } from "~/store";
 import { useDecodedUser, useModulePath } from "~/hooks";
 import ScDetails from "../../components/ScDetails";
 import type { ParamsProp } from "~/types/params";
+import { printingWhiteIcon, commissionWhiteIcon } from "~/assets";
 
 const EditSalesContractPage = ({ params }: ParamsProp) => {
     const { id } = React.use(params);
@@ -35,7 +36,7 @@ const EditSalesContractPage = ({ params }: ParamsProp) => {
     // Get current module permissions
     const pathId = useNavigationStore((s) => s.getByHref(modulePath));
     const permissions = usePermissionStore(s => (pathId ? s.permission[pathId] : undefined));
-    const { can_update } = permissions ?? {};
+    const { can_update, can_view } = permissions ?? {};
 
     const updateSalesContract = api.salesContracts.updateSalesContract.useMutation({
         onSuccess: async () => {
@@ -98,7 +99,6 @@ const EditSalesContractPage = ({ params }: ParamsProp) => {
 
     const approveSalesContract = api.salesContracts.approveSalesContract.useMutation({
         onSuccess: async () => {
-            toast.success("Sales Contract approved successfully!");
             await Promise.all([
                 utils.salesContracts.getSalesContractById.invalidate({ id: id }),
                 utils.salesContracts.getSalesContracts.invalidate(),
@@ -122,6 +122,19 @@ const EditSalesContractPage = ({ params }: ParamsProp) => {
                 approval_status: status,
                 previous_approval_status: authorizations?.authorization?.approval_status ?? 0,
             });
+
+            if(status === 1) {
+                toast.success("Sales Contract sent for approval successfully!");
+            }
+            else if(status === 0) {
+                toast.success("Sales Contract unauthorized successfully!");
+            }
+            else if(status === 2) {
+                toast.success("Sales Contract authorized successfully!");
+            }
+            else {
+                toast.success("Sales Contract approval status updated successfully!");
+            }
         }
         catch (error) {
             const message = parseTRPCError(error);
@@ -150,12 +163,38 @@ const EditSalesContractPage = ({ params }: ParamsProp) => {
     const isAllCommissionDistributionsAuthorized = unauthorizedCommissionDistributions 
         ? !!unauthorizedCommissionDistributions.all_approved : false;
 
+    const noCommissionDistributions = unauthorizedCommissionDistributions?.all_approved === null;
+
     const unauthorizedCommissionDistributionRefNos = unauthorizedCommissionDistributions 
         ? unauthorizedCommissionDistributions.failed_ref_nos : "";
+
+    console.log('unauthorizedCommissionDistributions', unauthorizedCommissionDistributions);
 
     return (
         <Wrapper
             heading="Update Sales Contract"
+            subSectionRight={
+                can_view ? (
+                    <div className='flex flex-row gap-4'>
+                        <div className="w-70 mb-3">
+                            <Button
+                                variant="secondary"
+                                label="Sales Contract (PDF)"
+                                leftIcon={printingWhiteIcon}
+                                onClick={() => window.open(`/pdf/sales_contract/${id}`, "_blank")}
+                            />
+                        </div>
+                        <div className="w-60 mb-3">
+                            <Button
+                                variant="secondary"
+                                label="Commission (PDF)"
+                                leftIcon={commissionWhiteIcon}
+                                onClick={() => window.open(`/pdf/sales_contract_commission/${id}`, "_blank")}
+                            />
+                        </div>
+                    </div>
+                ) : null
+            } 
         >
             {salesContractData === null ? (
                 <Info info="The requested Sales Contract was not found." />
@@ -195,12 +234,18 @@ const EditSalesContractPage = ({ params }: ParamsProp) => {
                     <MessageBox 
                         message="Authorize all the commission distributions in order to Send for Approval / Authorize this sales contract." 
                         active={!isAllCommissionDistributionsAuthorized && !!unauthorizedCommissionDistributions?.failed_ref_nos} 
-                        type="error" 
+                        type="warning" 
                     />
 
                     <MessageBox 
                         message={`The following commission distributions are unauthorized: ${unauthorizedCommissionDistributionRefNos}`}
                         active={!isAllCommissionDistributionsAuthorized && !!unauthorizedCommissionDistributions?.failed_ref_nos} 
+                        type="error" 
+                    />
+
+                    <MessageBox 
+                        message="The Order Reference in this sales contract are missing Commission Distribution." 
+                        active={noCommissionDistributions} 
                         type="error" 
                     />
 
@@ -276,7 +321,7 @@ const EditSalesContractPage = ({ params }: ParamsProp) => {
                                 </div>
                             )
                         )}
-                    </div>
+                    </div>                    
                 </>
             )}
         </Wrapper>

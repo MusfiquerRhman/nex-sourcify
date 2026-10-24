@@ -24,6 +24,7 @@ const NewTNAPlanPage = () => {
             setError(null);
             toast.success("TNA Plan added successfully!");
             await utils.tnaPlan.getTnaPlans.invalidate();
+            await utils.tnaPlan.getOrdersForPlanning.invalidate();
         },
     });
 

@@ -1,6 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, styles, tableBorderColor } from "../components/pdfConfig";
-import { PrintByAndDate, NexSourcifyLogo, ReportTitle, HeaderPart, Table, TableSummary, Signature } from "../components";
+import { PrintByAndDate, RenaissanceLogo, ReportTitle, HeaderPart, Table, TableSummary, Signature } from "../components";
 import { formatDate } from "~/utils/localDateString";
 
 import type { inferRouterOutputs } from '@trpc/server';
@@ -35,17 +35,17 @@ const RDLInvoicePDF = ({ data }: { data: GetPDFDataOutput }) => {
 
 	return (
 		<Document
-            title={`Nex Sourcify - ${data.header?.invoice_no}`}
-            author="Nex Sourcify"
+            title={`NexSourcify Invoice - ${data.header?.invoice_no}`}
+            author="NexSourcify Nexus"
             subject="Factory Invoice PDF"
-            keywords="Factory, Invoice, PDF, Nex Sourcify, ERP"
+            keywords="Factory, Invoice, PDF, NexSourcify Nexus, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="Nex Sourcify"
+            producer="NexSourcify Nexus"
 			pageMode='useOutlines'
 			creationDate={new Date()}
         >
 			<Page orientation="portrait" size="A4" style={styles.body} wrap>
-				<NexSourcifyLogo />
+				<RenaissanceLogo />
 				<ReportTitle title={data.header?.company_name!} />
 				<View style={{
 					display: "flex",

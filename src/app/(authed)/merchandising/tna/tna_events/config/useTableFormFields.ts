@@ -65,7 +65,7 @@ export const useFormFields = (): Field<keyof ActionFormValues>[] => {
             label: "Actual Date",
             placeholder: "Select actual date",
             type: "date",
-            minDate: isAdmin ? undefined : 2
+            minDate: isAdmin ? undefined : 2000
         },
         {
             name: "template_name",

@@ -27,7 +27,7 @@ const TableSummary = ({ results }: { results: resultsType }) => {
                         width: `${field.width ?? 100 / length}%`,
                         borderRight: index !== length - 1 ? `0.75px solid ${tableBorderColor}` : "none",
                         padding: "4px",
-                        fontSize: 6, 
+                        fontSize: 7, 
                         textAlign: 'center', 
                         fontWeight: 'semibold'
                     }}

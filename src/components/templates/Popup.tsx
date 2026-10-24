@@ -33,7 +33,7 @@ const Popup = (props: PopupProps) => {
                     {loading ? (
                         <Loader />
                     ) : (
-                        <div className=" bg-background emboss p-4 rounded-lg min-w-[650px]" onClick={(e) => e.stopPropagation()}>
+                        <div className=" bg-background emboss p-4 rounded-lg min-w-[550px]" onClick={(e) => e.stopPropagation()}>
                             <Heading as="h2" className="border-b-2 border-gray-light w-full">{heading}</Heading>
                             <p className="mt-4">{description}</p>
                             {actionLabel && (

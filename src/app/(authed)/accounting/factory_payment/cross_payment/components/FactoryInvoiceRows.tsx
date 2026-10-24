@@ -73,15 +73,20 @@ const FactoryInvoiceRows = (props: Props) => {
 
     return (
         <GenericFormTableRow
-            fields={shipmentTableFormFields({factoryInvoice: filteredFactoryShipments, isEdit: isEdit})}
+            fields={shipmentTableFormFields({
+                factoryInvoice: filteredFactoryShipments, 
+                isEdit: isEdit, 
+                disabled: disabled, 
+                isRegularized: !!(isRegularized === 'REGULARIZED')
+            })}
             register={methods.register}
             removeRow={removeRow}
-            disabled={disabled || !!(isRegularized === 'REGULARIZED')}
+            disabled={!!(isRegularized === 'REGULARIZED')}
             validationError={validationError?.details ?? {}}
             name={name}
             control={methods.control}
             index={index}
-            canDelete={can_delete}
+            canDelete={can_delete && !disabled}
         />
     );
 }

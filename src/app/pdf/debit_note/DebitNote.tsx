@@ -1,6 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, styles, tableBorderColor } from "../components/pdfConfig";
-import { PrintByAndDate, NexSourcifyLogo, ReportTitle, Signature } from "../components";
+import { PrintByAndDate, RenaissanceLogo, ReportTitle, Signature } from "../components";
 import { formatDate } from "~/utils/localDateString";
 import { useDecodedUser } from "~/hooks";
 
@@ -76,16 +76,16 @@ const DebitNotes = ({ data }: { data: GetPDFDataOutput }) => {
     return (
 		<Document
             title={`Debit Note - ${data.headerData[0]?.debit_note_ref}`}
-            author="Nex Sourcify"
+            author="NexSourcify Nexus"
             subject="Debit Note PDF"
-            keywords="Debit, Note, PDF, Nex Sourcify, ERP"
+            keywords="Debit, Note, PDF, NexSourcify Nexus, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="Nex Sourcify"
+            producer="NexSourcify Nexus"
 			pageMode='useOutlines'
 			creationDate={new Date()}
         >
 			<Page orientation="portrait" size="A4" style={styles.body} wrap>
-				<NexSourcifyLogo />
+				<RenaissanceLogo />
 				<PrintByAndDate />
 				<ReportTitle title="DEBIT NOTE" />
 
@@ -136,9 +136,7 @@ const DebitNotes = ({ data }: { data: GetPDFDataOutput }) => {
 										key={`${rowIndex}-${colIndex}`} 
 										style={[styles.cell, column.width ? { width: `${column.width}px` } : colWidth]} 
 									>
-										<Text hyphenationCallback={
-											(word) => word.split('/').flatMap((part, i, arr) => i < arr.length - 1 ? [part, '/'] : [part])
-										}>
+										<Text>
 											{String(row[column.key] ?? '')}
 										</Text>
 									</View>

@@ -52,6 +52,7 @@ export const useFactoryOrderForm = (initialData?: GetFactoryOrderByIdTypes) => {
                     db_id: style.db_id,
                     shipments: style.shipments?.map((shipment: Shipments) => ({
                         db_id: shipment.db_id,
+                        shipment_id: shipment.shipment_id,
                         exfactory_date: shipment.exfactory_date ? formatDateForInput(shipment.exfactory_date) : '',
                         factory_fob: shipment.factory_fob ?? 0,
                         transfer_rate: shipment.transfer_rate ?? 0,
@@ -104,6 +105,7 @@ export const useFactoryOrderForm = (initialData?: GetFactoryOrderByIdTypes) => {
                         db_id: style.db_id?.toString(),
                         shipments: style.shipments?.map((shipment: Shipments) => ({
                             db_id: shipment.db_id?.toString(),
+                            shipment_id: shipment.shipment_id,
                             exfactory_date: shipment.exfactory_date ? formatDateForInput(new Date(shipment.exfactory_date)) : undefined,
                             factory_fob: shipment.factory_fob ?? undefined,
                             transfer_rate: shipment.transfer_rate ?? undefined,
@@ -134,8 +136,10 @@ export const useFactoryOrderForm = (initialData?: GetFactoryOrderByIdTypes) => {
         methods.setValue("factoryOrder.order_date", data.order_date ? formatDateForInput(new Date(data.order_date)) : "");
 
         // For styles, we map the new data but merge it with existing values
-        const updatedStyles = data.styles.map((style: OrderDetailsStyle, i: number) => {
-            const existingStyle = currentValues.styles?.[i];
+        const updatedStyles = data.styles.map((style: OrderDetailsStyle) => {
+            const existingStyle = currentValues.styles?.find(
+                (currentStyle) => currentStyle.db_id === style.db_id?.toString()
+            );
             
             return {
                 ...style,
@@ -144,8 +148,10 @@ export const useFactoryOrderForm = (initialData?: GetFactoryOrderByIdTypes) => {
                 supplier_name: style.supplier_name ?? undefined,
                 
                 // Merge shipments to preserve exfactory_date, fob, etc.
-                shipments: style.shipments?.map((shipment: OrderDetailsShipments, j: number) => {
-                    const existingShipment = existingStyle?.shipments?.[j];
+                shipments: style.shipments?.map((shipment: OrderDetailsShipments) => {
+                    const existingShipment = existingStyle?.shipments?.find(
+                        (currentShipment) => currentShipment.shipment_id === shipment.db_id?.toString()
+                    );
                     return {
                         ...shipment,
                         shipment_mode: shipment.shipment_mode ?? undefined,
@@ -159,6 +165,7 @@ export const useFactoryOrderForm = (initialData?: GetFactoryOrderByIdTypes) => {
                         exfactory_date: existingShipment?.exfactory_date ?? "",
                         factory_fob: existingShipment?.factory_fob ?? 0,
                         transfer_rate: existingShipment?.transfer_rate ?? 0,
+                        ex_factory_exists: existingShipment?.ex_factory_exists ?? false,
                     };
                 }) ?? [],
             };

@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -126,7 +127,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 				}
 
 				const results = await ctx.db.$queryRaw<LcResponse[]>`
-				WITH LC AS (
+					WITH LC AS (
 						SELECT 
 							LCA.ID AS ID,
 							B.BUYER_NAME AS BUYER_NAME,
@@ -231,7 +232,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 					});
 				}
 
-				return await ctx.db.$transaction(async (tx) => {
+				return await transactionWithQueuedHistory(ctx.db, async (tx) => {
 					const currentLcAmendment = await tx.lc_amendment.findUnique({
 						where: {
 							id: input.id,
@@ -256,14 +257,14 @@ export const lcAmendmentRouter = createTRPCRouter({
 
 					if (hasMoreRecentAmendment) {
 						throw new TRPCError({
-							code: "FORBIDDEN",	
+							code: "BAD_REQUEST",	
 							message: "This LC Amendment cannot be deleted as there are more recent amendments for the same LC.",
 						});
 					}
 
 					if (isAuthorized) {
 						throw new TRPCError({
-							code: "FORBIDDEN",
+							code: "BAD_REQUEST",
 							message: "This LC Amendment cannot be deleted as the associated LC is authorized.",
 						});
 					}
@@ -349,7 +350,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 						});
 					}
 
-					 await tx.lc_amendment_history.create({
+					await tx.lc_amendment_history.create({
 						data: {
 							lc_amendment_id: deletedLcAmendment.id,
 							lc_id: deletedLcAmendment.lc_id,
@@ -360,7 +361,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 							action_type: actions.DELETE,
 							action_by: ctx.user.id,
 						}
-					 })
+					})
 				}, {timeout: 30000});
 			} catch (error) {
 				await logError(error, ctx, input);
@@ -387,11 +388,12 @@ export const lcAmendmentRouter = createTRPCRouter({
 				}
 
 				const lc = await ctx.db.$queryRaw<{id: string, lc_no: string}[]>`
-					SELECT LC.id, LC.lc_no 
-						FROM lc_master AS LC
-						LEFT JOIN lc_amendment AS LCA 
-							ON LCA.lc_id = LC.id
-						WHERE LC.buyer_id = ${input.buyer_id}
+					SELECT DISTINCT
+						LC.id, 
+						LC.lc_no 
+					FROM lc_master AS LC
+						LEFT JOIN lc_amendment AS LCA ON LCA.lc_id = LC.id
+					WHERE LC.buyer_id = ${input.buyer_id}
 						AND (
 							( -- Only show authorized and active LCs if creating a new amendment
 								${input.lcAmendmentId}::uuid IS NULL 
@@ -444,49 +446,44 @@ export const lcAmendmentRouter = createTRPCRouter({
 				if (!can_add) {
 					throw new TRPCError({
 						code: "FORBIDDEN",
-						message:
-							"You do not have permission to add LC Amendments.",
+						message: "You do not have permission to add LC Amendments.",
 					});
 				}
 
-				return await ctx.db.$transaction(async (tx) => {
-					const metaData =
-						await tx.lc_amendment_metadata.upsert({
-							where: {
-								lc_id: input.lc_id,
+				return await transactionWithQueuedHistory(ctx.db, async (tx) => {
+					const metaData = await tx.lc_amendment_metadata.upsert({
+						where: {
+							lc_id: input.lc_id,
+						},
+						update: {
+							amendment_no: {
+								increment: 1,
 							},
-							update: {
-								amendment_no: {
-									increment: 1,
-								},
-							},
-							create: {
-								lc_id: input.lc_id,
-								amendment_no: 1,
-							},
-						});
+						},
+						create: {
+							lc_id: input.lc_id,
+							amendment_no: 1,
+						},
+					});
 
 					const lcAmendmentNo = metaData.amendment_no;
 
-					const newLcAmendment =
-						await tx.lc_amendment.create({
-							data: {
-								lc_id: input.lc_id,
-								amendment_no: lcAmendmentNo,
-								amend_quantity: input.amend_quantity,
-								amend_value: input.amend_value,
-								remarks: input.remarks,
-							},
-						});
+					const newLcAmendment = await tx.lc_amendment.create({
+						data: {
+							lc_id: input.lc_id,
+							amendment_no: lcAmendmentNo,
+							amend_quantity: input.amend_quantity,
+							amend_value: input.amend_value,
+							remarks: input.remarks,
+						},
+					});
 
 					await tx.lc_amendment_history.create({
 						data: {
 							lc_amendment_id: newLcAmendment.id,
 							lc_id: newLcAmendment.lc_id,
-							amendment_no:
-								newLcAmendment.amendment_no,
-							amend_quantity:
-								newLcAmendment.amend_quantity,
+							amendment_no: newLcAmendment.amendment_no,
+							amend_quantity: newLcAmendment.amend_quantity,
 							amend_value: newLcAmendment.amend_value,
 							remarks: newLcAmendment.remarks,
 							action_type: actions.ADDED,
@@ -494,19 +491,16 @@ export const lcAmendmentRouter = createTRPCRouter({
 						},
 					});
 
-					const existingOrders =
-						await tx.lc_orders.findMany({
-							where: {
-								lc_master_id: input.lc_id,
-							},
-						});
+					const existingOrders = await tx.lc_orders.findMany({
+						where: {
+							lc_master_id: input.lc_id,
+						},
+					});
 
-					const ordersToDelete = existingOrders.filter(
-						(existingOrder) =>
-							!input.orders?.some(
-								(order) =>
-									order.id === existingOrder.id
-							)
+					const ordersToDelete = existingOrders.filter((existingOrder) =>
+						!input.orders?.some(
+							(order) => order.id === existingOrder.id
+						)
 					);
 
 					await Promise.all(
@@ -522,25 +516,20 @@ export const lcAmendmentRouter = createTRPCRouter({
 								},
 							});
 
-							const shipments =
-								await tx.lc_shipments.findMany({
-									where: {
-										lc_order_id: order.id,
-									},
-								});
+							const shipments = await tx.lc_shipments.findMany({
+								where: {
+									lc_order_id: order.id,
+								},
+							});
 
 							await Promise.all(
 								shipments.map(async (shipment) => {
 									await tx.lc_shipments_history.create({
 										data: {
-											lc_order_id:
-												shipment.lc_order_id,
-											shipment_details_id:
-												shipment.shipment_details_id,
-											lc_shipments_id:
-												shipment.id,
-											action_type:
-												actions.DELETE,
+											lc_order_id: shipment.lc_order_id,
+											shipment_details_id: shipment.shipment_details_id,
+											lc_shipments_id: shipment.id,
+											action_type: actions.DELETE,
 											action_by: ctx.user.id,
 										},
 									});
@@ -567,8 +556,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 								const newLcAmendmentOrder =
 									await tx.lc_amendment_orders.create({
 										data: {
-											lc_amendment_id:
-												newLcAmendment.id,
+											lc_amendment_id: newLcAmendment.id,
 											order_id: order.order_id,
 											dm_pi_no: order.pi_no,
 										},
@@ -576,25 +564,22 @@ export const lcAmendmentRouter = createTRPCRouter({
 
 								await tx.lc_amendment_orders_history.create({
 									data: {
-										lc_amendment_id:
-											newLcAmendment.id,
+										lc_amendment_id: newLcAmendment.id,
 										order_id: order.order_id,
-										lc_amendment_orders_id:
-											newLcAmendmentOrder.id,
+										lc_amendment_orders_id: newLcAmendmentOrder.id,
 										dm_pi_no: order.pi_no,
 										action_type: actions.ADDED,
 										action_by: ctx.user.id,
 									},
 								});
 
-								const newLcOrder =
-									await tx.lc_orders.create({
-										data: {
-											lc_master_id: input.lc_id,
-											order_id: order.order_id,
-											dm_pi_no: order.pi_no,
-										},
-									});
+								const newLcOrder = await tx.lc_orders.create({
+									data: {
+										lc_master_id: input.lc_id,
+										order_id: order.order_id,
+										dm_pi_no: order.pi_no,
+									},
+								});
 
 								await tx.lc_orders_history.create({
 									data: {
@@ -609,20 +594,18 @@ export const lcAmendmentRouter = createTRPCRouter({
 
 								return {
 									...newLcOrder,
-									amendment_order_id:
-										newLcAmendmentOrder.id,
+									amendment_order_id: newLcAmendmentOrder.id,
 								};
 							}
 
-							const updatedLcOrder =
-								await tx.lc_orders.update({
-									where: {
-										id: order.id,
-									},
-									data: {
-										dm_pi_no: order.pi_no,
-									},
-								});
+							const updatedLcOrder = await tx.lc_orders.update({
+								where: {
+									id: order.id,
+								},
+								data: {
+									dm_pi_no: order.pi_no,
+								},
+							});
 
 							await tx.lc_orders_history.create({
 								data: {
@@ -635,23 +618,19 @@ export const lcAmendmentRouter = createTRPCRouter({
 								},
 							});
 
-							const amendmentOrder =
-								await tx.lc_amendment_orders.create({
-									data: {
-										lc_amendment_id:
-											newLcAmendment.id,
-										order_id: order.order_id,
-										dm_pi_no: order.pi_no,
-									},
-								});
+							const amendmentOrder = await tx.lc_amendment_orders.create({
+								data: {
+									lc_amendment_id: newLcAmendment.id,
+									order_id: order.order_id,
+									dm_pi_no: order.pi_no,
+								},
+							});
 
 							await tx.lc_amendment_orders_history.create({
 								data: {
-									lc_amendment_id:
-										newLcAmendment.id,
+									lc_amendment_id: newLcAmendment.id,
 									order_id: order.order_id,
-									lc_amendment_orders_id:
-										amendmentOrder.id,
+									lc_amendment_orders_id: amendmentOrder.id,
 									dm_pi_no: order.pi_no,
 									action_type: actions.ADDED,
 									action_by: ctx.user.id,
@@ -660,8 +639,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 
 							return {
 								...updatedLcOrder,
-								amendment_order_id:
-									amendmentOrder.id,
+								amendment_order_id: amendmentOrder.id,
 							};
 						})
 					);
@@ -879,6 +857,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 				id: z.string(),
 				amend_quantity: z.number().optional(),
 				amend_value: z.number().optional(),
+				lc_status: z.boolean().optional(),
 				remarks: z.string().optional(),
 				orders: z.array(
 					z.object({
@@ -900,7 +879,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 					});
 				}
 
-				return await ctx.db.$transaction(async (tx) => {
+				return await transactionWithQueuedHistory(ctx.db, async (tx, queueHistoryJob) => {
 
 					// Get Amendment
 					const existingLcAmendment = await tx.lc_amendment.findUnique({
@@ -928,8 +907,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 						});
 					}
 
-					const hasMoreRecentAmendment =
-						(existingLcAmendment.amendment_no ?? 0) <
+					const hasMoreRecentAmendment = (existingLcAmendment.amendment_no ?? 0) <
 						(existingLcAmendment.lc_master?.lc_amendment_metadata?.amendment_no ?? 0);
 
 					const isAuthorized = existingLcAmendment.lc_master?.is_authorized ?? false;
@@ -967,6 +945,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 						data: {
 							lc_value: updatedLcAmendment.amend_value ?? undefined,
 							quantity: updatedLcAmendment.amend_quantity ?? undefined,
+							status: input.lc_status,
 						},
 					});
 
@@ -986,26 +965,14 @@ export const lcAmendmentRouter = createTRPCRouter({
 					// Prepare Input Maps
 					const inputOrders = input.orders ?? [];
 
-					const inputOrderMap = new Map(
-						inputOrders.map(order => [
-							order.order_id,
-							order,
-						])
-					);
+					const inputOrderMap = new Map(inputOrders.map(order => [ order.order_id, order ]));
 
 					// LC Amendment Orders
 					const existingAmendmentOrders = await tx.lc_amendment_orders.findMany({
-							where: {
-								lc_amendment_id: input.id,
-							},
-						});
-
-					const existingAmendmentOrderMap = new Map(
-						existingAmendmentOrders.map(order => [
-							order.order_id,
-							order,
-						])
-					);
+						where: {
+							lc_amendment_id: input.id,
+						},
+					});
 
 					const existingAmendmentOrderIds = new Set(
 						existingAmendmentOrders.map(order => order.order_id)
@@ -1040,8 +1007,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 							await tx.lc_amendment_shipments_history.createMany({
 								data: shipmentsToDelete.map(shipment => ({
 									lc_amendment_id: shipment.lc_amendment_id,
-									shipment_details_id:
-										shipment.shipment_details_id,
+									shipment_details_id: shipment.shipment_details_id,
 									lc_amendment_shipments_id: shipment.id,
 									order_id: shipment.order_id,
 									dm_pi_no: shipment.dm_pi_no,
@@ -1093,26 +1059,16 @@ export const lcAmendmentRouter = createTRPCRouter({
 							})),
 						});
 
-						const createdAmendmentOrders = await tx.lc_amendment_orders.findMany({
-								where: {
-									lc_amendment_id: input.id,
-									order_id: {
-										in: amendmentOrdersToAdd.map(
-											order => order.order_id
-										),
-									},
-								},
-							});
-
-						await tx.lc_amendment_orders_history.createMany({
-							data: createdAmendmentOrders.map(order => ({
-								lc_amendment_id: order.lc_amendment_id,
-								order_id: order.order_id,
-								lc_amendment_orders_id: order.id,
-								dm_pi_no: order.dm_pi_no,
-								action_type: actions.ADDED,
+						queueHistoryJob({
+							name: "lc_amendment_orders_added",
+							data: {
+								lc_amendment_id: input.id,
+								orders: amendmentOrdersToAdd.map((order) => ({
+									order_id: order.order_id,
+									dm_pi_no: order.pi_no ?? null,
+								})),
 								action_by: ctx.user.id,
-							})),
+							},
 						});
 					}
 
@@ -1140,8 +1096,7 @@ export const lcAmendmentRouter = createTRPCRouter({
 									data: {
 										lc_amendment_id: input.id,
 										order_id: existingOrder.order_id,
-										lc_amendment_orders_id:
-											existingOrder.id,
+										lc_amendment_orders_id: existingOrder.id,
 										dm_pi_no,
 										action_type: actions.UPDATE,
 										action_by: ctx.user.id,
@@ -1157,13 +1112,6 @@ export const lcAmendmentRouter = createTRPCRouter({
 							lc_master_id: existingLcAmendment.lc_id,
 						},
 					});
-
-					const existingLcOrderMap = new Map(
-						existingLcOrders.map(order => [
-							order.order_id,
-							order,
-						])
-					);
 
 					const existingLcOrderIds = new Set(
 						existingLcOrders.map(order => order.order_id)
@@ -1245,27 +1193,16 @@ export const lcAmendmentRouter = createTRPCRouter({
 							})),
 						});
 
-						const createdLcOrders = await tx.lc_orders.findMany({
-							where: {
-								lc_master_id:
-									existingLcAmendment.lc_id,
-								order_id: {
-									in: lcOrdersToAdd.map(
-										order => order.order_id
-									),
-								},
-							},
-						});
-
-						await tx.lc_orders_history.createMany({
-							data: createdLcOrders.map(order => ({
-								lc_master_id: order.lc_master_id,
-								order_id: order.order_id,
-								lc_orders_id: order.id,
-								dm_pi_no: order.dm_pi_no,
-								action_type: actions.ADDED,
+						queueHistoryJob({
+							name: "lc_orders_added",
+							data: {
+								lc_master_id: existingLcAmendment.lc_id,
+								orders: lcOrdersToAdd.map((order) => ({
+									order_id: order.order_id,
+									dm_pi_no: order.pi_no ?? null,
+								})),
 								action_by: ctx.user.id,
-							})),
+							},
 						});
 					}
 

@@ -11,15 +11,13 @@ export const tnaActionFormSchema = z.object({
       const inputDate = new Date(val);
       const today = new Date();
       const threeDaysAgo = new Date();
-      threeDaysAgo.setDate(today.getDate() - 3);
+      threeDaysAgo.setDate(today.getDate() - 3000);
 
       return inputDate >= threeDaysAgo;
     }, {
-      message: "Revise date cannot be more than 3 days behind today",
+      message: "Revise date cannot be more than 3000 days behind today",
     }),
     actual_date: z.string().optional(),
-    // responsible_level: z.string().optional(),
-    // responsible_person: z.string().optional(),
 });
 
 export type TnaActionFormValues  = z.infer<typeof tnaActionFormSchema>;

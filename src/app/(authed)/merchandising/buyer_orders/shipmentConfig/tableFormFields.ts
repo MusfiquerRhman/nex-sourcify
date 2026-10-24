@@ -12,15 +12,18 @@ type Props = {
 
 export const formFields = ({buyerId, departmentId}: Props) => {
     const { data: destinations = [] } = api.buyers.getBuyerDestinations.useQuery(
-        !!buyerId ? buyerId : skipToken
+        !!buyerId ? buyerId : skipToken,
+        { staleTime: 900 * 1000 }
     );
 
     const { data: paymentTerms = [] } = api.buyers.getBuyerPaymentTerms.useQuery(
-        !!buyerId ? buyerId : skipToken
+        !!buyerId ? buyerId : skipToken,
+        { staleTime: 900 * 1000 }
     );
 
     const { data: sizes = [] } = api.buyers.getSizeByDepartment.useQuery(
-        !!departmentId ? departmentId : skipToken
+        !!departmentId ? departmentId : skipToken,
+        { staleTime: 900 * 1000 }
     );
 
     return [
@@ -89,6 +92,12 @@ export const formFields = ({buyerId, departmentId}: Props) => {
             type: 'button',
         },
         {
+            name: 'selected_colors',
+            label: 'Colors',
+            placeholder: 'Enter Colors',
+            disabled: true,
+        },
+        {
             name: 'lot_quantity',
             label: 'Quantity',
             placeholder: 'Enter quantity',
@@ -97,26 +106,26 @@ export const formFields = ({buyerId, departmentId}: Props) => {
         },
         {
             name: 'fob_rate',
-            label: 'FOB',
-            placeholder: 'Enter FOB',
+            label: 'NexSourcify FOB',
+            placeholder: 'Enter NexSourcify FOB',
             type: 'number',
         },
         {
             name: 'rdl_fob_usd',
-            label: 'FOB USD',
-            placeholder: 'Enter FOB USD',
+            label: 'NexSourcify FOB USD',
+            placeholder: 'Enter NexSourcify FOB USD',
             disabled: true,
         },
         {
             name: 'rdl_value',
-            label: 'Value',
-            placeholder: 'Enter Value',
+            label: 'NexSourcify Value',
+            placeholder: 'Enter NexSourcify Value',
             disabled: true,
         },
         {
             name: 'rdl_value_usd',
-            label: 'Value USD',
-            placeholder: 'Enter Value USD',
+            label: 'NexSourcify Value USD',
+            placeholder: 'Enter NexSourcify Value USD',
             disabled: true,
         },
     ]

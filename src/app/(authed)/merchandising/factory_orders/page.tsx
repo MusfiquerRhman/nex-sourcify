@@ -1,15 +1,17 @@
 'use client';
 import { useRouter } from "next/navigation";
 import { plusIcon } from "~/assets";
-import { Button, SearchField, Table, Wrapper, Popup } from "~/components";
+import { Button, SearchField, Table, Wrapper, Popup, Filter } from "~/components";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { tableHeaders } from "./config/columns";
 import { useSearchablePagination, useModulePermissions, useDeleteConfirmation } from "~/hooks";
+import { useState } from "react";
 
 const FactoryOrders = () => {
     const router = useRouter();
     const utils = api.useUtils();
+    const [filter, setFilter] = useState(-1);
     
     const { page, limit, debouncedSearch, handleSearchChange, nextPage, prevPage } = useSearchablePagination();
 
@@ -17,6 +19,7 @@ const FactoryOrders = () => {
 
     // Fetch paginated data
     const {data: factoryOrders, isLoading} = api.factoryOrder.getFactoryOrders.useQuery({
+        filter: filter,
         limit,
         offset: page * limit,
     });
@@ -40,6 +43,7 @@ const FactoryOrders = () => {
             await Promise.all([
                 utils.factoryOrder.getFactoryOrders.invalidate(),
                 utils.factoryOrder.searchFactoryOrders.invalidate(),
+                utils.factoryOrder.getBuyerOrderDetailsByFactoryOrderId.invalidate(),
             ]);
         },
     });
@@ -59,7 +63,7 @@ const FactoryOrders = () => {
                 subSectionLeft={
                     <SearchField
                         placeholder="Search Factory Orders..."
-                        infoText="Order Reference, Style, PO, Buyer Name, Factory Name, Department, Season"
+                        infoText="Search Order Reference, Style, PO, Buyer Name, Factory Name, Department, Season"
                         handleSearchChange={handleSearchChange}
                     />
                 }
@@ -74,6 +78,20 @@ const FactoryOrders = () => {
                             />
                         </div>
                     ) : null
+                }
+                filters={
+                    <Filter 
+                        filter={filter}
+                        setFilter={setFilter}
+                        label='Approval Status'
+                        options={[
+                            {label: 'ALL', value: -1}, 
+                            {label: 'APPROVED', value: 3},
+                            {label: 'LEVEL 1 AUTHORIZED', value: 2}, 
+                            {label: 'PENDING', value: 1}, 
+                            {label: 'INCOMPLETE', value: 0}, 
+                        ]}
+                    />
                 }
             >
                 <div className="w-full">
@@ -118,3 +136,4 @@ const FactoryOrders = () => {
 }
 
 export default FactoryOrders;
+

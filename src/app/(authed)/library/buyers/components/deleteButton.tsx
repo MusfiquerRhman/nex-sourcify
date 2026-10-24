@@ -3,11 +3,12 @@ import { deleteIcon } from "~/assets";
 
 type DeleteButtonProps = {
   onClick: () => void;
-  size?: "sm" | "md" | "lg";
+  size?: "xm" | "sm" | "md" | "lg";
   alt?: string;
 };
 
 const sizeMap = {
+  xm: "h-2 w-4",
   sm: "h-4 w-4",
   md: "h-5 w-5",
   lg: "h-6 w-6",
@@ -20,7 +21,7 @@ export const DeleteButton = ({ onClick, size = "md", alt = "Delete" }: DeleteBut
       onClick={onClick}
       className="hover:cursor-pointer rounded-lg p-2 m-2 hover:bg-red-50 transition"
     >
-      <div className={sizeMap[size]}>
+      <div className={`${sizeMap[size]} items-center justify-center flex flex-row`}>
         <Image width={20} height={20} src={deleteIcon.src} alt={alt} />
       </div>
     </button>

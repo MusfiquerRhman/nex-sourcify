@@ -41,10 +41,13 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
     const updateRDLInvoice = api.rdlInvoice.updateRdlInvoice.useMutation({
         onSuccess: async () => {
             setError(null);
-            toast.success("Invoice updated successfully!");
+            toast.success("NexSourcify Invoice updated successfully!");
             await Promise.all([
                 utils.rdlInvoice.getRdlInvoiceById.invalidate({ id }),
                 utils.rdlInvoice.getRdlInvoice.invalidate(),
+                utils.rdlInvoice.getFactoryInvoiceForRDLInvoice.invalidate(),
+                utils.rdlInvoice.getShipmentDetailsForFactoryInvoice.invalidate(),
+                utils.rdlInvoice.getScLcForRDLInvoice.invalidate(),
             ]);
         }
 
@@ -77,7 +80,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
             await updateRDLInvoice.mutateAsync(payload);
         } catch (error) {
             const message = parseTRPCError(error);
-            toast.error(`Error updating Invoice: ${message}`);
+            toast.error(`Error updating NexSourcify Invoice: ${message}`);
             setError(message);
         } finally {
             setIsLoadingSubmit(false);
@@ -139,7 +142,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
     const exists = !!documentSubmissionExistsData?.exists;
     
     return (
-        <Wrapper heading='Update Invoice' 
+        <Wrapper heading='Update NexSourcify Invoice' 
             subSectionRight={
                 can_view ? (
                     <div className="w-50 mb-3">
@@ -155,7 +158,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
         >
             <Form 
                 fields={formFields} 
-                buttonLabel="Add New Invoice" 
+                buttonLabel="Add New NexSourcify Invoice" 
                 register={methods.register}
                 isLoading={isLoading}
                 validationError={validationError ?? {}}
@@ -176,20 +179,20 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
             <div className="w-full flex flex-row justify-end">
                 <Button type="button" 
                     onClick={() => onSubmitAll()}
-                    label={"Update Invoice"} 
+                    label={"Update NexSourcify Invoice"} 
                     className="text-lg tracking-wide mt-6 max-w-80 m-8"
                     disabled={isLoading || isLoadingSubmit || isAuthorized || exists}
                 />
             </div>
 
             <MessageBox 
-                message="This Invoice has been approved and cannot be updated or deleted" 
+                message="This NexSourcify Invoice has been approved and cannot be updated or deleted" 
                 active={isAuthorized} 
                 type="secondary" 
             />
 
             <MessageBox 
-                message="This Invoice has associated Document Submission and cannot be updated or deleted" 
+                message="This NexSourcify Invoice has associated Document Submission and cannot be updated or deleted" 
                 active={exists} 
                 type="primary" 
             />
@@ -201,7 +204,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
                             type="button"
                             variant="delete"
                             onClick={() => onSetAuthorization(false)}
-                            label="Unauthorize Invoice"
+                            label="Unauthorize NexSourcify Invoice"
                             className="text-lg tracking-wide mt-6 max-w-80"
                             disabled={!canAuthorize || exists}
                         />
@@ -212,7 +215,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
                             type="button"
                             variant="secondary"
                             onClick={() => onSetAuthorization(true)}
-                            label="Authorize Invoice"
+                            label="Authorize NexSourcify Invoice"
                             className="text-lg tracking-wide mt-6 max-w-80"
                             disabled={!canAuthorize}
                         />

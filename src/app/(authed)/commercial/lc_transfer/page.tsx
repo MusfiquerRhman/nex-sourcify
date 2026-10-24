@@ -38,6 +38,9 @@ const LcTransferPage = () => {
             await Promise.all([
                 utils.lcTransfer.getLcTransferList.invalidate(),
                 utils.lcTransfer.searchLcTransfers.invalidate(),
+                utils.lcTransfer.getLCDetailsForTransfer.invalidate(),
+                utils.lcTransfer.getLCForLcTransferByUser.invalidate(),
+                utils.lcTransfer.getSalesContractForLcTransfer.invalidate(),
             ]);
         }
     });

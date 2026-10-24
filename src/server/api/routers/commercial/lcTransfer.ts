@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -165,7 +166,7 @@ export const lcTransferRouter = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const lcDetails = await tx.lc_transfer_details.findMany({
                         where: {
                             lc_transfer_id: input.id,
@@ -243,7 +244,7 @@ export const lcTransferRouter = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newLcTransfer = await tx.lc_transfer.create({
                         data: {
                             lc_master_id: input.lc_id,
@@ -356,7 +357,7 @@ export const lcTransferRouter = createTRPCRouter({
                 return lcList;
             }
             catch (error) {
-                            handlePrismaError(error);
+                handlePrismaError(error);
             }
         }),
 
@@ -422,14 +423,18 @@ export const lcTransferRouter = createTRPCRouter({
         .query(async ({ ctx, input }) => {
             try {
                 const salesContracts = await ctx.db.$queryRaw<{id: string, sales_contract_no: string}[]>`
-                    WITH TRANSFER AS ( -- Calculate total transferred quantity for each sales contract under the given LC
+                    -- Calculate total transferred quantity for each sales contract under the given LC
+                    WITH TRANSFER AS ( 
                         SELECT 
                             LCTD.SALES_CONTRACT_ID,
                             SUM(LCTD.LC_TRANSFER_QUANTITY) AS TRANSFER_QUANTITY
                         FROM LC_TRANSFER_DETAILS AS LCTD
+                        INNER JOIN lc_transfer AS LCT ON LCT.id = LCTD.lc_transfer_id
+                            WHERE LCT.lc_master_id = ${input.lc_id}
                         GROUP BY LCTD.SALES_CONTRACT_ID
                     ),
-                    SHIPMENT AS ( -- Calculate total shipped quantity for each sales contract under the given LC
+                    -- Calculate total shipped quantity for each sales contract under the given LC
+                    SHIPMENT AS ( 
                         SELECT
                             SCD.SALES_CONTRACT_ID,
                             SUM(SID.QUANTITY) AS SC_QUANTITY
@@ -475,6 +480,8 @@ export const lcTransferRouter = createTRPCRouter({
                     GROUP BY SC.ID;
                 `;
 
+                console.log('salesContracts', salesContracts);
+
                 return salesContracts;
             }
             catch (error) {
@@ -509,7 +516,9 @@ export const lcTransferRouter = createTRPCRouter({
                             INNER JOIN FACTORY_SHIPMENT_DETAILS AS FSD ON FSD.SHIPMENT_DETAIL_ID = SD.ID
                         GROUP BY SD.ID, BO.ID, FSD.ID
                     ),
-                    TRANSFER AS ( -- Calculate total transferred quantity and value for the given sales contract, excluding the current transfer if lcTransferId is provided
+                    -- Calculate total transferred quantity and value for the given sales contract
+                    -- excluding the current transfer if lcTransferId is provided
+                    TRANSFER AS ( 
                         SELECT
                             LTD.SALES_CONTRACT_ID AS SALES_CONTRACT_ID,
                             SUM(LC_TRANSFER_QUANTITY) AS PREVIOUS_TRANSFER_QUANTITY,
@@ -555,7 +564,7 @@ export const lcTransferRouter = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const transferDetail = await tx.lc_transfer_details.delete({
                         where: {
                             id: input.lc_transfer_id,
@@ -616,7 +625,7 @@ export const lcTransferRouter = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newLcTransfer = await tx.lc_transfer.update({
                         where: {
                             id: input.id

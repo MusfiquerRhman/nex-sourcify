@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -6,11 +7,13 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { actions, Prisma, shipment_modes } from "@prisma/client";
 import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID } from "~/utils/config";
 import type { Exfactory, ExfactoryShipments, PendingExFactory } from "./_types/exfactory";
+import { notificationQueue } from "~/server/queues/notification.queue";
 
 export const exFactoryRouter = createTRPCRouter({
     getExFactories: protectedProcedure
         .input(
             z.object({
+                filter: z.number().min(-1).default(-1),   
                 limit: z.number().optional(),
                 offset: z.number().optional(),
             })
@@ -61,6 +64,9 @@ export const exFactoryRouter = createTRPCRouter({
                                     AND TM.USER_ID = ${ctx.user.id}
                             )
                         )
+                        ${input.filter === -1 
+                            ? Prisma.empty
+                            : Prisma.sql`AND E.IS_AUTHORIZED = ${input.filter}`}
                         GROUP BY E.ID, B.ID, F.ID
                     )
                     SELECT *,
@@ -191,7 +197,7 @@ export const exFactoryRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const exfactory = await tx.exfactory.findUnique({
                         where: { id: input.id },
                     });
@@ -315,9 +321,26 @@ export const exFactoryRouter = createTRPCRouter({
                     message: "You do not have permission to add exfactory",
                 });
             }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const minimumDate = new Date(today);
+            minimumDate.setDate(minimumDate.getDate() - 2);
+
+            const userLevel = ctx.user.level_id;
+            const userDepartment = ctx.user.department_id;
+            const isAdmin = userLevel === ADMIN_LEVEL_ID && userDepartment === ADMIN_DEPARTMENT_ID;
+
+            if ((input.exfactory_date < minimumDate) && !isAdmin) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Exfactory date cannot be more than 2 days behind today",
+                });
+            }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const currentYear = new Date().getFullYear();
 
                     const meta = await tx.exfactory_metadata.upsert({
@@ -424,6 +447,18 @@ export const exFactoryRouter = createTRPCRouter({
                             };
                         })
                     );
+
+                    await notificationQueue.add("exfactory-submitted", {
+                        exfactory_id: addedExfactory.id,
+                        approval_status: -1,
+                        action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
+                    }, {
+                        attempts: 5,
+                        backoff: {
+                            type: "exponential",
+                            delay: 1000,
+                        },
+                    });
 
                     return {
                         ...addedExfactory,
@@ -565,7 +600,7 @@ export const exFactoryRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const exfactoryOrder = await tx.exfactory_orders.findUnique({
                         where: { id: input.exfactory_order_id },
                     });
@@ -871,13 +906,29 @@ export const exFactoryRouter = createTRPCRouter({
             if (!can_edit) {
                 throw new TRPCError({
                     code: "FORBIDDEN",
-                    message:
-                        "You do not have permission to update ex-factory records.",
+                    message: "You do not have permission to update ex-factory records.",
+                });
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const minimumDate = new Date(today);
+            minimumDate.setDate(minimumDate.getDate() - 2);
+
+            const userLevel = ctx.user.level_id;
+            const userDepartment = ctx.user.department_id;
+            const isAdmin = userLevel === ADMIN_LEVEL_ID && userDepartment === ADMIN_DEPARTMENT_ID;
+
+            if ((input.exfactory_date < minimumDate) && !isAdmin) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Exfactory date cannot be more than 2 days behind today",
                 });
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const exfactory = await tx.exfactory.findUnique({
                         where: {
                             id: input.db_id,
@@ -1063,23 +1114,37 @@ export const exFactoryRouter = createTRPCRouter({
                     });
                 }
 
-                const updatedExFactory = await ctx.db.exfactory.update({
-                    where: { id: input.id },
-                    data: {
-                        is_authorized: input.approval_status,
-                    }
-                });
+                const updatedExFactory = await transactionWithQueuedHistory(ctx.db, async (tx) => {
+                    const updated = await tx.exfactory.update({
+                        where: { id: input.id },
+                        data: { is_authorized: input.approval_status },
+                    });
 
-                await ctx.db.exfactory_history.create({
-                    data: {
-                        exfactory_date: updatedExFactory.exfactory_date,
-                        exfactory_no: updatedExFactory.exfactory_no,
+                    await tx.exfactory_history.create({
+                        data: {
+                            exfactory_date: updated.exfactory_date,
+                            exfactory_no: updated.exfactory_no,
+                            exfactory_id: input.id,
+                            buyer_id: updated.buyer_id,
+                            factory_id: updated.factory_id,
+                            action_type: actions.UPDATE,
+                            action_by: ctx.user.id,
+                        },
+                    });
+
+                    await notificationQueue.add("exfactory-submitted", {
                         exfactory_id: input.id,
-                        buyer_id: updatedExFactory.buyer_id,
-                        factory_id: updatedExFactory.factory_id,
-                        action_type: actions.UPDATE,
-                        action_by: ctx.user.id,
-                    }
+                        approval_status: input.approval_status ? 1 : 0,
+                        action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
+                    }, {
+                        attempts: 5,
+                        backoff: {
+                            type: "exponential",
+                            delay: 1000,
+                        },
+                    });
+
+                    return updated;
                 });
 
                 return updatedExFactory;
@@ -1105,7 +1170,7 @@ export const exFactoryRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const exfactoryShipment = await tx.exfactory_shipments.findUnique({
                         where: { id: input.exfactory_shipment_id },
                         select: {
@@ -1189,11 +1254,15 @@ export const exFactoryRouter = createTRPCRouter({
                         )
                         SELECT
                             BO.ID AS ORDER_ID,
+                            B.ID AS BUYER_ID,
                             B.BUYER_NAME AS BUYER_NAME,
+                            F.ID AS FACTORY_ID,
                             F.NAME AS FACTORY_NAME,
                             BO.REF_NO AS ORDER_REF,
                             OS.STYLE AS STYLE,
+                            SD.ID AS PO_ID,
                             SD.BUYER_PO AS PO,
+                            PT.term_id AS PAYMENT_TERM_ID,
                             FSD.exfactory_date AS EXFACTORY_DATE,
                             COALESCE(SQ.total_sid_qty, 0) AS TOTAL_QUANTITY,
                             COALESCE(EQ.total_es_qty, 0)AS TOTAL_DELIVERY_QUANTITY
@@ -1203,6 +1272,7 @@ export const exFactoryRouter = createTRPCRouter({
                         INNER JOIN FACTORY_SHIPMENT_DETAILS AS FSD ON FSD.shipment_detail_id = SD.id
                         INNER JOIN BUYERS AS B ON B.ID = BO.buyer_id
                         INNER JOIN FACTORIES AS F ON F.id = BO.factory_id
+                        INNER JOIN payment_terms AS PT ON PT.id = SD.payment_term_id
                         LEFT JOIN shipment_qty AS SQ ON SQ.shipment_detail_id = SD.id
                         LEFT JOIN exfactory_qty AS EQ ON EQ.shipment_details_id = SD.id
                         LEFT JOIN shipment_tolerance_level as STL on STL.buyer_id = BO.buyer_id
@@ -1212,7 +1282,7 @@ export const exFactoryRouter = createTRPCRouter({
                             AND COALESCE(EQ.total_es_qty, 0)::NUMERIC(18,2) < COALESCE(SQ.total_sid_qty * (1 + COALESCE(STL.tolerance_level, 10) / 100), 0)::NUMERIC(18,2)
                             AND COALESCE(EQ.po_close, false) = false
                             AND FSD.exfactory_date BETWEEN ${input.from_date} AND ${input.to_date}
-                        GROUP BY BO.ID, B.ID, F.ID, OS.ID, SD.id, SQ.total_sid_qty, EQ.total_es_qty, FSD.exfactory_date
+                        GROUP BY BO.ID, B.ID, F.ID, OS.ID, SD.id, SQ.total_sid_qty, EQ.total_es_qty, FSD.exfactory_date, PT.term_id
                     )
                     SELECT *,
                         COUNT(*) OVER() AS TOTAL_COUNT
@@ -1269,11 +1339,15 @@ export const exFactoryRouter = createTRPCRouter({
                         )
                         SELECT
                             BO.ID AS ORDER_ID,
+                            B.ID AS BUYER_ID,
                             B.BUYER_NAME AS BUYER_NAME,
+                            F.ID AS FACTORY_ID,
                             F.NAME AS FACTORY_NAME,
                             BO.REF_NO AS ORDER_REF,
                             OS.STYLE AS STYLE,
+                            SD.ID AS PO_ID,
                             SD.BUYER_PO AS PO,
+                            PT.term_id AS PAYMENT_TERM_ID,
                             FSD.exfactory_date AS EXFACTORY_DATE,
                             COALESCE(SQ.total_sid_qty, 0) AS TOTAL_QUANTITY,
                             COALESCE(EQ.total_es_qty, 0)AS TOTAL_DELIVERY_QUANTITY
@@ -1283,6 +1357,7 @@ export const exFactoryRouter = createTRPCRouter({
                         INNER JOIN FACTORY_SHIPMENT_DETAILS AS FSD ON FSD.shipment_detail_id = SD.id
                         INNER JOIN BUYERS AS B ON B.ID = BO.buyer_id
                         INNER JOIN FACTORIES AS F ON F.id = BO.factory_id
+                        INNER JOIN payment_terms AS PT ON PT.id = SD.payment_term_id
                         LEFT JOIN shipment_qty AS SQ ON SQ.shipment_detail_id = SD.id
                         LEFT JOIN exfactory_qty AS EQ ON EQ.shipment_details_id = SD.id
                         LEFT JOIN shipment_tolerance_level as STL on STL.buyer_id = BO.buyer_id
@@ -1296,7 +1371,7 @@ export const exFactoryRouter = createTRPCRouter({
                                 OS.STYLE ILIKE '%' || ${input.search_term} || '%' OR
                                 SD.BUYER_PO ILIKE '%' || ${input.search_term} || '%'
                             )
-                        GROUP BY BO.ID, B.ID, F.ID, OS.ID, SD.id, SQ.total_sid_qty, EQ.total_es_qty, FSD.exfactory_date
+                        GROUP BY BO.ID, B.ID, F.ID, OS.ID, SD.id, SQ.total_sid_qty, EQ.total_es_qty, FSD.exfactory_date, PT.term_id
                     )
                     SELECT *,
                         COUNT(*) OVER() AS total_count

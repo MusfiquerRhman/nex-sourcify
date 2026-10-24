@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -236,7 +237,7 @@ export const salesContractAmendmentRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const currentAmendmentNo = await tx.$queryRaw<{ amendment_no: number }[]>`
                         SELECT SCAM.amendment_no FROM sales_contract_amendment_no_metadata AS SCAM
                             INNER JOIN sales_contracts AS SC ON SC.id = SCAM.sales_contract_id
@@ -394,7 +395,7 @@ export const salesContractAmendmentRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const metadata =
                         await tx.sales_contract_amendment_no_metadata.upsert(
                             {
@@ -661,7 +662,7 @@ export const salesContractAmendmentRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     await tx.$executeRaw`
                         DELETE FROM sales_contract_details AS scd
                         USING sales_contract_amendment_details AS scad,
@@ -821,7 +822,7 @@ export const salesContractAmendmentRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx, queueHistoryJob) => {
                     // EXISTING AMENDMENT
                     const existingAmendment = await tx.sales_contract_amendment.findUnique({
                         where: {
@@ -916,32 +917,14 @@ export const salesContractAmendmentRouter = createTRPCRouter({
                                 order_id,
                             })),
                         });
-                    }
 
-                    // fetch newly created rows
-                    const createdAmendmentDetails =  newOrderIds.length > 0
-                        ? await tx.sales_contract_amendment_details.findMany({
-                            where: {
+                        queueHistoryJob({
+                            name: "sales_contract_amendment_details_added",
+                            data: {
                                 sales_contract_amendment_id: input.id,
-                                order_id: { in: newOrderIds },
-                            },
-                            select: {
-                                id: true,
-                                order_id: true,
-                            },
-                        })
-                        : [];
-
-                    // AMENDMENT DETAIL HISTORY
-                    if (createdAmendmentDetails.length > 0) {
-                        await tx.sales_contract_amendment_details_history.createMany({
-                            data: createdAmendmentDetails.map((detail) => ({
-                                sales_contract_amendment_id: input.id,
-                                sales_contract_amendment_details: detail.id,
-                                order_id: detail.order_id,
+                                order_ids: newOrderIds,
                                 action_by: ctx.user.id,
-                                action_type: actions.ADDED,
-                            })),
+                            },
                         });
                     }
 
@@ -992,28 +975,13 @@ export const salesContractAmendmentRouter = createTRPCRouter({
                             })),
                         });
 
-                        const createdScDetails =
-                            await tx.sales_contract_details.findMany({
-                                where: {
-                                    sales_contract_id: existingAmendment.sales_contract_id,
-                                    order_id: { in: missingScOrderIds, },
-                                },
-                                select: {
-                                    id: true,
-                                    order_id: true,
-                                },
-                            });
-
-                        await tx.sales_contract_details_history.createMany({
-                            data: createdScDetails.map(
-                                (detail) => ({
-                                    sales_contract_id: existingAmendment.sales_contract_id,
-                                    sales_contract_details_id: detail.id,
-                                    order_id: detail.order_id,
-                                    action_by: ctx.user.id,
-                                    action_type: actions.ADDED,
-                                })
-                            ),
+                        queueHistoryJob({
+                            name: "sales_contract_details_added",
+                            data: {
+                                sales_contract_id: existingAmendment.sales_contract_id,
+                                order_ids: missingScOrderIds,
+                                action_by: ctx.user.id,
+                            },
                         });
                     }
 
@@ -1215,7 +1183,7 @@ export const salesContractAmendmentRouter = createTRPCRouter({
                                 JOIN (
                                     SELECT 
                                         PT.ID AS ID,
-                                        CONCAT(T.NAME, ' ', PT.TENOR, ' DAYS ', PT.TERM_DESCRIPTION) AS TERM
+                                        CONCAT(T.NAME, ' ', PT.TENOR, ' ', PT.TERM_DESCRIPTION) AS TERM
                                     FROM payment_terms AS PT
                                         INNER JOIN terms AS T ON T.id = PT.term_id
                                 ) P ON P.id = SD.payment_term_id
@@ -1325,8 +1293,8 @@ export const salesContractAmendmentRouter = createTRPCRouter({
                     }
                 });
 
-                const currencySymbol = orderDataObj?.sales_contract_amendment_details?.[0]?.buyer_orders?.order_styles?.[0]?.shipment_details?.[0]?.factory_shipment_details?.[0]?.factory_orders?.currencies?.symbol ?? '$';
-                const currencyName = orderDataObj?.sales_contract_amendment_details?.[0]?.buyer_orders?.order_styles?.[0]?.shipment_details?.[0]?.factory_shipment_details?.[0]?.factory_orders?.currencies?.name ?? 'USD';
+                const currencySymbol = orderDataObj?.sales_contract_amendment_details?.[0]?.buyer_orders?.order_styles?.[0]?.shipment_details?.[0]?.factory_shipment_details?.factory_orders?.currencies?.symbol ?? '$';
+                const currencyName = orderDataObj?.sales_contract_amendment_details?.[0]?.buyer_orders?.order_styles?.[0]?.shipment_details?.[0]?.factory_shipment_details?.factory_orders?.currencies?.name ?? 'USD';
 
                 const orderData = orderDataObj?.sales_contract_amendment_details.map(detail => ({
                     ref_no: detail.buyer_orders?.ref_no,
@@ -1339,15 +1307,15 @@ export const salesContractAmendmentRouter = createTRPCRouter({
                                 sd.shipment_item_details.reduce((sum, item) => sum + item.quantity, 0)
                             ),
                             colors: formatColorQty(sd.shipment_item_details),
-                            exfactory_date: formatDate(sd.factory_shipment_details?.[0]?.exfactory_date ?? ''),
-                            transfer_rate: (sd.factory_shipment_details?.[0]?.transfer_rate ?? 0) > 0
-                                    ? sd.factory_shipment_details?.[0]?.transfer_rate
-                                    : sd.factory_shipment_details?.[0]?.factory_rate,
+                            exfactory_date: formatDate(sd.factory_shipment_details?.exfactory_date ?? ''),
+                            transfer_rate: (sd.factory_shipment_details?.transfer_rate ?? 0) > 0
+                                    ? sd.factory_shipment_details?.transfer_rate
+                                    : sd.factory_shipment_details?.factory_rate,
                             price: currencyFormatter(
                                 (
-                                    ((sd.factory_shipment_details?.[0]?.transfer_rate ?? 0) > 0
-                                        ? sd.factory_shipment_details?.[0]?.transfer_rate
-                                        : sd.factory_shipment_details?.[0]?.factory_rate) ?? 0
+                                    ((sd.factory_shipment_details?.transfer_rate ?? 0) > 0
+                                        ? sd.factory_shipment_details?.transfer_rate
+                                        : sd.factory_shipment_details?.factory_rate) ?? 0
                                 ) *
                                 sd.shipment_item_details.reduce((sum, item) => sum + item.quantity, 0),
                                 currencySymbol
@@ -1367,9 +1335,9 @@ export const salesContractAmendmentRouter = createTRPCRouter({
                             detail.buyer_orders?.order_styles.reduce((sumOs, os) =>
                                 sumOs + os.shipment_details.reduce((sumSd, sd) =>
                                     sumSd + (
-                                        ((sd.factory_shipment_details?.[0]?.transfer_rate ?? 0) > 0
-                                            ? sd.factory_shipment_details?.[0]?.transfer_rate
-                                            : sd.factory_shipment_details?.[0]?.factory_rate) ?? 0
+                                        ((sd.factory_shipment_details?.transfer_rate ?? 0) > 0
+                                            ? sd.factory_shipment_details?.transfer_rate
+                                            : sd.factory_shipment_details?.factory_rate) ?? 0
                                     ) *
                                     sd.shipment_item_details.reduce((sumItem, item) => sumItem + item.quantity, 0), 
                                 0), 
@@ -1394,9 +1362,9 @@ export const salesContractAmendmentRouter = createTRPCRouter({
                         sumDetail + detail.buyer_orders?.order_styles.reduce((sumOs, os) =>
                             sumOs + os.shipment_details.reduce((sumSd, sd) =>
                                 sumSd + (
-                                    ((sd.factory_shipment_details?.[0]?.transfer_rate ?? 0) > 0
-                                        ? sd.factory_shipment_details?.[0]?.transfer_rate
-                                        : sd.factory_shipment_details?.[0]?.factory_rate) ?? 0
+                                    ((sd.factory_shipment_details?.transfer_rate ?? 0) > 0
+                                        ? sd.factory_shipment_details?.transfer_rate
+                                        : sd.factory_shipment_details?.factory_rate) ?? 0
                                 ) *
                                 sd.shipment_item_details.reduce((sumItem, item) => sumItem + item.quantity, 0), 
                             0), 

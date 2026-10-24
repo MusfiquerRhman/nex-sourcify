@@ -8,6 +8,7 @@ export const tableHeaders= [
     { key: 'department', label: 'Department' },
     { key: 'approval_status', label: 'Approval Status', type: 'chip', chips: {
             '-1': { label: 'INCOMPLETE', type: 'error' },
+            // '0': { label: 'COMPLETE', type: 'success' },
             '0': { label: 'PENDING', type: 'warning' },
             '1': { label: 'LEVEL 1 APPROVED', type: 'info' },
             '2': { label: 'APPROVED', type: 'success' }

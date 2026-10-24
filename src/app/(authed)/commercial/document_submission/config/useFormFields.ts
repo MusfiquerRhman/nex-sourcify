@@ -48,8 +48,7 @@ export const useFormFields = ({lcList, isEdit}: PropsType): Field<keyof Document
             name: "fdbc_no",
             label: "FDBC/TT No",
             type: "text",
-            optional: isEdit,
-            disabled: isEdit
+            optional: false,
         },
         {
             name: "fdbc_value",

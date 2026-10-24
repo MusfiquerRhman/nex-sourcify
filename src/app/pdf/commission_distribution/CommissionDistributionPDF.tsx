@@ -1,6 +1,6 @@
 import { Document, Page, Text } from "@react-pdf/renderer";
 import { registerPdfFonts, styles } from "../components/pdfConfig";
-import { PrintByAndDate, NexSourcifyLogo, ReportTitle, HeaderPart, Table, TableSummary, Signature } from "../components";
+import { PrintByAndDate, RenaissanceLogo, ReportTitle, HeaderPart, Table, TableSummary, Signature } from "../components";
 import { formatDate } from "~/utils/localDateString";
 
 import type { HeaderData } from "~/types/pdf";
@@ -19,8 +19,8 @@ const CommissionDistributionPDF = ({ data }: { data: GetPDFDataOutput }) => {
 		{ key: 'style', label: 'Style', width: 124},
 		{ key: 'buyer_po', label: 'PO', width: 124 },
 		{ key: 'order_quantity', label: 'Quantity', width: 78 },
-		{ key: 'rdl_fob', label: 'FOB', width: 58 },
-		{ key: 'rdl_value', label: 'Value', width: 78 },
+		{ key: 'rdl_fob', label: 'NexSourcify FOB', width: 58 },
+		{ key: 'rdl_value', label: 'NexSourcify Value', width: 78 },
 		{ key: 'factory_fob', label: 'Factory FOB', width: 58 },
 		{ key: 'factory_value', label: 'Factory Value', width: 78 },
 		{ key: 'commission_percentage', label: 'Commission Percentage', width: 80 },
@@ -59,16 +59,16 @@ const CommissionDistributionPDF = ({ data }: { data: GetPDFDataOutput }) => {
     return (
 		<Document
             title={`Commission Distribution - ${data.header[0]?.ref_no}`}
-            author="Nex Sourcify"
+            author="NexSourcify Nexus"
             subject="Commission Distribution PDF"
-            keywords="Commission, Distribution, PDF, Nex Sourcify, ERP"
+            keywords="Commission, Distribution, PDF, NexSourcify Nexus, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="Nex Sourcify"
+            producer="NexSourcify Nexus"
 			pageMode='useOutlines'
 			creationDate={new Date()}
         >
 			<Page orientation="landscape" size="A4" style={styles.body} wrap>
-				<NexSourcifyLogo />
+				<RenaissanceLogo />
 				<PrintByAndDate />
 				<ReportTitle title="COMMISSION DISTRIBUTIONS" />
 				<HeaderPart data={buyerOrderData}/>

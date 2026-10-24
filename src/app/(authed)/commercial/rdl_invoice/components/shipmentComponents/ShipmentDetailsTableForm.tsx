@@ -2,11 +2,12 @@
 
 import React from "react";
 import { TableBody, TableWrapper } from "~/components";
-import { type FieldArrayWithId, type FieldErrors } from "react-hook-form";
+import { useWatch, type FieldArrayWithId, type FieldErrors } from "react-hook-form";
 import type { useRDLInvoiceForm } from "../../config/useRDLInvoiceForm";
 import TableHeader, { type TableHeaderType } from "~/components/organisms/table/TableHeader";
 import type { RDLInvoiceFormValues } from "../../config/formSchema";
 import ShipmentRows from "./ShipmentRows";
+import { safeNumber } from "~/utils/numbers";
 
 type ShipmentRow = FieldArrayWithId<RDLInvoiceFormValues>;
 
@@ -34,6 +35,13 @@ const TableForm = (props: Props) => {
         invoiceIndex,
     } =  props;
 
+    const shipmentDetails = useWatch({ control: methods.control, name: `details.${invoiceIndex}.factoryInvoiceDetails`});
+
+    const totalShipmentQuantity = shipmentDetails?.reduce((sum, item) => sum = sum + (item?.order_quantity ?? 0), 0) ?? 0;
+    const totalPreviousQuantity = shipmentDetails?.reduce((sum, item) => sum = sum + (item?.previous_quantity ?? 0), 0) ?? 0;
+    const totalInvoiceQuantity = shipmentDetails?.reduce((sum, item) => sum = sum + (item?.invoice_quantity ?? 0), 0) ?? 0;
+    const totalRdlValue = shipmentDetails?.reduce((sum, item) => sum = sum + (safeNumber(item?.invoice_value) ?? 0), 0) ?? 0;
+
     return (
         <>
             {title}
@@ -56,6 +64,16 @@ const TableForm = (props: Props) => {
                                 />
                             ))}
                         </TableBody>
+                        <tfoot>
+                            <tr className="font-bold text-sm border-2 border-gray/20">
+                                <td colSpan={4} className="border-r-2 border-gray/20 p-2 text-right">Total</td>
+                                <td className="bg-secondary text-center text-white border-r-2 border-gray/20 p-2">{totalShipmentQuantity}</td>
+                                <td className="bg-secondary text-center text-white border-r-2 border-gray/20 p-2">{totalPreviousQuantity}</td>
+                                <td className="bg-secondary text-white border-r-2 border-gray/20 p-2">{totalInvoiceQuantity}</td>
+                                <td className="border-r-2 border-gray/20 p-2" />
+                                <td className="bg-secondary text-center text-white border-r-2 border-gray/20 p-2">{totalRdlValue}</td>
+                            </tr>
+                        </tfoot>
                     </TableWrapper>
                 </div>
             </form>

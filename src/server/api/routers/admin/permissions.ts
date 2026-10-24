@@ -1,10 +1,68 @@
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, invalidateAuthPermissionsCache, protectedProcedure } from "~/server/api/trpc";
 import { z } from "zod";
 import { m } from "~/utils/moduleMap";
 import { TRPCError } from "@trpc/server";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
+import { db } from "~/server/db";
 // import { DEVELOPER_ID, ERROR_LOGS } from "~/utils/config";
 
+import { getRedis } from "~/server/redis";
+
+const getPermissionsCacheKey = (levelId: number, departmentId: number | null) =>
+	`permissions:${levelId}:${departmentId}`;
+
+const getPermissions = async (database: typeof db, levelId: number, departmentId: number) => {
+	const permissionsObject = await database.level_permission.findMany({
+		where: {
+			level_id: levelId,
+			department_id: departmentId,
+		},
+		select: {
+			id: true,
+			modules: {
+				select: {
+					id: true,
+					name: true,
+					modules: {
+						select: {
+							name: true,
+							modules: {
+								select: {
+									name: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			can_view: true,
+			can_add: true,
+			can_update: true,
+			can_delete: true,
+			can_trace: true,
+		},
+		orderBy: {
+			modules: {
+				parent_module_id: "asc",
+			},
+		},
+	});
+
+	return permissionsObject.map((permission) => {
+		const modules = permission.modules;
+		const parent = modules?.modules;
+		const grandparent = parent?.modules;
+
+		return {
+			...permission,
+			module_name: modules?.name ?? null,
+			module_id: modules?.id ?? null,
+			parent_module_name: grandparent?.name ?? parent?.name ?? null,
+		};
+	});
+};
+
+type CachedPermissions = Awaited<ReturnType<typeof getPermissions>>;
 
 export const permissionRouter = createTRPCRouter({
 	getPermissions: protectedProcedure.input(
@@ -14,55 +72,24 @@ export const permissionRouter = createTRPCRouter({
 		})
 	)
   	.query(async ({ ctx, input }) => {
-		const permissionsObject = await ctx.db.level_permission.findMany({
-			where: {
-				level_id: parseInt(input.level_id),
-				department_id: parseInt(input.department_id),
-			},
-			select: {
-				id: true,
-				modules: {
-					select: {
-						id: true,
-						name: true,
-						modules: {
-							select: {
-								name: true, // parent module
-								modules: {
-									select: {
-										name: true, // grandparent module
-									}
-								}
-							}
-						}
-					}
-				},
-				can_view: true,
-				can_add: true,
-				can_update: true,
-				can_delete: true,
-				can_trace: true,
-			},
-			orderBy: {
-				modules: {
-					parent_module_id: 'asc',
-				}
-			}
-		});
+		const redis = await getRedis();
+		const cacheKey = getPermissionsCacheKey(
+			parseInt(input.level_id),
+			parseInt(input.department_id),
+		);
+		const cached = redis ? await redis.get(cacheKey) : null;
 
-    // flatten the permissions structure
-    const permissions = permissionsObject.map(permission => {
-        const modules = permission.modules;
-        const parent = modules?.modules;
-        const grandparent = parent?.modules;
+		if (cached) {
+			return JSON.parse(cached) as CachedPermissions;
+		}
 
-        return {
-            ...permission,
-            module_name: modules?.name ?? null,
-            module_id: modules?.id ?? null,
-            parent_module_name:  grandparent?.name ?? parent?.name ?? null,
-        };
-    });
+		const permissions = await getPermissions(
+			ctx.db,
+			parseInt(input.level_id),
+			parseInt(input.department_id),
+		);
+
+	if (redis) await redis.set(cacheKey, JSON.stringify(permissions), { EX: 600 }); // Cache for 10 minutes
 
     return permissions;
   }),
@@ -91,16 +118,21 @@ export const permissionRouter = createTRPCRouter({
         }
 
         try {
+			const affectedPermissions = await ctx.db.level_permission.findMany({
+				where: { id: { in: Object.keys(input.permissions) } },
+				select: { level_id: true, department_id: true },
+			});
+
 			await Promise.all(
 				Object.entries(input.permissions).map(async ([id, permission]) => {
 
 				if (permission.can_view !== true) {
-					return ctx.db.level_permission.deleteMany({
+					return await ctx.db.level_permission.deleteMany({
 						where: { id: id }
 					});
 				}
 
-				return ctx.db.level_permission.update({
+				return await ctx.db.level_permission.update({
 					where: { id: id },
 					data: {
 						can_view: true,
@@ -111,6 +143,17 @@ export const permissionRouter = createTRPCRouter({
 					});
 				})
 			);
+
+			const redis = await getRedis();
+			const cacheKeys = new Set(
+				affectedPermissions.map(({ level_id, department_id }) =>
+					getPermissionsCacheKey(level_id, department_id)
+				)
+			);
+			await Promise.all([
+				...[...cacheKeys].map((key) => redis?.del(key)),
+				invalidateAuthPermissionsCache(),
+			]);
         }
         catch (error) {
             await logError(error, ctx, input);
@@ -118,15 +161,14 @@ export const permissionRouter = createTRPCRouter({
         }
     }),
 
-
     getNewModules: protectedProcedure.input(
         z.object({
 			level_id: z.string(),
 			department_id: z.string(),
         })
     )
-    .query(async ({ ctx, input }) => {
-        const can_view = ctx.permissions[m.PERMISSIONS]?.can_view ?? false;
+	.query(async ({ ctx, input }) => {
+		const can_view = ctx.permissions[m.PERMISSIONS]?.can_view ?? false;
 
         if (!can_view) {
 			throw new TRPCError({ 
@@ -236,6 +278,17 @@ export const permissionRouter = createTRPCRouter({
 					})
 				)
 			);
+
+			const redis = await getRedis();
+			const cacheKeys = new Set(
+				input.map((permission) =>
+					getPermissionsCacheKey(permission.level_id, permission.department_id)
+				)
+			);
+			await Promise.all([
+				...[...cacheKeys].map((key) => redis?.del(key)),
+				invalidateAuthPermissionsCache(),
+			]);
         }
         catch (error) {
             await logError(error, ctx, input);

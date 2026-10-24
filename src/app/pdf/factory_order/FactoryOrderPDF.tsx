@@ -1,6 +1,6 @@
 import { Document, Page, Text } from "@react-pdf/renderer";
 import { registerPdfFonts, styles } from "../components/pdfConfig";
-import { PrintByAndDate, NexSourcifyLogo, ReportTitle, HeaderPart, Table, TableSummary, Signature } from "../components";
+import { PrintByAndDate, RenaissanceLogo, ReportTitle, HeaderPart, Table, TableSummary, Signature } from "../components";
 import { formatDate } from "~/utils/localDateString";
 
 import type { HeaderData } from "~/types/pdf";
@@ -23,8 +23,8 @@ const FactoryOrderPDF = ({ data }: { data: GetPDFDataOutput }) => {
 		{ key: 'product_name', label: 'Product Name', width: 86.6 },
 		{ key: 'color_names', label: 'Color', width: 86.6 },
 		{ key: 'quantity', label: 'Quantity', width: 78.7 },
-		{ key: 'rdl_fob', label: 'FOB', width: 63 },
-		{ key: 'rdl_value', label: 'Value', width: 86.6 },
+		{ key: 'rdl_fob', label: 'NexSourcify FOB', width: 63 },
+		{ key: 'rdl_value', label: 'NexSourcify Value', width: 86.6 },
 		{ key: 'factory_fob', label: 'Factory Rate', width: 63 },
 		{ key: 'factory_value', label: 'Factory Value', width: 78.7 },
 		{ key: 'exfactory_date', label: 'Ex Factory Date', width: 78.7 },
@@ -32,7 +32,7 @@ const FactoryOrderPDF = ({ data }: { data: GetPDFDataOutput }) => {
 
     const factoryOrderData: HeaderData = [
 		[
-			{ label: "Order No", value: data.header[0]?.ref_no ?? '' },
+			{ label: "NexSourcify Order No", value: data.header[0]?.ref_no ?? '' },
 			{ label: "Buyer Name", value: data.header[0]?.buyer_name ?? '' },
 			{ label: "Brand Name", value: data.header[0]?.brand_name ?? '' },
 			{ label: "Department Name", value: data.header[0]?.department_name ?? '' },
@@ -66,16 +66,16 @@ const FactoryOrderPDF = ({ data }: { data: GetPDFDataOutput }) => {
     return (
 		<Document
             title={data.header[0]?.ref_no ?? 'factory_order'}
-            author="Nex Sourcify"
+            author="NexSourcify Nexus"
             subject="Factory Order PDF"
-            keywords="Factory, Order, PDF, Nex Sourcify, ERP"
+            keywords="Factory, Order, PDF, NexSourcify Nexus, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="Nex Sourcify"
+            producer="NexSourcify Nexus"
 			pageMode='useOutlines'
 			creationDate={new Date()}
         >
 			<Page orientation="landscape" size="A4" style={styles.body} wrap>
-				<NexSourcifyLogo />
+				<RenaissanceLogo />
 				<PrintByAndDate />
 				<ReportTitle title="FACTORY ORDER" />
 				<HeaderPart data={factoryOrderData}/>

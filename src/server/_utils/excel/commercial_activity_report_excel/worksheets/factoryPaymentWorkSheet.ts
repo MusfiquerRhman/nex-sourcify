@@ -4,7 +4,7 @@ import { DOLLAR_SIGN_NUMBER_FORMAT, QUANTITY_NUMBER_FORMAT, TABLE_HEADER_ROW, TE
 import { currentTime, formatDate } from "~/utils/localDateString";
 import type { FactoryInvoiceData } from "~/server/api/routers/reports/_types/commercialActivityReport";
 
-const FACTORY_PAYMENT_TABLE_COLUMN_COUNT = 12;
+const FACTORY_PAYMENT_TABLE_COLUMN_COUNT = 13;
 
 const factoryPaymentTableColumns = [
     { key: 'buyer_name', width: 25 }, 
@@ -16,7 +16,8 @@ const factoryPaymentTableColumns = [
     { key: 'factory_invoice_date', width: 15 }, 
     { key: 'factory_invoice_quantity', width: 15 }, 
     { key: 'factory_invoice_value', width: 20 }, 
-    { key: 'fdbc_no', width: 30 }, 
+    { key: 'fdbc_no', width: 25 }, 
+    { key: 'rdl_invoice_no', width: 25 }, 
     { key: 'factory_payment', width: 25 }, 
     { key: 'factory_payment_date', width: 15 }, 
 ]
@@ -32,6 +33,7 @@ const factoryPaymentTableHeader = [
     'Factory Invoice Quantity',
     'Factory Invoice Value',
     'Document Submission',
+    'NexSourcify Invoice',
     'Factory Payment',
     'Payment Date'
 ]
@@ -131,11 +133,11 @@ export const generateFactoryPaymentWorkSheet = (Props: FactoryPaymentWorkSheetPr
     });
 
     // Currency columns
-    ["I", "K"].forEach((col) => {
+    ["I", "L"].forEach((col) => {
         factoryPaymentWorksheet.getColumn(col).numFmt = DOLLAR_SIGN_NUMBER_FORMAT;
     });
 
-    ["A", "B", "C", "D", "E", "F", "G", "J", "L"].forEach((col) => {
+    ["A", "B", "C", "D", "E", "F", "G", "J", "K"].forEach((col) => {
         factoryPaymentWorksheet.getColumn(col).numFmt = TEXT_FORMAT;
     });
 
@@ -143,7 +145,7 @@ export const generateFactoryPaymentWorkSheet = (Props: FactoryPaymentWorkSheetPr
         buyer_name: "Total",
         factory_invoice_quantity: { formula: `SUBTOTAL(109,H${TABLE_HEADER_ROW + 1}:H${factoryPaymentWorksheet.rowCount})` },
         factory_invoice_value: { formula: `SUBTOTAL(109,I${TABLE_HEADER_ROW + 1}:I${factoryPaymentWorksheet.rowCount})` },
-        factory_payment: { formula: `SUBTOTAL(109,K${TABLE_HEADER_ROW + 1}:K${factoryPaymentWorksheet.rowCount})` },
+        factory_payment: { formula: `SUBTOTAL(109,L${TABLE_HEADER_ROW + 1}:L${factoryPaymentWorksheet.rowCount})` },
     });
 
     totalFactoryInvoiceRow.font = {

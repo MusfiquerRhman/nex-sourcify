@@ -24,6 +24,14 @@ export const icons: Record<string, StaticImageData> = {
 // Database ID to URL mapping
 const sideBarConfig: Record<number, {href: string;}> = {
     [m.DASHBOARD]: { href: "/dashboard" },
+    
+    // Admin Module
+    [m.ADMIN]: { href: "/admin" },
+    [m.USERS]: { href: "/admin/users" },
+    [m.PERMISSIONS]: { href: "/admin/permissions" },
+    [m.TEAMS]: { href: "/admin/teams" },
+    [m.AUTHORIZATIONS]: { href: "/admin/authorizations" },
+    [m.EV_PERMISSIONS]: { href: "/admin/ev_permissions" },
 
     // Library Module
     [m.LIBRARY]: { href: "/library" },
@@ -47,7 +55,7 @@ const sideBarConfig: Record<number, {href: string;}> = {
     [m.PAYMENT_TERMS]: { href: "/library/payment_terms" },
     [m.FREIGHT_TERMS]: { href: "/library/freight_terms" },
     
-    // System
+    // System Tweaks Module
     [m.TNA_BASE_ACTION]: { href: "/system/tna_base_action" },
     [m.SHIPMENT_TOLERANCE]: { href: "/system/shipment_tolerance" },
     [m.LIBRARY_COMMISSION_DISTRIBUTION]: {href: "/system/commission_percentage" },
@@ -74,14 +82,6 @@ const sideBarConfig: Record<number, {href: string;}> = {
     [m.PENDING_EX_FACTORIES]: { href: "/merchandising/ex_factory/pending_ex_factories" },
     [m.EX_FACTORIES]: { href: "/merchandising/ex_factory/ex_factories" },
     [m.EARLY_SETTLEMENT] : { href: "/merchandising/early_settlement" },
-
-    // Admin Module
-    [m.ADMIN]: { href: "/admin" },
-    [m.USERS]: { href: "/admin/users" },
-    [m.PERMISSIONS]: { href: "/admin/permissions" },
-    [m.TEAMS]: { href: "/admin/teams" },
-    [m.AUTHORIZATIONS]: { href: "/admin/authorizations" },
-    [m.EV_PERMISSIONS]: { href: "/admin/ev_permissions" },
 
     // Commercial Module
     [m.COMMERCIAL]: { href: "/commercial" },
@@ -111,10 +111,17 @@ const sideBarConfig: Record<number, {href: string;}> = {
     [m.EXPORT_SUMMARY]: { href: "/reports/com_report/export_summary" },
     [m.LC_SC_CLOSING]: { href: "/reports/com_report/lc_sc_closing" },
     [m.COMMERCIAL_ACTIVITY_REPORT]: { href: "/reports/com_report/activity_report" },
+    [m.COMMISSION_REPORT]: { href: "/reports/acc_reports/commission_report" },
+    [m.LC_TRANSFER_REPORT]: { href: "/reports/com_report/lc_transfer_report"},
+    [m.CROSS_PAYMENT_REPORT]: { href: "/reports/acc_reports/cross_payment_report" },
 
-    // Maintenance
+    // Maintenance Module
     [m.ERROR_LOGS]: { href: "/maintenance/error_logs" },
     [m.USER_SESSIONS]: { href: "/maintenance/user_sessions" },
+    [m.NOTIFICATIONS]: { href: "/maintenance/notifications" },
+
+    // Quality Module
+    [m.ORDER_CHECKLIST]: {href: "/quality/order_checklist"}
 };
 
 export default sideBarConfig;

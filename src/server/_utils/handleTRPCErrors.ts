@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "@prisma/client";
 import { UAParser } from "ua-parser-js";
+import { friendlyMessages } from "./friendlyMessages";
 
 // Type guard
 function isPrismaError(error: unknown): error is Prisma.PrismaClientKnownRequestError {
@@ -55,6 +56,7 @@ export function handlePrismaError(error: unknown): never {
     }
 
     if (isPrismaError(error)) {
+        console.log('isPrismaError', error.meta)
         switch (error.code) {
             case "P2000":
                 throw new TRPCError({
@@ -70,17 +72,35 @@ export function handlePrismaError(error: unknown): never {
                     cause: error,
                 });
 
-            case "P2003":
+            
+            // Replace Prisma Constraint Violation messages with user friendly error message
+            case "P2003": {
+                const meta = error.meta as {
+                    modelName?: string;
+                    driverAdapterError?: {
+                        cause?: {
+                            constraint?: {
+                                index?: string;
+                            };
+                        };
+                    };
+                };
+
+                const constraint = meta?.driverAdapterError?.cause?.constraint?.index;
+                
                 throw new TRPCError({
                     code: "CONFLICT",
-                    message: "This record is referenced by other records and cannot be deleted.",
+                    message: typeof constraint === "string"
+                        ? friendlyMessages[constraint]
+                        : "This record is being used by another record and cannot be deleted.",
                     cause: error,
                 });
+            }
 
             case "P2025":
                 throw new TRPCError({
                     code: "NOT_FOUND",
-                    message: "The requested record was not found.",
+                    message: "The requested record was not found, Probably deleted by someone else.",
                     cause: error,
                 });
 

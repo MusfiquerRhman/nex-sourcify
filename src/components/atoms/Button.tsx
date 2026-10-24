@@ -3,7 +3,7 @@ import type { StaticImageData } from "next/image";
 import Image from "next/image";
 import React from "react";
 
-type ButtonProps = {
+type ButtonProps = Pick<React.ButtonHTMLAttributes<HTMLButtonElement>, 'aria-controls' | 'aria-expanded'> & {
     type?: "button" | "submit" | "reset";
     onClick?: () => void;
     label: string;
@@ -30,17 +30,17 @@ const Button = (props: ButtonProps) => {
 
     return (
         <button {...rest}
-            onClick={onClick} 
+            onClick={onClick}
             disabled={disabled}
             className={clsx(
-                `px-4 flex flex-row items-center w-full text-white shadow-md transition-all duration-150 active:scale-98 active:translate-y-0.25`, 
-                variantClasses, 
+                `nex-button nex-button-${trueCondition} px-4 flex flex-row items-center w-full text-white shadow-md transition-all duration-150 active:scale-98 active:translate-y-0.25`,
+                variantClasses,
                 className
             )}
-            type={ type} 
+            type={ type}
         >
             <span className="flex gap-3 items-center">
-                {leftIcon && <Image width={25} height={25} src={leftIcon} alt="" className={clsx("inline-block py-1", variant === 'accordion' ? "w-5" : "w-4")} />}
+                {leftIcon && <Image width={25} height={30} src={leftIcon} alt="" className={clsx("inline-block py-1", variant === 'accordion' ? "w-5" : "w-4")} />}
                 {label}
             </span>
             {rightIcon && <Image width={25} height={25} src={rightIcon} alt="" className={clsx("inline-block w-3 py-1 ml-3")} />}

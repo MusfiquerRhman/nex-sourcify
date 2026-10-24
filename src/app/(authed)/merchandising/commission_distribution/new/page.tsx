@@ -22,7 +22,10 @@ const NewCommissionDistributionPage = () => {
     const addCommissionDistribution = api.commissionDistribution.addCommissionDistribution.useMutation({
         onSuccess: async () => {
             toast.success("Commission Distribution added successfully!");
-            await utils.commissionDistribution.getCommissionDistribution.invalidate();
+            await Promise.all([
+                utils.commissionDistribution.getCommissionDistribution.invalidate(),
+                utils.commissionDistribution.getOrderIdForCommissionDistribution.invalidate(),
+            ]);
             setError(null);
         },
     });

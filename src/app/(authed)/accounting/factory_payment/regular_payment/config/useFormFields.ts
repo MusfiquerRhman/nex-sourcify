@@ -1,4 +1,3 @@
-import { api } from "~/trpc/react";
 import type { FactoryPaymentFormValues } from "./formSchema";
 import type { BaseField } from "~/types/form";
 
@@ -15,7 +14,7 @@ export const useFormFields = (): Field<keyof FactoryPaymentFormValues>[] => {
         },
         {
             name: 'fdbc_no',
-            label: 'FDBC/TT No',
+            label: 'NexSourcify invoice / FDBC No',
             disabled: true,
             optional: true,
         },
@@ -28,7 +27,7 @@ export const useFormFields = (): Field<keyof FactoryPaymentFormValues>[] => {
         },
         {
             name: "rdl_invoice_value",
-            label: "Invoice Value",
+            label: "NexSourcify Invoice Value",
             disabled: true,
             optional: true,
         },

@@ -30,7 +30,7 @@ const HandoverDates = () => {
     const handoverDatesList = handoverDates?.handoverDates ?? [];
     const total = handoverDates?.total ?? 0;
 
-    const editURL = '/maintenance/handover_dates/edit/';
+    const editURL = '/system/handover_dates/edit/';
 
     const deleteMutation = api.handoverDates.deleteHandoverDate.useMutation({
         onSuccess: async () => {
@@ -68,7 +68,7 @@ const HandoverDates = () => {
                                 variant="secondary"
                                 label="Add New Handover Date"
                                 leftIcon={plusIcon}
-                                onClick={() => router.push('/maintenance/handover_dates/new')}
+                                onClick={() => router.push('/system/handover_dates/new')}
                             />
                         </div>
                     ) : null

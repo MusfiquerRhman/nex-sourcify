@@ -38,6 +38,8 @@ const FactoryInvoicePage = () => {
             await Promise.all([
                 utils.factoryInvoice.getFactoryInvoiceList.invalidate(),
                 utils.factoryInvoice.searchFactoryInvoices.invalidate(),
+                utils.factoryInvoice.getExfactoryDetailsForShipment.invalidate(),
+                utils.factoryInvoice.getScLcForFactoryInvoice.invalidate(),
             ]);
         }
     });

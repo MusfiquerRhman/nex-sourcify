@@ -1,10 +1,17 @@
-import { StyleSheet } from "@react-pdf/renderer";
+import { StyleSheet, Font } from "@react-pdf/renderer";
 
 export const tableBorderColor = "#ADADAD";
 export const tableHeaderColor = "#C0F0F7";
 export const secondaryTableHeaderColor = "#FFFF99";
+export const tablePageNumberColors = '#6F6F6F'
 
-import { Font } from "@react-pdf/renderer";
+Font.registerHyphenationCallback((word: string) => {
+  if (!word) return [word];
+
+  const segments = word.split(/([\s\-/]+)/).filter((segment) => segment.length > 0);
+
+  return segments.length > 0 ? segments : [word];
+});
 
 export const registerPdfFonts = () => {
     Font.register({
@@ -44,13 +51,14 @@ export const styles = StyleSheet.create({
         position: 'relative',
     },
     pageNumber: {
+        fontFamily: 'Amasis',
         position: "absolute",
         fontSize: 8,
         bottom: 30,
         left: 0,
         right: 0,
         textAlign: "center",
-        color: "grey",
+        color: tablePageNumberColors,
     },
     tableContainer: {
         width: "100%",
@@ -82,7 +90,8 @@ export const styles = StyleSheet.create({
         borderBottomColor: tableBorderColor,
     },
     cell: {
-        padding: "3px",
+        paddingHorizontal: 2,
+        paddingVertical: 3,
         fontSize: "8px",
         height: "auto",
         borderRightWidth: 0.75,
@@ -91,6 +100,7 @@ export const styles = StyleSheet.create({
         display: "flex",
         flexDirection: "row",
         justifyContent: "center",
+        textAlign: "center",
     },
     signature: {
         marginTop: 70,

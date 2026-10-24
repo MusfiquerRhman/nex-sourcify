@@ -2,7 +2,7 @@ import { Text, View } from "@react-pdf/renderer";
 import { tableBorderColor } from "../../components/pdfConfig";
 
 interface TableRowProps {
-    index: number;
+    index?: number;
     description: React.ReactNode;
     quantity: string;
     value: string;
@@ -16,7 +16,7 @@ const TableRow = ({ index, description, quantity, value}: TableRowProps) => (
             borderLeftWidth: 0.75,
             borderLeftColor: tableBorderColor,
             borderRightWidth: 0.75,
-            borderRightColor: tableBorderColor,
+            borderRightColor: tableBorderColor
         }}
         wrap={false}
     >
@@ -28,14 +28,14 @@ const TableRow = ({ index, description, quantity, value}: TableRowProps) => (
                 textAlign: "center",
             }}
         >
-            <Text>{index + 1}</Text>
+            <Text>{index !== undefined ? index + 1 : ''}</Text>
         </View>
 
         <View
             style={{
                 width: 400,
                 fontSize: 9,
-                padding: 5,
+                paddingHorizontal: 5,
                 borderLeftWidth: 0.75,
                 borderLeftColor: tableBorderColor,
             }}

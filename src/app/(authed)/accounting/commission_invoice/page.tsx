@@ -36,7 +36,7 @@ const CommissionInvoicePage = () => {
             toast.success("Commission Invoice deleted successfully");
             await Promise.all([
                 utils.commissionInvoice.getCommissionInvoiceList.invalidate(),
-                utils.commissionInvoice.searchCommissionInvoice.invalidate()
+                utils.commissionInvoice.searchCommissionInvoice.invalidate(),
             ])
         },
     });
@@ -56,7 +56,7 @@ const CommissionInvoicePage = () => {
                 subSectionLeft={
                     <SearchField
                         placeholder="Search Commission Invoices..."
-                        infoText="Commission Invoice No, LC No, Sales Contract No, Buyer Name, Factory Invoice, Invoice, Term"
+                        infoText="Commission Invoice No, LC No, Sales Contract No, Buyer Name, Factory Invoice, NexSourcify Invoice, Term"
                         handleSearchChange={handleSearchChange}
                     />
                 }

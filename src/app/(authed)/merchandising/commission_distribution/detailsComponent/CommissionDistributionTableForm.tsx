@@ -31,7 +31,7 @@ const TableForm = (props: Props) => {
 
             <form className="flex flex-col justify-start w-full px-8 pb-8">
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(400px,1fr))] items-center gap-4 w-full">
-                    <TableWrapper>
+                    <TableWrapper className='max-h-175 overflow-y-auto'>
                         <TableHeader columns={columns} rows={rows} />
                         <TableBody>
                             {rows.map((_, index) => (

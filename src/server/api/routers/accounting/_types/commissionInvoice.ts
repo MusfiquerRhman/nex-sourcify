@@ -29,10 +29,12 @@ export interface RDLInvoiceData {
     rfl_invoice_date: Date,
     rfl_invoice_quantity: number,
     rfl_invoice_value: number,
+    rfl_charge_value: number
     rft_invoice_no: string,
     rft_invoice_date: Date,
     rft_invoice_quantity: number,
-    rft_invoice_value: number
+    rft_invoice_value: number,
+    rft_charge_value: number,
 }
 
 export interface FactoryInvoiceData {

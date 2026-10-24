@@ -36,7 +36,8 @@ const EditProceedRealizationPage = ({ params }: ParamsProp) => {
             await Promise.all([
                 utils.proceedRealization.getProceedRealizationById.invalidate({ id }),
                 utils.proceedRealization.getProceedRealization.invalidate(),
-                utils.proceedRealization.searchProceedRealization.invalidate()
+                utils.proceedRealization.searchProceedRealization.invalidate(),
+                utils.proceedRealization.getDocumentSubmissionForProceedRealization.invalidate(),
             ]);
         }
     });

@@ -38,6 +38,8 @@ const EarlySettlement = () => {
             await Promise.all([
                 utils.earlySettlement.getEarlySettlements.invalidate(),
                 utils.earlySettlement.searchEarlySettlements.invalidate(),
+                utils.earlySettlement.getPoDetails.invalidate(),
+                utils.earlySettlement.getOrderForEarlySettlement.invalidate(),
             ]);
         },
     });

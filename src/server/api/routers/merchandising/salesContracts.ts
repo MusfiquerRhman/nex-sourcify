@@ -1,13 +1,15 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
 import { m } from "~/utils/moduleMap";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { actions } from "@prisma/client";
+import { actions, Prisma } from "@prisma/client";
 import { amountToWords, currencyFormatter, quantityFormatter } from "~/utils/localNumberStrings";
 import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID } from "~/utils/config";
 import { formatDate } from "~/utils/localDateString";
 import type { SalesContractResponse, SalesContractPDFHeaderData } from "./_types/salesContract";
+import { notificationQueue } from "~/server/queues/notification.queue";
 
 export const formatColorQty = (items: { colors: { name: string }; quantity: number }[]): string => {
     const map = items.reduce((acc, item) => {
@@ -23,6 +25,7 @@ export const salesContractsRouter = createTRPCRouter({
     getSalesContracts: protectedProcedure
         .input(
             z.object({
+                filter: z.number().min(-1).default(-1), 
                 limit: z.number().optional(),
                 offset: z.number().optional(),
             })
@@ -83,6 +86,19 @@ export const salesContractsRouter = createTRPCRouter({
                                     AND TM.USER_ID = ${ctx.user.id}
                             )
                         )
+                        AND ( -- Authorization personals 
+                            NOT EXISTS (
+                                SELECT 1
+                                FROM USERS AS U
+                                WHERE U.ID = ${ctx.user.id}
+                                    AND U.DEPARTMENT_ID IN (1, 2)
+                                    AND U.LEVEL_ID = 4
+                            )
+                            OR SC.APPROVAL_STATUS IN (1, 2)
+                        )
+                        ${input.filter === -1 
+                            ? Prisma.empty
+                            : Prisma.sql`AND SC.approval_status = ${input.filter}`}
                         GROUP BY SC.ID, 
                             F.NAME, 
                             SC.ADDED_AT, 
@@ -177,6 +193,16 @@ export const salesContractsRouter = createTRPCRouter({
                                     AND TM.USER_ID = ${ctx.user.id}
                             )
                         )
+                        AND ( -- Authorization personals 
+                            NOT EXISTS (
+                                SELECT 1
+                                FROM USERS AS U
+                                WHERE U.ID = ${ctx.user.id}
+                                    AND U.DEPARTMENT_ID IN (1, 2)
+                                    AND U.LEVEL_ID = 4
+                            )
+                            OR SC.APPROVAL_STATUS IN (1, 2)
+                        )
                         AND (
                             SC.SALES_CONTRACT_NO ILIKE '%' || ${input.query} || '%'
                             OR F.NAME ILIKE '%' || ${input.query} || '%'
@@ -244,7 +270,7 @@ export const salesContractsRouter = createTRPCRouter({
             }
 
             try {
-                await ctx.db.$transaction(async (tx) => {
+                await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const salesContractDetails = await tx.sales_contract_details.findMany({
                         where: {
                             sales_contract_id: input.id,
@@ -374,7 +400,7 @@ export const salesContractsRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx, queueHistoryJob) => {
                     const currentYear = new Date().getFullYear();
 
                     // Atomic serial generation
@@ -402,6 +428,7 @@ export const salesContractsRouter = createTRPCRouter({
                             select: {
                                 short_name: true,
                                 buyer_name: true,
+                                prefix: true,
                             },
                         }),
 
@@ -416,13 +443,13 @@ export const salesContractsRouter = createTRPCRouter({
                         }),
                     ]);
 
-                    const buyerPrefix = buyer?.short_name ?? buyer?.buyer_name ?? "UNKNOWN";
-5
-                    const factoryPrefix = factory?.prefix ?? factory?.name ?? "UNKNOWN";
+                    const buyerPrefix = buyer?.prefix ?? buyer?.short_name ?? buyer?.buyer_name ?? "UNKNOWN";
+
+                    const factoryPrefix = (factory?.prefix === '' ? null : factory?.prefix) ?? factory?.name ?? "UNKNOWN";
 
                     const serial = String(metadata.last_serial).padStart(4, "0");
 
-                    const sales_contract_no = `NEX/SC/${buyerPrefix}/${factoryPrefix}/${currentYear}/${serial}`;
+                    const sales_contract_no = `NexSourcify/SC/${buyerPrefix.trim()}/${factoryPrefix.trim()}/${String(currentYear).slice(-2)}/${serial}`;
 
                     // Create SC
                     const newSalesContract = await tx.sales_contracts.create({
@@ -443,6 +470,29 @@ export const salesContractsRouter = createTRPCRouter({
                         },
                     });
 
+                    await tx.sales_contracts_history.create({
+                        data: {
+                            sales_contracts_id: newSalesContract.id,
+                            sales_contract_no: newSalesContract.sales_contract_no,
+                            sales_contract_date: newSalesContract.sales_contract_date,
+                            factory_id: newSalesContract.factory_id,
+                            approval_status: newSalesContract.approval_status,
+                            company_id: newSalesContract.company_id,
+                            contact_person_id: newSalesContract.contact_person_id,
+                            buyer_bank_id: newSalesContract.buyer_bank_id,
+                            buyer_id: newSalesContract.buyer_id,
+                            supplier_bank_id: newSalesContract.supplier_bank_id,
+                            rdl_bank_id: newSalesContract.rdl_bank_id,
+                            negotiation_bank_id: newSalesContract.negotiation_bank_id,
+                            partial_shipment: newSalesContract.partial_shipment,
+                            freight_term_id: newSalesContract.freight_term_id,
+                            approved_once: newSalesContract.approved_once,
+                            port_of_loading_id: newSalesContract.port_of_loading_id,
+                            action_type: actions.ADDED,
+                            action_by: ctx.user.id,
+                        }
+                    })
+
                     // Create Consignees
                     if (input.consignee_ids.length > 0) {
                         await tx.sales_contract_consignees.createMany({
@@ -454,33 +504,24 @@ export const salesContractsRouter = createTRPCRouter({
                     }
 
                     // Create SC Details
-                    let createdDetails: Awaited<ReturnType<typeof tx.sales_contract_details.findMany>> = [];
+                    let createdDetails: Awaited<ReturnType<typeof tx.sales_contract_details.createManyAndReturn>> = [];
 
                     if (input.details.length > 0) {
-                        await tx.sales_contract_details.createMany({
+                        createdDetails = await tx.sales_contract_details.createManyAndReturn({
                             data: input.details.map((detail) => ({
                                 sales_contract_id: newSalesContract.id,
                                 order_id: detail.order_id,
                             })),
                         });
 
-                        createdDetails = await tx.sales_contract_details.findMany({
-                            where: {
+                        queueHistoryJob({
+                            name: "sales_contract_details_added",
+                            data: {
                                 sales_contract_id: newSalesContract.id,
-                                order_id: {
-                                    in: input.details.map((detail) => detail.order_id),
-                                },
-                            },
-                        });
-
-                        await tx.sales_contract_details_history.createMany({
-                            data: createdDetails.map((detail) => ({
-                                sales_contract_id: newSalesContract.id,
-                                sales_contract_details_id: detail.id,
-                                order_id: detail.order_id,
-                                action_type: actions.ADDED,
+                                order_ids: input.details.map((detail) => detail.order_id),
+                                row_ids: createdDetails.map((detail) => detail.id),
                                 action_by: ctx.user.id,
-                            })),
+                            },
                         });
                     }
 
@@ -524,7 +565,7 @@ export const salesContractsRouter = createTRPCRouter({
 
             try {
                 const orders = await ctx.db.$queryRaw<{ id: number; ref_no: string; buyer_name: string; season_name: string }[]>`
-                    SELECT
+                    SELECT DISTINCT
                         BO.id AS id,
                         BO.ref_no AS ref_no,
                         B.buyer_name AS buyer_name,
@@ -532,7 +573,7 @@ export const salesContractsRouter = createTRPCRouter({
                     FROM buyer_orders AS BO
                         INNER JOIN buyers AS B ON B.id = BO.buyer_id
                         INNER JOIN seasons AS S ON S.id = BO.season_id
-                        -- INNER JOIN commission_distributions AS CD ON CD.order_id = BO.id
+                        INNER JOIN commission_distributions AS CD ON CD.order_id = BO.id
                     WHERE BO.buyer_id = ${input.buyer_id}
                     AND BO.factory_id = ${input.factory_id}
                     AND (
@@ -548,7 +589,7 @@ export const salesContractsRouter = createTRPCRouter({
                             AND SCD.sales_contract_id = ${input.salesContractId}
                         )
                     )
-                    -- AND CD.approval_status = TRUE
+                    AND CD.approval_status = TRUE
                     ORDER BY BO.id DESC
                 `;
 
@@ -756,7 +797,7 @@ export const salesContractsRouter = createTRPCRouter({
                     });
                 }
 
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx, queueHistoryJob) => {
                     const updatedSalesContract = await tx.sales_contracts.update({
                         where: { id: input.id },
                         data: {
@@ -778,19 +819,19 @@ export const salesContractsRouter = createTRPCRouter({
                     await tx.sales_contracts_history.create({
                         data: {
                             sales_contracts_id: input.id,
-                            buyer_id: input.buyer_id,
+                            buyer_id: updatedSalesContract.buyer_id,
                             sales_contract_no: salesContract.sales_contract_no,
-                            factory_id: input.factory_id,
-                            sales_contract_date: input.sales_contract_date,
-                            buyer_bank_id: input.buyer_bank_id,
-                            supplier_bank_id: input.factory_bank_id,
-                            rdl_bank_id: input.rdl_bank_id,
-                            negotiation_bank_id: input.negotiation_bank_id,
-                            partial_shipment: input.partial_shipment,
-                            port_of_loading_id: input.destination_id,
-                            freight_term_id: input.freight_terms_id,
-                            company_id: input.company_id,
-                            contact_person_id: input.contact_person_id,
+                            factory_id: updatedSalesContract.factory_id,
+                            sales_contract_date: updatedSalesContract.sales_contract_date,
+                            buyer_bank_id: updatedSalesContract.buyer_bank_id,
+                            supplier_bank_id: updatedSalesContract.supplier_bank_id,
+                            rdl_bank_id: updatedSalesContract.rdl_bank_id,
+                            negotiation_bank_id: updatedSalesContract.negotiation_bank_id,
+                            partial_shipment: updatedSalesContract.partial_shipment,
+                            port_of_loading_id: updatedSalesContract.port_of_loading_id,
+                            freight_term_id: updatedSalesContract.freight_term_id,
+                            company_id: updatedSalesContract.company_id,
+                            contact_person_id: updatedSalesContract.contact_person_id,
                             action_type: actions.UPDATE,
                             action_by: ctx.user.id,
                         },
@@ -887,34 +928,25 @@ export const salesContractsRouter = createTRPCRouter({
                     );
 
                     let createdDetails: Awaited<
-                        ReturnType<typeof tx.sales_contract_details.findMany>
+                        ReturnType<typeof tx.sales_contract_details.createManyAndReturn>
                     > = [];
 
                     if (detailsToAdd.length > 0) {
-                        await tx.sales_contract_details.createMany({
+                        createdDetails = await tx.sales_contract_details.createManyAndReturn({
                             data: detailsToAdd.map(detail => ({
                                 sales_contract_id: input.id,
                                 order_id: detail.order_id,
                             })),
                         });
 
-                        createdDetails = await tx.sales_contract_details.findMany({
-                            where: {
+                        queueHistoryJob({
+                            name: "sales_contract_details_added",
+                            data: {
                                 sales_contract_id: input.id,
-                                order_id: {
-                                    in: detailsToAdd.map(detail => detail.order_id),
-                                },
-                            },
-                        });
-
-                        await tx.sales_contract_details_history.createMany({
-                            data: createdDetails.map(detail => ({
-                                sales_contract_id: input.id,
-                                sales_contract_details_id: detail.id,
-                                order_id: detail.order_id,
-                                action_type: actions.ADDED,
+                                order_ids: detailsToAdd.map((detail) => detail.order_id),
+                                row_ids: createdDetails.map((detail) => detail.id),
                                 action_by: ctx.user.id,
-                            })),
+                            },
                         });
                     }
 
@@ -968,7 +1000,7 @@ export const salesContractsRouter = createTRPCRouter({
             }
 
             try {
-                await ctx.db.$transaction(async (tx) => {
+                await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const isApproved = await tx.sales_contract_details.findUnique({
                         where: {
                             id: input.id,
@@ -1097,13 +1129,15 @@ export const salesContractsRouter = createTRPCRouter({
             }
 
             try {
-                await ctx.db.$transaction(async (tx) => {
+                await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const existingSalesContract = await tx.sales_contracts.findUnique({
                         where: {
                             id: input.id,
                         },
                         select: {
                             id: true,
+                            sales_contract_date: true,
+                            sales_contract_no: true,
                             approval_status: true,
                             approved_once: true,
                         }
@@ -1161,6 +1195,33 @@ export const salesContractsRouter = createTRPCRouter({
                                 approved_once: existingSalesContract.approved_once || input.approval_status === 2 ? true : false,
                             }
                         });
+
+                        await tx.sales_contracts_history.create({
+                            data: {
+                                sales_contracts_id: input.id,
+                                approval_status: input.approval_status,
+                                sales_contract_date: existingSalesContract.sales_contract_date,
+                                sales_contract_no: existingSalesContract.sales_contract_no,
+                                approved_once: existingSalesContract.approved_once || input.approval_status === 2 ? true : false,
+                                action_type: actions.UPDATE,
+                                action_by: ctx.user.id,
+                            }
+                        });
+
+                        await notificationQueue.add("sales-contract-submitted", {
+                            sales_contract_id: input.id,
+                            approval_status: input.approval_status,
+                            previous_approval_status: input.previous_approval_status,
+                            action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
+                            level_id: ctx.user.level_id,
+                        }, {
+                            attempts: 5,
+                            backoff: {
+                                type: "exponential",
+                                delay: 1000,
+                            },
+                        });
+                        
                     }
                 }, {timeout: 30000})
             }
@@ -1289,7 +1350,7 @@ export const salesContractsRouter = createTRPCRouter({
                                 JOIN (
                                     SELECT 
                                         PT.ID AS ID,
-                                        CONCAT(T.NAME, ' ', PT.TENOR, ' DAYS ', PT.TERM_DESCRIPTION) AS TERM
+                                        CONCAT(T.NAME, ' ', PT.TENOR, ' ', PT.TERM_DESCRIPTION) AS TERM
                                     FROM payment_terms AS PT
                                         INNER JOIN terms AS T ON T.id = PT.term_id
                                 ) P ON P.id = SD.payment_term_id
@@ -1408,8 +1469,11 @@ export const salesContractsRouter = createTRPCRouter({
                     }
                 });
 
-                const currencySymbol = orderDataObj?.sales_contract_details?.[0]?.buyer_orders?.order_styles?.[0]?.shipment_details?.[0]?.factory_shipment_details?.[0]?.factory_orders?.currencies?.symbol ?? '$';
-                const currencyName = orderDataObj?.sales_contract_details?.[0]?.buyer_orders?.order_styles?.[0]?.shipment_details?.[0]?.factory_shipment_details?.[0]?.factory_orders?.currencies?.name ?? 'USD';
+                const currencySymbol = orderDataObj?.sales_contract_details?.[0]?.buyer_orders?.order_styles?.[0]
+                    ?.shipment_details?.[0]?.factory_shipment_details?.factory_orders?.currencies?.symbol ?? '$';
+
+                const currencyName = orderDataObj?.sales_contract_details?.[0]?.buyer_orders?.order_styles?.[0]
+                    ?.shipment_details?.[0]?.factory_shipment_details?.factory_orders?.currencies?.name ?? 'USD';
 
                 const orderData = orderDataObj?.sales_contract_details.map(detail => ({
                     ref_no: detail.buyer_orders?.ref_no,
@@ -1422,15 +1486,15 @@ export const salesContractsRouter = createTRPCRouter({
                                 sd.shipment_item_details.reduce((sum, item) => sum + item.quantity, 0)
                             ),
                             colors: formatColorQty(sd.shipment_item_details),
-                            exfactory_date: formatDate(sd.factory_shipment_details?.[0]?.exfactory_date ?? ''),
-                            transfer_rate: (sd.factory_shipment_details?.[0]?.transfer_rate ?? 0) > 0
-                                    ? sd.factory_shipment_details?.[0]?.transfer_rate
-                                    : sd.factory_shipment_details?.[0]?.factory_rate,
+                            exfactory_date: formatDate(sd.factory_shipment_details?.exfactory_date ?? ''),
+                            transfer_rate: (sd.factory_shipment_details?.transfer_rate ?? 0) > 0
+                                    ? sd.factory_shipment_details?.transfer_rate
+                                    : sd.factory_shipment_details?.factory_rate,
                             price: currencyFormatter(
                                 (
-                                    ((sd.factory_shipment_details?.[0]?.transfer_rate ?? 0) > 0
-                                        ? sd.factory_shipment_details?.[0]?.transfer_rate
-                                        : sd.factory_shipment_details?.[0]?.factory_rate) ?? 0
+                                    ((sd.factory_shipment_details?.transfer_rate ?? 0) > 0
+                                        ? sd.factory_shipment_details?.transfer_rate
+                                        : sd.factory_shipment_details?.factory_rate) ?? 0
                                 ) *
                                 sd.shipment_item_details.reduce((sum, item) => sum + item.quantity, 0),
                                 currencySymbol
@@ -1450,9 +1514,9 @@ export const salesContractsRouter = createTRPCRouter({
                             detail.buyer_orders?.order_styles.reduce((sumOs, os) =>
                                 sumOs + os.shipment_details.reduce((sumSd, sd) =>
                                     sumSd + (
-                                        ((sd.factory_shipment_details?.[0]?.transfer_rate ?? 0) > 0
-                                            ? sd.factory_shipment_details?.[0]?.transfer_rate
-                                            : sd.factory_shipment_details?.[0]?.factory_rate) ?? 0
+                                        ((sd.factory_shipment_details?.transfer_rate ?? 0) > 0
+                                            ? sd.factory_shipment_details?.transfer_rate
+                                            : sd.factory_shipment_details?.factory_rate) ?? 0
                                     ) *
                                     sd.shipment_item_details.reduce((sumItem, item) => sumItem + item.quantity, 0), 
                                 0), 
@@ -1477,9 +1541,9 @@ export const salesContractsRouter = createTRPCRouter({
                         sumDetail + detail.buyer_orders?.order_styles.reduce((sumOs, os) =>
                             sumOs + os.shipment_details.reduce((sumSd, sd) =>
                                 sumSd + (
-                                    ((sd.factory_shipment_details?.[0]?.transfer_rate ?? 0) > 0
-                                        ? sd.factory_shipment_details?.[0]?.transfer_rate
-                                        : sd.factory_shipment_details?.[0]?.factory_rate) ?? 0
+                                    ((sd.factory_shipment_details?.transfer_rate ?? 0) > 0
+                                        ? sd.factory_shipment_details?.transfer_rate
+                                        : sd.factory_shipment_details?.factory_rate) ?? 0
                                 ) *
                                 sd.shipment_item_details.reduce((sumItem, item) => sumItem + item.quantity, 0), 
                             0), 
@@ -1545,7 +1609,6 @@ export const salesContractsRouter = createTRPCRouter({
                 handlePrismaError(error);
             }
         }),
-
 
     getSalesContractCommissionPDFData: protectedProcedure
         .input(z.object({
@@ -1613,6 +1676,16 @@ export const salesContractsRouter = createTRPCRouter({
 
                 let nonAmendData = null;
                 let amendData = null;
+                let grandTotal = {
+                    qty: 0,
+                    rdl: 0,
+                    factory: 0,
+                    comm: 0,
+                    dhaka: 0,
+                    overseas: 0,
+                    others: 0,
+                };
+                let grandTotalResults = null;
 
                 if(!hasAmendment) {
                     const orderDataObj = await ctx.db.sales_contracts.findUnique({
@@ -1677,8 +1750,8 @@ export const salesContractsRouter = createTRPCRouter({
                     });
 
                         
-                    const currencySymbol =
-                        orderDataObj?.sales_contract_details?.[0]?.buyer_orders?.order_styles?.[0]?.shipment_details?.[0]?.factory_shipment_details?.[0]?.factory_orders?.currencies?.symbol ??
+                    const currencySymbol = orderDataObj?.sales_contract_details?.[0]?.buyer_orders?.order_styles?.[0]
+                        ?.shipment_details?.[0]?.factory_shipment_details?.factory_orders?.currencies?.symbol ??
                         '$';
 
                     nonAmendData = orderDataObj?.sales_contract_details?.map(detail => {
@@ -1689,7 +1762,7 @@ export const salesContractsRouter = createTRPCRouter({
                                 ) ?? 0;
 
                                 const fobRate = sd.fob_rate ?? 0;
-                                const factoryRate = sd.factory_shipment_details?.[0]?.factory_rate ?? 0;
+                                const factoryRate = sd.factory_shipment_details?.factory_rate ?? 0;
 
                                 const rdlVal = totalQty * fobRate;
                                 const factoryVal = totalQty * factoryRate;
@@ -1730,35 +1803,37 @@ export const salesContractsRouter = createTRPCRouter({
                             }) || []
                         ) || [];
 
-                    const totals = shipmentRows.reduce(
-                        (acc, item) => {
-                            acc.qty += item.raw.totalQty;
-                            acc.rdl += item.raw.rdlVal;
-                            acc.factory += item.raw.factoryVal;
-                            acc.comm += item.raw.commVal;
-                            acc.dhaka += item.raw.dhakaComm;
-                            acc.overseas += item.raw.overseasComm;
-                            acc.others += item.raw.othersComm;
-                            return acc;
-                        },
-                        {
-                            qty: 0,
-                            rdl: 0,
-                            factory: 0,
-                            comm: 0,
-                            dhaka: 0,
-                            overseas: 0,
-                            others: 0,
-                        }
-                    );
+                        const totals = shipmentRows.reduce(
+                            (acc, item) => {
+                                acc.qty += item.raw.totalQty;
+                                acc.rdl += item.raw.rdlVal;
+                                acc.factory += item.raw.factoryVal;
+                                acc.comm += item.raw.commVal;
+                                acc.dhaka += item.raw.dhakaComm;
+                                acc.overseas += item.raw.overseasComm;
+                                acc.others += item.raw.othersComm;
+                                return acc;
+                            },
+                            {
+                                qty: 0,
+                                rdl: 0,
+                                factory: 0,
+                                comm: 0,
+                                dhaka: 0,
+                                overseas: 0,
+                                others: 0,
+                            }
+                        );
 
-                    return {
-                        ref_no: detail.buyer_orders?.ref_no,
+                        return {
+                            ref_no: detail.buyer_orders?.ref_no,
 
-                        shipment_details: shipmentRows.map(item => item.row),
+                            shipment_details: shipmentRows.map(item => item.row),
 
-                        results: {
-                            totalQuantity: quantityFormatter(totals.qty),
+                            totals: totals,
+
+                            results: {
+                                totalQuantity: quantityFormatter(totals.qty),
                                 totalRdlValue: currencyFormatter(totals.rdl,currencySymbol),
                                 totalFactoryValue: currencyFormatter(totals.factory,currencySymbol),
                                 commissionPercentage: `${totals.rdl? ((totals.comm / totals.rdl) * 100).toFixed(2) : '0.00'}%`,
@@ -1772,6 +1847,34 @@ export const salesContractsRouter = createTRPCRouter({
                             },
                         };
                     }) || [];
+
+                    grandTotal = nonAmendData.reduce(
+                        (acc, detail) => {
+                            acc.qty += detail.totals.qty;
+                            acc.rdl += detail.totals.rdl;
+                            acc.factory += detail.totals.factory;
+                            acc.comm += detail.totals.comm;
+                            acc.dhaka += detail.totals.dhaka;
+                            acc.overseas += detail.totals.overseas;
+                            acc.others += detail.totals.others;
+                            return acc;
+                        },
+                        grandTotal
+                    );
+
+                    grandTotalResults = {
+                        totalQuantity: quantityFormatter(grandTotal.qty),
+                        totalRdlValue: currencyFormatter(grandTotal.rdl, currencySymbol),
+                        totalFactoryValue: currencyFormatter(grandTotal.factory, currencySymbol),
+                        commissionPercentage: `${grandTotal.rdl ? ((grandTotal.comm / grandTotal.rdl) * 100).toFixed(2) : "0.00"}%`,
+                        totalCommissionValue: currencyFormatter(grandTotal.comm, currencySymbol),
+                        totalDhakaCommission: currencyFormatter(grandTotal.dhaka, currencySymbol),
+                        totalDhakaCommissionPercentage: `${grandTotal.rdl ? ((grandTotal.dhaka / grandTotal.rdl) * 100).toFixed(2) : "0.00"}%`,
+                        totalOverseasCommission: currencyFormatter(grandTotal.overseas, currencySymbol),
+                        totalOverseasCommissionPercentage: `${grandTotal.rdl ? ((grandTotal.overseas / grandTotal.rdl) * 100).toFixed(2) : "0.00"}%`,
+                        totalOthersCommission: currencyFormatter(grandTotal.others, currencySymbol),
+                        totalOthersCommissionPercentage: `${grandTotal.rdl ? ((grandTotal.others / grandTotal.rdl) * 100).toFixed(2) : "0.00"}%`,
+                    };
                 }
                 else {
                     const orderDataObj = await ctx.db.sales_contract_amendment.findMany({
@@ -1837,18 +1940,21 @@ export const salesContractsRouter = createTRPCRouter({
                         }
                     });
 
-                    const currencySymbol = orderDataObj?.[0]?.sales_contract_amendment_details?.[0]?.buyer_orders?.order_styles?.[0]?.shipment_details?.[0]?.factory_shipment_details?.[0]?.factory_orders?.currencies?.symbol ?? '$';
+                    const currencySymbol = orderDataObj?.[0]?.sales_contract_amendment_details?.[0]?.buyer_orders?.order_styles?.[0]
+                        ?.shipment_details?.[0]?.factory_shipment_details?.factory_orders?.currencies?.symbol ?? '$';
 
-                    amendData = orderDataObj.map(amendment => {
-                        const shipmentRows = amendment.sales_contract_amendment_details.flatMap(detail =>
-                            detail.buyer_orders?.order_styles.flatMap(os =>
+                    amendData = [...orderDataObj]
+                        .sort((first, second) => Number(second.amendment_no ?? 0) - Number(first.amendment_no ?? 0))
+                        .map(amendment => {
+                        const amendmentOrders = amendment.sales_contract_amendment_details.map(detail => {
+                            const shipmentRows = detail.buyer_orders?.order_styles.flatMap(os =>
                                 os.shipment_details.map(sd => {
                                     const totalQty = sd.shipment_item_details.reduce(
                                         (sum, item) => sum + (item.quantity ?? 0), 0
                                     );
 
                                     const fobRate = sd.fob_rate ?? 0;
-                                    const factoryRate = sd.factory_shipment_details?.[0]?.factory_rate ?? 0;
+                                    const factoryRate = sd.factory_shipment_details?.factory_rate ?? 0;
 
                                     const rdlVal = totalQty * fobRate;
                                     const factoryVal = totalQty * factoryRate;
@@ -1879,19 +1985,60 @@ export const salesContractsRouter = createTRPCRouter({
                                         raw: { totalQty, rdlVal, factoryVal, commVal, dhakaComm, overseasComm, othersComm },
                                     };
                                 })
-                            ) || []
-                        );
+                            ) || [];
 
-                        const totals = shipmentRows.reduce(
-                            (acc, item) => {
-                                acc.qty += item.raw.totalQty;
-                                acc.rdl += item.raw.rdlVal;
-                                acc.factory += item.raw.factoryVal;
-                                acc.comm += item.raw.commVal;
-                                acc.dhaka += item.raw.dhakaComm;
-                                acc.overseas += item.raw.overseasComm;
-                                acc.others += item.raw.othersComm;
+                            const totals = shipmentRows.reduce(
+                                (acc, item) => {
+                                    acc.qty += item.raw.totalQty;
+                                    acc.rdl += item.raw.rdlVal;
+                                    acc.factory += item.raw.factoryVal;
+                                    acc.comm += item.raw.commVal;
+                                    acc.dhaka += item.raw.dhakaComm;
+                                    acc.overseas += item.raw.overseasComm;
+                                    acc.others += item.raw.othersComm;
 
+                                    return acc;
+                                },
+                                {
+                                    qty: 0,
+                                    rdl: 0,
+                                    factory: 0,
+                                    comm: 0,
+                                    dhaka: 0,
+                                    overseas: 0,
+                                    others: 0,
+                                }
+                            );
+
+                            return {
+                                ref_no: detail.buyer_orders?.ref_no,
+                                shipment_details: shipmentRows.map(item => item.row),
+                                totals: totals,
+                                results: {
+                                    totalQuantity: quantityFormatter(totals.qty),
+                                    totalRdlValue: currencyFormatter( totals.rdl, currencySymbol),
+                                    totalFactoryValue: currencyFormatter( totals.factory, currencySymbol),
+                                    commissionPercentage: `${totals.rdl ? ((totals.comm / totals.rdl) * 100).toFixed(2) : "0.00"}%`,
+                                    totalCommissionValue: currencyFormatter(totals.comm,currencySymbol),
+                                    totalDhakaCommission: currencyFormatter(totals.dhaka,currencySymbol),
+                                    totalDhakaCommissionPercentage: `${totals.rdl ? ((totals.dhaka / totals.rdl) * 100).toFixed(2) : "0.00" }%`,
+                                    totalOverseasCommission: currencyFormatter(totals.overseas,currencySymbol),
+                                    totalOverseasCommissionPercentage: `${ totals.rdl ? ((totals.overseas / totals.rdl) * 100).toFixed(2) : "0.00" }%`,
+                                    totalOthersCommission: currencyFormatter(totals.others,currencySymbol),
+                                    totalOthersCommissionPercentage: `${ totals.rdl ? ((totals.others / totals.rdl) * 100).toFixed(2) : "0.00"}%`,
+                                },
+                            };
+                        });
+
+                        const amendmentTotals = amendmentOrders.reduce(
+                            (acc, order) => {
+                                acc.qty += order.totals.qty;
+                                acc.rdl += order.totals.rdl;
+                                acc.factory += order.totals.factory;
+                                acc.comm += order.totals.comm;
+                                acc.dhaka += order.totals.dhaka;
+                                acc.overseas += order.totals.overseas;
+                                acc.others += order.totals.others;
                                 return acc;
                             },
                             {
@@ -1905,29 +2052,30 @@ export const salesContractsRouter = createTRPCRouter({
                             }
                         );
 
+                        const amendmentGrandTotal = {
+                            totalQuantity: quantityFormatter(amendmentTotals.qty),
+                            totalRdlValue: currencyFormatter(amendmentTotals.rdl, currencySymbol),
+                            totalFactoryValue: currencyFormatter(amendmentTotals.factory, currencySymbol),
+                            commissionPercentage: `${amendmentTotals.rdl ? ((amendmentTotals.comm / amendmentTotals.rdl) * 100).toFixed(2) : "0.00"}%`,
+                            totalCommissionValue: currencyFormatter(amendmentTotals.comm, currencySymbol),
+                            totalDhakaCommission: currencyFormatter(amendmentTotals.dhaka, currencySymbol),
+                            totalDhakaCommissionPercentage: `${amendmentTotals.rdl ? ((amendmentTotals.dhaka / amendmentTotals.rdl) * 100).toFixed(2) : "0.00"}%`,
+                            totalOverseasCommission: currencyFormatter(amendmentTotals.overseas, currencySymbol),
+                            totalOverseasCommissionPercentage: `${amendmentTotals.rdl ? ((amendmentTotals.overseas / amendmentTotals.rdl) * 100).toFixed(2) : "0.00"}%`,
+                            totalOthersCommission: currencyFormatter(amendmentTotals.others, currencySymbol),
+                            totalOthersCommissionPercentage: `${amendmentTotals.rdl ? ((amendmentTotals.others / amendmentTotals.rdl) * 100).toFixed(2) : "0.00"}%`,
+                        };
+
                         return {
                             amendment_no: amendment.amendment_no,
                             amendment_date: amendment.amendment_date,
-                            ref_no: amendment.sales_contract_amendment_details?.[0]?.buyer_orders?.ref_no,
-                            shipment_details: shipmentRows.map(item => item.row),
-                            results: {
-                                totalQuantity: quantityFormatter(totals.qty),
-                                totalRdlValue: currencyFormatter( totals.rdl, currencySymbol),
-                                totalFactoryValue: currencyFormatter( totals.factory, currencySymbol),
-                                commissionPercentage: `${totals.rdl ? ((totals.comm / totals.rdl) * 100).toFixed(2) : "0.00"}%`,
-                                totalCommissionValue: currencyFormatter(totals.comm,currencySymbol),
-                                totalDhakaCommission: currencyFormatter(totals.dhaka,currencySymbol),
-                                totalDhakaCommissionPercentage: `${totals.rdl ? ((totals.dhaka / totals.rdl) * 100).toFixed(2) : "0.00" }%`,
-                                totalOverseasCommission: currencyFormatter(totals.overseas,currencySymbol),
-                                totalOverseasCommissionPercentage: `${ totals.rdl ? ((totals.overseas / totals.rdl) * 100).toFixed(2) : "0.00" }%`,
-                                totalOthersCommission: currencyFormatter(totals.others,currencySymbol),
-                                totalOthersCommissionPercentage: `${ totals.rdl ? ((totals.others / totals.rdl) * 100).toFixed(2) : "0.00"}%`,
-                            },
+                            orders: amendmentOrders,
+                            grandTotal: amendmentGrandTotal,
                         };
                     });
                 }
 
-                return { pdfHeader, hasAmendment: !!hasAmendment, amendData, nonAmendData };
+                return { pdfHeader, hasAmendment: !!hasAmendment, amendData, nonAmendData, grandTotal: grandTotalResults };
             }
             catch (error) {
                 await logError(error, ctx, input);

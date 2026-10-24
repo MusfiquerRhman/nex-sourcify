@@ -2,7 +2,7 @@ import React from "react";
 
 const Guidelines = () => {
     return (
-        <div className="mt-6 rounded-xl border border-dashed border-gray-400 bg-gray-50 p-5">
+        <div className="mt-6 rounded-lg border border-dashed border-gray-400 bg-gray-50 p-5">
             <h3 className="mb-3 text-lg font-semibold text-gray-800">
                 ⁉️ Image Upload Guidelines
             </h3>

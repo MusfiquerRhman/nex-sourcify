@@ -1,7 +1,8 @@
 import type { inferRouterOutputs } from '@trpc/server';
 import type { 
     buyerOrdersRouter, factoryOrderRouter, tnaPlanRouter, tnaTemplatesRouter, commissionDistributionRouter,
-    salesContractsRouter, salesContractAmendmentRouter, exFactoryRouter, lcMasterRouter, lcAmendmentRouter
+    salesContractsRouter, salesContractAmendmentRouter, exFactoryRouter, lcMasterRouter, lcAmendmentRouter,
+    earlySettlementRouter
 } from "~/server/api";
 
 // Buyer Orders types
@@ -55,3 +56,10 @@ export type GetLCAmendmentByIdTypes = LCAmendmentRouterOutput['getLcAmendmentByI
 type ExFactoryRouterOutput = inferRouterOutputs<typeof exFactoryRouter>;
 
 export type GetExFactoryByIdTypes = ExFactoryRouterOutput['getExFactoryById'];
+
+// Early Settlement types
+type EarlySettlementOutput = inferRouterOutputs<typeof earlySettlementRouter>;
+
+export type GetEarlySettlementByIdTypes = EarlySettlementOutput['getEarlySettlementById'];
+
+export type GetEarlySettlementPoTotalsTypes = EarlySettlementOutput['getPoDetails']['totals'];

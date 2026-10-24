@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -37,7 +38,7 @@ export const commercialTnaTemplatesRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newTemplate = await tx.commercial_tna_templates.create({
                         data: {
                             template_name: input.template_name,
@@ -161,18 +162,13 @@ export const commercialTnaTemplatesRouter = createTRPCRouter({
                                 buyer_name: true,
                             }                        
                         },
-                        buyer_payment_term: {
+                        payment_terms: {
                             select: {
                                 id: true,
-                                payment_terms: {
-                                    select: { 
-                                        id: true,
-                                        term_description: true,
-                                        tenor: true,
-                                        terms: {
-                                            select: { id: true, name: true }
-                                        }
-                                    }
+                                term_description: true,
+                                tenor: true,
+                                terms: {
+                                    select: { id: true, name: true }
                                 }
                             }
                         },
@@ -196,8 +192,8 @@ export const commercialTnaTemplatesRouter = createTRPCRouter({
                     template_name: templateObj.template_name,
                     buyer_id: templateObj.buyers?.id,
                     buyer_name: templateObj.buyers?.buyer_name,
-                    term_id: templateObj.buyer_payment_term?.id,
-                    term: `${templateObj?.buyer_payment_term?.payment_terms?.terms?.name} - ${templateObj?.buyer_payment_term?.payment_terms?.tenor} ${templateObj?.buyer_payment_term?.payment_terms?.term_description}`,
+                    term_id: templateObj.payment_terms?.id,
+                    term: `${templateObj?.payment_terms?.terms?.name} - ${templateObj?.payment_terms?.tenor} ${templateObj?.payment_terms?.term_description}`,
                     actions: templateObj.commercial_tna_templates_actions.map(action => ({
                         id: action.id,
                         tna_action_id: action.tna_action_id,
@@ -237,7 +233,7 @@ export const commercialTnaTemplatesRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedTemplate = await tx.commercial_tna_templates.update({
                         where: { id: input.id },
                         data: {
@@ -329,7 +325,7 @@ export const commercialTnaTemplatesRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const tnaTemplateActions = await tx.commercial_tna_templates_actions.findMany({
                         where: { commercial_tna_template_id: input.id },
                     });
@@ -448,7 +444,7 @@ export const commercialTnaTemplatesRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const deletedAction = await tx.commercial_tna_templates_actions.delete({
                         where: { id: input.id },
                     });

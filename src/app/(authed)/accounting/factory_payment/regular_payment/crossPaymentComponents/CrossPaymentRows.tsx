@@ -30,7 +30,7 @@ const FactoryInvoiceRows = (props: Props) => {
         onSuccess: async () => {
             toast.success("Cross Payment regularized successfully!");
             await Promise.all([
-                utils.factoryPayment.checkCrossPaymentForDocumentSubmission.invalidate({document_submission_id: documentSubmissionId}),
+                utils.factoryPayment.checkCrossPaymentForDocumentSubmission.invalidate({id: documentSubmissionId}),
                 utils.factoryPayment.getFactoryPaymentById.invalidate({ id: documentSubmissionId }),
                 utils.factoryPayment.getFactoryPayments.invalidate(),
                 utils.factoryPayment.searchFactoryPayments.invalidate()
@@ -48,7 +48,7 @@ const FactoryInvoiceRows = (props: Props) => {
         }
 
         await regularizeCrossPayment.mutateAsync({
-            document_submission_id: documentSubmissionId,
+            id: documentSubmissionId,
             cross_payment_details_id: detailId,
         });
     }, [regularizeCrossPayment, documentSubmissionId]);

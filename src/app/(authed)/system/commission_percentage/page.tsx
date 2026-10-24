@@ -31,7 +31,7 @@ const BuyerCommissions = () => {
     const distributionsList = distributions?.distributions ?? [];
     const total = distributions?.total ?? 0;
 
-    const editURL = '/maintenance/commission_percentage/edit/';
+    const editURL = '/system/commission_percentage/edit/';
 
     const deleteMutation = api.commissionPercentage.deleteCommission.useMutation({
         onSuccess: async () => {
@@ -69,7 +69,7 @@ const BuyerCommissions = () => {
                                 variant="secondary"
                                 label="Add Commission Percentage"
                                 leftIcon={plusIcon}
-                                onClick={() => router.push('/maintenance/commission_percentage/new')}
+                                onClick={() => router.push('/system/commission_percentage/new')}
                             />
                         </div>
                     ) : null

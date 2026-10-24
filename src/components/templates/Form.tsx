@@ -1,13 +1,15 @@
 import React from "react";
 
 import { Loader, Toggle, FormSelect, TextField, Button, MultiSelect, CheckBox, Label} from '~/components'
-import { Controller, type Control, type FieldErrors, type FieldValues, type Path, type UseFormRegister } from "react-hook-form";
+import { Controller } from "react-hook-form";
+import type { Control, FieldValues, Path, UseFormRegister } from "react-hook-form";
 import type { BaseField } from "~/types/form";
 
 type Props<T extends FieldValues> = {
     fields: BaseField<string>[];
     onSubmit?: React.FormEventHandler<HTMLFormElement>;
     buttonLabel: string;
+    secondaryActions?: React.ReactNode;
     register: UseFormRegister<T>;
     validationError: {[key: string]: any};
     isLoading?: boolean;
@@ -19,7 +21,7 @@ type Props<T extends FieldValues> = {
 
 // Form component to render dynamic form fields based on configuration
 const Form = <T extends FieldValues, >(props: Props<T>) => {
-    const { fields, onSubmit, buttonLabel, register, validationError, isLoading, error, disabled, control, name } = props;
+    const { fields, onSubmit, buttonLabel, secondaryActions, register, validationError, isLoading, error, disabled, control, name } = props;
 
     if(isLoading) return <Loader/>
 
@@ -30,9 +32,9 @@ const Form = <T extends FieldValues, >(props: Props<T>) => {
                     <p>Error: {error}</p>
                 </div>
             )}
-            <form onSubmit={onSubmit} className="flex flex-col justify-center w-full p-8">
+            <form onSubmit={onSubmit} className="nex-form flex w-full min-w-0 flex-col justify-center p-5 sm:p-8">
                 {/* Main dynamic layout grid */}
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(400px,1fr))] gap-4 w-full">
+                <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-x-6 gap-y-5">
                     {fields.map((field, index) => (
                         <React.Fragment key={index}>
                             {(() => {
@@ -150,10 +152,11 @@ const Form = <T extends FieldValues, >(props: Props<T>) => {
                         </React.Fragment>
                     ))}
                 </div>
-                {(!disabled && !!onSubmit) && <div className="w-full flex flex-row justify-end">
+                {(!disabled && !!onSubmit) && <div className="nex-form-actions mt-7 flex w-full flex-wrap items-center justify-end gap-3">
+                    {secondaryActions}
                     <Button type="submit" 
                         label={buttonLabel} 
-                        className="text-lg tracking-wide mt-6 max-w-80"
+                        className="nex-form-submit max-w-80"
                         disabled={isLoading}
                     />
                 </div>}

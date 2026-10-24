@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -148,7 +149,7 @@ export const scContactPersonRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const contactPerson = await tx.sales_contract_contact_person.create({
                         data: {
                             name: input.name.trim(),
@@ -202,7 +203,7 @@ export const scContactPersonRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const contactPerson = await tx.sales_contract_contact_person.update({
                         where: { id: input.id },
                         data: {
@@ -253,7 +254,7 @@ export const scContactPersonRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const contactPerson = await tx.sales_contract_contact_person.delete({
                         where: { id: input.id },
                     });

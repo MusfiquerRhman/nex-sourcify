@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -84,6 +85,7 @@ export const debitNotesRouter = createTRPCRouter({
                 return {debitNotes, total};
             }
             catch (error) {
+                await logError(error, ctx, input);
                 handlePrismaError(error);
             }
         }),
@@ -193,7 +195,7 @@ export const debitNotesRouter = createTRPCRouter({
             }
             
             try {
-                const deletedDebitNote = await ctx.db.$transaction(async (db) => {
+                const deletedDebitNote = await transactionWithQueuedHistory(ctx.db, async (db) => {
                     // Delete associated debit note details first
                     const deletedDetails = await db.debit_note_details.findMany({
                         where: { debit_note_header_id: input.debit_note_id },
@@ -392,6 +394,7 @@ export const debitNotesRouter = createTRPCRouter({
                     },
                     create: {
                         year: currentYear,
+                        buyer_id: input.buyer_id,
                         last_ref: 1,
                     },
                 });
@@ -434,7 +437,7 @@ export const debitNotesRouter = createTRPCRouter({
 
                 const isTT = terms.name.toLowerCase() === 'tt'
 
-                const debitNotes= await ctx.db.$transaction(async (tx) => {
+                const debitNotes= await transactionWithQueuedHistory(ctx.db, async (tx, queueHistoryJob) => {
                     const dn_ref = `DBN/${buyer_prefix?.prefix}/${factory_prefix?.prefix}/${String((meta?.last_ref ?? 0)).padStart(4, '0')}`;
 
                     const debitNoteHeader = await tx.debit_note.create({
@@ -481,23 +484,19 @@ export const debitNotesRouter = createTRPCRouter({
                         await tx.debit_note_details.createMany({
                             data: debitNoteDetails,
                         });
+
+                        queueHistoryJob({
+                            name: "debit_note_details_added",
+                            data: {
+                                debit_note_header_id: debitNoteHeader.id,
+                                exfactory_shipment_ids: input.details.map((detail) => detail.exfactory_shipment_id),
+                                action_by: ctx.user.id,
+                            },
+                        });
                     }
 
                     return debitNoteHeader;
                 }, {timeout: 30000});
-
-                const newDebitNoteDetails = await ctx.db.debit_note_details.findMany({
-                    where: { debit_note_header_id: debitNotes.id },
-                });
-
-                await ctx.db.debit_note_details_history.createMany({
-                    data: newDebitNoteDetails?.map(detail => ({
-                        debit_note_header_id: detail.debit_note_header_id,
-                        exfactory_shipment_id: detail.exfactory_shipment_id,
-                        action_type: actions.ADDED,
-                        action_by: ctx.user.id,
-                    })) ?? [],
-                });
 
                 return debitNotes;
             }
@@ -626,7 +625,7 @@ export const debitNotesRouter = createTRPCRouter({
             }
             
             try {
-                const deletedShipment = await ctx.db.$transaction(async (db) => {
+                const deletedShipment = await transactionWithQueuedHistory(ctx.db, async (db) => {
                     const deletedDetail = await db.debit_note_details.findUnique({
                         where: { id: input.db_id },
                     });
@@ -792,7 +791,7 @@ export const debitNotesRouter = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (db) => {
+                return await transactionWithQueuedHistory(ctx.db, async (db) => {
                     const updatedHeader = await db.debit_note.update({
                         where: { id: input.id },
                         data: {
@@ -924,7 +923,6 @@ export const debitNotesRouter = createTRPCRouter({
                         WHERE DND.debit_note_header_id = ${input.debit_note_id};
                     `
                 ]);
-
 
                 const formattedTable = table.map(item => ({
                     buyer_po: item.buyer_po,

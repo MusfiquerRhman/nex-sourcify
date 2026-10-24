@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -37,7 +38,7 @@ export const tnaTemplatesRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newTemplate = await tx.tna_templates.create({
                         data: {
                             team_id: input.team_id,
@@ -274,7 +275,7 @@ export const tnaTemplatesRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedTemplate = await tx.tna_templates.update({
                         where: { id: input.id },
                         data: {
@@ -369,7 +370,7 @@ export const tnaTemplatesRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const tnaTemplateActions = await tx.tna_template_actions.findMany({
                         where: { tna_template_id: input.id },
                     });
@@ -530,7 +531,7 @@ export const tnaTemplatesRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const deletedAction = await tx.tna_template_actions.delete({
                         where: { id: input.id },
                     });
@@ -578,7 +579,8 @@ export const tnaTemplatesRouter = createTRPCRouter({
                         INNER JOIN BUYER_ORDERS AS BO 
                             ON BO.BUYER_ID = TT.BUYER_ID
                             AND BO.TEAM_ID = TT.TEAM_ID
-                    WHERE BO.ID = ${input.order_id};
+                    WHERE BO.ID = ${input.order_id}
+                    AND TT.added_at >= '2026-07-04';
                 `;
 
                 return templates;

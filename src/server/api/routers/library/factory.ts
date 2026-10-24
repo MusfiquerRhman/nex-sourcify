@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -120,7 +121,7 @@ export const factoryRouter = createTRPCRouter({
                 }
 
                 try {
-                    return await ctx.db.$transaction(async (tx) => {
+                    return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                         const factory = await tx.factories.create({
                             data: {
                                 name: input.name.trim(),
@@ -203,7 +204,7 @@ export const factoryRouter = createTRPCRouter({
                 }
 
                 try {
-                    return await ctx.db.$transaction(async (tx) => {
+                    return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                         await tx.factory_bank_history.createMany({
                             data: (await tx.factory_bank.findMany({
                                 where: { factory_id: input.id },
@@ -292,7 +293,7 @@ export const factoryRouter = createTRPCRouter({
                 }
 
                 try {
-                    return await ctx.db.$transaction(async (tx) => {
+                    return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                         await tx.factory_history.create({
                             data: {
                                 factory_id: input.id,
@@ -385,7 +386,7 @@ export const factoryRouter = createTRPCRouter({
                     });
                 }
 
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const factoryBank = await tx.factory_bank.findUnique({
                         where: { id: input.id },
                     });

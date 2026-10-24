@@ -33,6 +33,7 @@ export const orderSummaryReportRouter = createTRPCRouter({
             brandIds: z.array(z.number()).optional(),
             departmentIds: z.array(z.number()).optional(),
             seasonIds: z.array(z.number()).optional(),
+            teamIds: z.array(z.number()).optional(),
         }))
         .mutation(async ({ ctx, input }) => {
             const can_view = ctx.permissions[m.ORDER_SUMMARY_REPORT]?.can_view;
@@ -50,16 +51,19 @@ export const orderSummaryReportRouter = createTRPCRouter({
                 const brandIds = input.brandIds ?? [];
                 const departmentIds = input.departmentIds ?? [];
                 const seasonIds = input.seasonIds ?? [];
+                const teamIds = input.teamIds ?? [];
 
                 const isFactoryAll = factoryIds.includes(-1);
                 const isBrandAll = brandIds.includes(-1);
                 const isDepartmentAll = departmentIds.includes(-1);
                 const isSeasonAll = seasonIds.includes(-1);
+                const isTeamAll = teamIds.includes(-1);
 
                 const isFactorySelected = factoryIds.length > 0 && !isFactoryAll;
                 const isBrandSelected =  brandIds.length > 0 && !isBrandAll;
                 const isDepartmentSelected = departmentIds.length > 0 && !isDepartmentAll;
                 const isSeasonSelected = seasonIds.length > 0 && !isSeasonAll;
+                const isTeamSelected = teamIds.length > 0 && !isTeamAll;
 
                 const filters: Prisma.Sql[] = [];
                 let dateFilter: Prisma.Sql = Prisma.empty;
@@ -82,6 +86,10 @@ export const orderSummaryReportRouter = createTRPCRouter({
 
                 if (isSeasonSelected) {
                     filters.push(Prisma.sql`BO.season_id IN (${Prisma.join(seasonIds)})`);
+                }
+
+                if (isTeamSelected) {
+                    filters.push(Prisma.sql`T.ID IN (${Prisma.join(teamIds)})`);
                 }
 
                 const filterClause = filters.length > 0 ? Prisma.join(filters, " AND ") : Prisma.sql`1=1`;
@@ -120,10 +128,11 @@ export const orderSummaryReportRouter = createTRPCRouter({
                     EXFAC_SHIPMENT AS (
                         SELECT 
                             ES.shipment_details_id AS ESSDI,
+                            ES.exfactory_orders_id AS ESEOD,
                             SUM(ES.delivery_quantity) AS delivery_quantity,
                             BOOL_AND(ES.PO_CLOSE) AS PO_CLOSE
                         FROM exfactory_shipments AS ES 
-                        GROUP BY ES.shipment_details_id
+                        GROUP BY ES.shipment_details_id, ES.exfactory_orders_id
                     )
                     SELECT
                         BO.ref_no AS "ORDER_NO",
@@ -149,7 +158,10 @@ export const orderSummaryReportRouter = createTRPCRouter({
                         ES.delivery_quantity AS "DELIVERY_QUANTITY",
                         SD.FOB_RATE / COALESCE(BO.currency_rate, 1) AS "FOB_RATE",
                         FSD.FACTORY_RATE / COALESCE(FO.currency_rate, 1) AS "FACTORY_RATE",
-                        ES.PO_CLOSE AS "PO_CLOSE",
+                        CASE 
+                            WHEN ES.PO_CLOSE THEN 'CLOSED'
+                            ELSE 'OPEN'
+                        END AS "PO_CLOSE",
                         IID.IID_QUANTITY * SD.FOB_RATE / COALESCE(BO.currency_rate, 1) AS "ORDER_RDL_VALUE",
                         ES.delivery_quantity * SD.FOB_RATE / COALESCE(BO.currency_rate, 1) AS "DELIVERED_RDL_VALUE",
                         IID.IID_QUANTITY * FSD.FACTORY_RATE / COALESCE(FO.currency_rate, 1) AS "FACTORY_ORDER_VALUE",
@@ -173,7 +185,7 @@ export const orderSummaryReportRouter = createTRPCRouter({
                         INNER JOIN factory_shipment_details AS FSD ON FSD.shipment_detail_id = SD.id
                         INNER JOIN TEAMS AS T ON T.ID = BO.team_id
                         ${joinTypeRaw} JOIN EXFAC_SHIPMENT AS ES ON ES.ESSDI = SD.id
-                        ${joinTypeRaw} JOIN exfactory_orders AS EO ON EO.order_id = BO.id
+                        ${joinTypeRaw} JOIN exfactory_orders AS EO ON EO.id = ES.ESEOD
                         ${joinTypeRaw} JOIN exfactory AS E ON E.id = EO.exfactory_id
                     WHERE ${dateFilter}
                     AND ${filterClause}
@@ -188,7 +200,7 @@ export const orderSummaryReportRouter = createTRPCRouter({
                         OR EXISTS ( -- Team Member
                             SELECT 1
                             FROM TEAM_MEMBERS AS TM 
-                                INNER JOIN TEAMS AS T ON T.ID = TM.TEAM_ID
+                                INNER JOIN TEAMS AS T ON T.id = TM.team_id AND T.ID = BO.team_id 
                             WHERE T.BUYER_ID = B.id
                                 AND TM.USER_ID = ${ctx.user.id}
                         )

@@ -33,9 +33,12 @@ const LCAmendment = () => {
     const editURL = '/merchandising/lc/lc_amendments/edit/';
 
     const deleteMutation = api.lcAmendment.deleteLcAmendment.useMutation({
-        onSuccess: () => {
+        onSuccess: async () => {
             toast.success('LC Amendment deleted successfully');
-            utils.lcAmendment.getLcAmendments.invalidate();
+            await utils.lcAmendment.getLcAmendments.invalidate();
+            await utils.lcMaster.getOrdersForLc.invalidate();
+            await utils.lcMaster.getShipmentDetailsForOrder.invalidate();
+            await utils.lcAmendment.getLcForAmendment.invalidate();
         },
     });
 

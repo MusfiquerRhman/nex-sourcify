@@ -1,6 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, styles } from "../components/pdfConfig";
-import { PrintByAndDate, NexSourcifyLogo, ReportTitle, Table, TableSummary } from "../components";
+import { PrintByAndDate, RenaissanceLogo, ReportTitle, Table, TableSummary } from "../components";
 import { useDecodedUser } from "~/hooks";
 import type { inferRouterOutputs } from '@trpc/server';
 import type { exportSummaryReportRouter } from '~/server/api/routers/reports/exportSummaryReport'
@@ -21,23 +21,75 @@ const SalesReportPDF = ({ data, base }: SalesReportPDFProps) => {
 	const {user} = useDecodedUser();
 
 	const tableColumns = [
-		{ key: 'buyer_name', label: 'Buyer Name', width: 80},
-		{ key: 'lc_sc_no', label: `${base === 'LC' ? 'Master LC No' : 'Sales Contract'}`, width: 80 },
-		{ key: 'total_order_value', label: `${base === 'LC' ? 'Total Master LC Value' : 'Total Sales Contract Value'}`, width: 80 },
-		{ key: 'latest_shipment_date', label: 'Last Ship Date', width: 80 },
-		{ key: 'latest_exfactory_date', label: 'Last Ex-factory Date', width: 80 },
-		{ key: 'expire_date', label: 'Expire Date', width: 80 },
-		{ key: 'total_order_quantity', label: 'Total Order Quantity', width: 80 },
-		{ key: 'total_shipped_quantity', label: 'Total Shipped Quantity', width: 80 },
-		{ key: 'balance_quantity', label: 'Balance Quantity', width: 80 },
-		{ key: 'total_ship_value', label: `${base === 'LC' ? 'Ship Value' : 'Factory Ship Value'}`, width: 90 },
-		{ key: 'balance_value', label: 'Balance Shipment Value', width: 80 },
-		{ key: 'proceed_amount', label: 'Proceed Amount', width: 80 },
-		{ key: 'factory_fdd_value', label: 'Factory FDD Value', width: 80 },
+		{ 
+			key: 'buyer_name', 
+			label: 'Buyer Name', 
+			width: 80
+		},
+		{ 
+			key: 'lc_sc_no', 
+			label: `${base === 'LC' ? 'Master LC No' : 'Sales Contract'}`, 
+			width: 80
+		},
+		{ 
+			key: 'total_order_value', 
+			label: `${base === 'LC' ? 'Total Master LC Value' : 'Total Sales Contract Value'}`, 
+			width: 80
+		},
+		{ 
+			key: 'latest_shipment_date', 
+			label: 'Last Ship Date', 
+			width: 80
+		},
+		{ 
+			key: 'latest_exfactory_date', 
+			label: 'Last Ex-factory Date', 
+			width: 80
+		},
+		{ 
+			key: 'expire_date', 
+			label: 'Expire Date', 
+			width: 80
+		},
+		{ 
+			key: 'total_order_quantity', 
+			label: 'Total Order Quantity', 
+			width: 80
+		},
+		{ 
+			key: 'total_shipped_quantity', 
+			label: 'Total Shipped Quantity', 
+			width: 80
+		},
+		{ 
+			key: 'balance_quantity', 
+			label: 'Balance Quantity', 
+			width: 80
+		},
+		{ 
+			key: 'total_ship_value', 
+			label: `${base === 'LC' ? 'Ship Value' : 'Factory Ship Value'}`, 
+			width: 90
+		},
+		{ 
+			key: 'balance_value', 
+			label: 'Balance Shipment Value', 
+			width: 80
+		},
+		{ 
+			key: 'proceed_amount', 
+			label: 'Proceed Amount', 
+			width: 80
+		},
+		{ 
+			key: 'factory_fdd_value', 
+			label: 'Factory FDD Value', 
+			width: 80
+		},
 	];
 
 	if(base === 'SC') { 
-		tableColumns.splice(11, 0, { key: 'total_rdl_export_value', label: 'Export Value', width: 80 })
+		tableColumns.splice(11, 0, { key: 'total_rdl_export_value', label: 'NexSourcify Export Value', width: 80 })
 	}
 
 	const results = [
@@ -60,16 +112,16 @@ const SalesReportPDF = ({ data, base }: SalesReportPDFProps) => {
     return (
 		<Document
             title={title}
-            author="Nex Sourcify"
+            author="NexSourcify Nexus"
             subject="Factory Invoice PDF"
-            keywords="Factory, Invoice, PDF, Nex Sourcify, ERP"
+            keywords="Factory, Invoice, PDF, NexSourcify Nexus, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="Nex Sourcify"
+            producer="NexSourcify Nexus"
 			pageMode='useOutlines'
 			creationDate={new Date()}
         >
 			<Page orientation="landscape" size="A4" style={styles.body} wrap>
-				<NexSourcifyLogo />
+				<RenaissanceLogo />
 				<ReportTitle title={title} />
 				<View style={{ marginTop: -10, marginBottom: 10 }}>
 					<PrintByAndDate />

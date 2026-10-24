@@ -20,7 +20,14 @@ const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>((props, ref
 
 	return (
 		<div className="flex flex-col w-full">
-			{label && <Label label={label} htmlFor={name ?? toInputName(label)} isErrored={!!error} optional={optional} />}
+			{label && 
+				<Label label={label} 
+					htmlFor={name ?? toInputName(label)} 
+					isErrored={!!error} 
+					optional={optional} 
+				/>
+			}
+
 			<Input type={type} 
 				placeholder={placeholder ?? label} 
 				ref={ref} 
@@ -30,6 +37,7 @@ const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>((props, ref
 				minDate={minDate}
 				{...rest} 
 			/>
+			
 			<Info info={error} variant="error" />
 		</div>
 	);

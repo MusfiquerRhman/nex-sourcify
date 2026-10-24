@@ -7,17 +7,19 @@ export type Field<T extends keyof StyleFormValues> = BaseField<T>;
 
 export const formFields = ({productTypeId}: {productTypeId: number | undefined}): Field<keyof StyleFormValues>[] => {
 
-    const productTypes = api.productType.getAll.useQuery();
+    const productTypes = api.productType.getAll.useQuery(undefined, { staleTime: 900 * 1000 });
 
     const { data: products } = api.products.getProductByProductTypeId.useQuery(
         !!productTypeId ? { product_type_id: productTypeId } : skipToken,
+        { staleTime: 900 * 1000 }
     );
 
     const { data: fabrics } = api.fabrics.getFabricsByProductTypeId.useQuery(
         !!productTypeId ? { product_type_id: productTypeId } : skipToken,
+        { staleTime: 900 * 1000 }
     );
 
-    const fabricSuppliers = api.fabricSuppliers.getAll.useQuery().data ?? [];
+    const fabricSuppliers = api.fabricSuppliers.getAll.useQuery(undefined, { staleTime: 900 * 1000 }).data ?? [];
 
     return [
         {

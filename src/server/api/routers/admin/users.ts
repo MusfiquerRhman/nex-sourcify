@@ -1,8 +1,9 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import bcrypt from "bcryptjs";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { m } from "~/utils/moduleMap";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, invalidateAuthUserCache, protectedProcedure } from "~/server/api/trpc";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
 import { actions } from "@prisma/client";
 
@@ -139,7 +140,7 @@ export const userRouter = createTRPCRouter({
         }
 
         try {
-			return await ctx.db.$transaction(async (tx) => {
+			return await transactionWithQueuedHistory(ctx.db, async (tx) => {
 				const user = await tx.users.create({
 					data: {
 						first_name: input.first_name,
@@ -208,7 +209,7 @@ export const userRouter = createTRPCRouter({
         }
         
         try {
-			return await ctx.db.$transaction(async (tx) => {
+			const { oldUserId, updatedUser } = await transactionWithQueuedHistory(ctx.db, async (tx) => {
 				const user = await tx.users.findUnique({
 					where: { id: input.id },
 				});
@@ -237,7 +238,7 @@ export const userRouter = createTRPCRouter({
 					},
 				});
 
-				return await tx.users.update({
+				const updatedUser = await tx.users.update({
 					where: { id: input.id },
 						data: {
 							first_name: input.first_name,
@@ -256,7 +257,12 @@ export const userRouter = createTRPCRouter({
 						},
 					},
 				});
+
+				return { oldUserId: user.user_id, updatedUser };
 			});
+
+			await invalidateAuthUserCache(oldUserId, updatedUser.user_id);
+			return updatedUser;
         }
         catch (error) {
             await logError(error, ctx, input);

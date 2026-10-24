@@ -26,6 +26,7 @@ type Props = {
     register: ReturnType<typeof useBuyerOrderForm>['methods']['register'];
     validationError: FieldErrors<OrderFormValues>;
     styleIndex: number;
+    copyRow: (index: number) => void;
 }
 
 const TableForm = (props: Props) => {
@@ -41,12 +42,12 @@ const TableForm = (props: Props) => {
         methods, 
         validationError, 
         styleIndex,
+        copyRow,
     } =  props;
 
     return (
         <>
             {title}
-
             <form className="flex flex-col justify-start w-full px-8 pb-8">
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(400px,1fr))] items-center gap-4 w-full">
                     <TableWrapper>
@@ -63,10 +64,13 @@ const TableForm = (props: Props) => {
                                     methods={methods} 
                                     validationError={validationError}
                                     styleIndex={styleIndex}
+                                    copyRow={copyRow}
                                 />
                             ))}
-                            <ShipmentSummaryRow methods={methods} styleIndex={styleIndex} />
                         </TableBody>
+                        <tfoot>
+                            <ShipmentSummaryRow methods={methods} styleIndex={styleIndex} />
+                        </tfoot>
                     </TableWrapper>
                 </div>
                 {!disabled && 

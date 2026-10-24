@@ -46,7 +46,6 @@ export const createExFactoryOrderSchema = (tolerance: number) => z.object({
 	);
 
 	if (!hasShipmentQty) {
-		toast.error("At least one shipment quantity must be greater than 0");
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
 			path: ["shipments", 0, "shipment_quantity"],
@@ -58,19 +57,40 @@ export const createExFactoryOrderSchema = (tolerance: number) => z.object({
 export type ExFactoryOrdersValues = z.infer<ReturnType<typeof createExFactoryOrderSchema>>;
 
 // Define the form fields schema using Zod
-export const createExFactoryFormSchema = (tolerance: number) => {
-	return z.object({
-		exfactory: z.object({
-			db_id: z.string().optional(),
-			exfactory_no: z.string().optional(),
-			payment_type: z.string().min(1, "Payment Type is required"),
-			factory_id: z.string().min(1, "Factory is required"),
-			buyer_id: z.string().min(1, "Buyer is required"),
-			exfactory_date: z.string().min(1, "Ex Factory Date is required"),
-			remarks: z.string().optional(),
-			orders: z.array(createExFactoryOrderSchema(tolerance)).min(1, "At least one order is required"),
-		}),
-	})
+export const createExFactoryFormSchema = (tolerance: number, isAdmin: boolean) => {
+    return z.object({
+        exfactory: z.object({
+            db_id: z.string().optional(),
+            exfactory_no: z.string().optional(),
+            payment_type: z.string().min(1, "Payment Type is required"),
+            factory_id: z.string().min(1, "Factory is required"),
+            buyer_id: z.string().min(1, "Buyer is required"),
+            exfactory_date: z.string().min(1, "Ex Factory Date is required"),
+            remarks: z.string().optional(),
+            orders: z.array(createExFactoryOrderSchema(tolerance)).min(1, "At least one order is required"),
+        }).superRefine((data, ctx) => {
+			console.log("isAdmin", isAdmin);
+
+            if (isAdmin) return;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const minimumDate = new Date(today);
+            minimumDate.setDate(minimumDate.getDate() - 2);
+
+            const selectedDate = new Date(data.exfactory_date);
+            selectedDate.setHours(0, 0, 0, 0);
+
+            if (selectedDate < minimumDate) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["exfactory_date"],
+                    message: "Ex Factory Date cannot be more than 3 days behind",
+                });
+            }
+        }),
+    });
 };
 
 export type ExFactoryFormValues = z.infer<ReturnType<typeof createExFactoryFormSchema>>;

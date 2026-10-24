@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -27,7 +28,7 @@ export const commercialTnaPlanRouter = createTRPCRouter({
             if(!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view Invoices." 
+                    message: "You do not have permission to view NexSourcify Invoices." 
                 });
             }
             
@@ -102,7 +103,7 @@ export const commercialTnaPlanRouter = createTRPCRouter({
             if(!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view Invoices." 
+                    message: "You do not have permission to view NexSourcify Invoices." 
                 });
             }
             
@@ -181,7 +182,7 @@ export const commercialTnaPlanRouter = createTRPCRouter({
             if(!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view Invoices." 
+                    message: "You do not have permission to view NexSourcify Invoices." 
                 });
             }
             
@@ -270,7 +271,7 @@ export const commercialTnaPlanRouter = createTRPCRouter({
             }
             
             try {
-                return ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     await Promise.all(
                         input.details.map(async (items) => {
                             await tx.commercial_tna_planning_details.update({

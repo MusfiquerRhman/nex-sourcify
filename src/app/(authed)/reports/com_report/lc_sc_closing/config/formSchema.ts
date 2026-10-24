@@ -5,7 +5,7 @@ export const LcScClosingReportFormSchema = z
 .object({
     base: z.enum(['LC', 'SC']),
     buyer_id: z.string().min(1, 'Buyer Id is required'),
-    lcId: z.string().optional(),
+    lcId: z.string().min(1, 'LC/SC Id is required'),
     from_date: z.string().optional(),
     to_date: z.string().optional(),
 })

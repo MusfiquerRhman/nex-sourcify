@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -128,7 +129,7 @@ export const fobTypesRouter = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const deletedFobType = await tx.fob_types.delete({
                         where: {
                             id: input.id,
@@ -168,7 +169,7 @@ export const fobTypesRouter = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newFobType = await tx.fob_types.create({
                         data: {
                             name: input.name.trim(),
@@ -210,7 +211,7 @@ export const fobTypesRouter = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedFobType = await tx.fob_types.update({
                         where: {
                             id: input.id,

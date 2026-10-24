@@ -39,7 +39,9 @@ const EditExFactoryPage = ({ params }: ParamsProp) => {
             await Promise.all([
                 utils.exFactory.getExFactories.invalidate(),
                 utils.exFactory.getExFactoryById.invalidate({ id: id }),
-                utils.exFactory.getShipmentsForExFactoryOrder.invalidate()
+                utils.exFactory.getShipmentsForExFactoryOrder.invalidate(),
+                utils.exFactory.getOrdersForExFactory.invalidate(),
+                utils.exFactory.checkCommercialProcedure.invalidate(),
             ]);
         },
     });
@@ -96,7 +98,8 @@ const EditExFactoryPage = ({ params }: ParamsProp) => {
             await Promise.all([
                 utils.exFactory.getAuthorizations.invalidate({ id }),
                 utils.exFactory.getExFactories.invalidate(),
-                utils.exFactory.searchExFactories.invalidate()
+                utils.exFactory.searchExFactories.invalidate(),
+                utils.exFactory.getOrdersForExFactory.invalidate(),
             ]);
         },
     });

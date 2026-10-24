@@ -40,10 +40,10 @@ const poWiseTableHeader = [
     'Factory Invoice Value',
     'LC No',
     'Sales Contract No',
-    'Invoice',
-    'Invoice Date',
-    'Invoice Quantity',
-    'Invoice Value',
+    'NexSourcify Invoice',
+    'NexSourcify Invoice Date',
+    'NexSourcify Invoice Quantity',
+    'NexSourcify Invoice Value',
     'FDBC No',
     'FDBC Date'
 ]

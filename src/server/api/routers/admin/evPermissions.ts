@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -126,18 +127,18 @@ export const evPermissionRouter = createTRPCRouter({
             }
 
             try {
-                const deletedPermission = await ctx.db.ev_permissions.delete({
-                    where: { id: input.id },
-                });
-
-                await ctx.db.ev_permission_history.create({
-                    data: {
-                        ev_permission_id: deletedPermission.id,
-                        action_type: 'DELETE',
-                        action_by: ctx.user.id,
-                        user_id: deletedPermission.user_id,
-                        buyer_id: deletedPermission.buyer_id,
-                    },
+                const deletedPermission = await transactionWithQueuedHistory(ctx.db, async (tx) => {
+                    const deleted = await tx.ev_permissions.delete({ where: { id: input.id } });
+                    await tx.ev_permission_history.create({
+                        data: {
+                            ev_permission_id: deleted.id,
+                            action_type: 'DELETE',
+                            action_by: ctx.user.id,
+                            user_id: deleted.user_id,
+                            buyer_id: deleted.buyer_id,
+                        },
+                    });
+                    return deleted;
                 });
 
                 return deletedPermission;
@@ -163,15 +164,15 @@ export const evPermissionRouter = createTRPCRouter({
                     });
                 }
 
-                return await ctx.db.$transaction(async (tx) => {
-                    const updatedPermission = await ctx.db.ev_permissions.update({
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
+                    const updatedPermission = await tx.ev_permissions.update({
                         where: { id: input.id },
                         data: {
                             user_id: input.user_id,
                         },
                     });
 
-                    await ctx.db.ev_permission_history.create({
+                    await tx.ev_permission_history.create({
                         data: {
                             ev_permission_id: updatedPermission.id,
                             action_type: 'UPDATE',
@@ -204,15 +205,15 @@ export const evPermissionRouter = createTRPCRouter({
                     });
                 }
 
-                return await ctx.db.$transaction(async (tx) => {
-                    const newPermission = await ctx.db.ev_permissions.create({
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
+                    const newPermission = await tx.ev_permissions.create({
                         data: {
                             buyer_id: input.buyer_id,
                             user_id: input.user_id,
                         },
                     });
 
-                    await ctx.db.ev_permission_history.create({
+                    await tx.ev_permission_history.create({
                         data: {
                             ev_permission_id: newPermission.id,
                             action_type: 'ADDED',
@@ -255,4 +256,3 @@ export const evPermissionRouter = createTRPCRouter({
             return permission;
         }),
 });
-    

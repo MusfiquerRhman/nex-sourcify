@@ -168,3 +168,5 @@ const NewPermissionsTable = (props: NewPermissionsProps) => {
 }
 
 export default NewPermissionsTable;
+
+//  ssh rdlerpadmin@192.168.21.253 -p 60011

@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -128,7 +129,7 @@ export const commissionPercentageRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const deleteCommission = await tx.commission_percentage.delete({
                         where: {id: input.id}
                     });
@@ -169,7 +170,7 @@ export const commissionPercentageRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newCommission = await tx.commission_percentage.create({
                         data: {
                             buyer_id: input.buyer_id,
@@ -261,7 +262,7 @@ export const commissionPercentageRouter = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedCommission = await tx.commission_percentage.update({
                         where: {id: input.db_id},
                         data: {

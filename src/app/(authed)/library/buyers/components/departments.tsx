@@ -10,6 +10,7 @@ import Image from "next/image";
 
 type DepartmentsProps = {
     departments: { department: string; id?: number; buyer_department_sizes: { size: string; id?: number }[] }[];
+    brandName: string;
     setBrands: React.Dispatch<React.SetStateAction<BrandsState | undefined>>;
     newSizes: Record<string, string>;
     setNewSizes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -19,7 +20,7 @@ type DepartmentsProps = {
     canDelete?: boolean;
 }
 
-const Departments = ({departments, setBrands, newSizes, setNewSizes, brandIndex, newDepartments, setNewDepartments, canDelete}: DepartmentsProps) => {
+const Departments = ({departments, brandName, setBrands, newSizes, setNewSizes, brandIndex, newDepartments, setNewDepartments, canDelete}: DepartmentsProps) => {
     const utils = api.useUtils();
 
     const handleAddDepartment = (brandIndex: number, department: string) => {
@@ -75,30 +76,17 @@ const Departments = ({departments, setBrands, newSizes, setNewSizes, brandIndex,
     }
     
     return (
-        <div className="ml-2 border-l-2 border-primary pl-4">
-            {departments.map((department, departmentIndex) => (
-                <div key={departmentIndex} className="mb-4">
-                    <p className="py-2">Department</p>
-                    <div className="flex flex-row justify-between items-center border-2 border-secondary rounded-lg pl-2">
-                        <p className="text-xl font-medium">{department.department}</p>
-                        {canDelete && (
-                            <DeleteButton size="md"
-                                onClick={() => handleRemoveDepartment(brandIndex, departmentIndex, department?.id) }
-                            />
-                        )}
-                    </div>
-                    <Sizes
-                        sizes={department.buyer_department_sizes}
-                        newSizes={newSizes}
-                        setNewSizes={setNewSizes}
-                        setBrands={setBrands}
-                        brandIndex={brandIndex}
-                        departmentIndex={departmentIndex}
-                        canDelete={canDelete}
-                    />
+        <div className="mt-4 border-l-2 border-primary-light pl-4 sm:pl-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-secondary-dark">Departments</p>
+                    <p className="text-xs text-gray-500">Add the departments covered by <span className='font-bold'>{brandName}</span> brand.</p>
                 </div>
-            ))}
-            <div className="flex gap-2 mt-2">
+                <span className="rounded-full bg-secondary-dark px-2.5 py-1 text-xs font-semibold text-white">
+                    {departments.length}
+                </span>
+            </div>
+            <div className="my-4 flex flex-col gap-2 sm:flex-row">
                 <Input
                     placeholder="Department name"
                     value={newDepartments[brandIndex] ?? ""}
@@ -116,18 +104,45 @@ const Departments = ({departments, setBrands, newSizes, setNewSizes, brandIndex,
                     }}
                 />
                 <button
-                    className="p-2 invert rounded-lg my-1"
+                    type="button"
+                    aria-label="Add department"
+                    className="my-1 flex items-center justify-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white transition hover:bg-secondary-dark disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
                     disabled={!newDepartments[brandIndex]?.trim()}
                     onClick={() => {
                         handleAddDepartment(brandIndex, (newDepartments[brandIndex] ?? "").trim());
                         setNewDepartments((prev) => ({ ...prev, [brandIndex]: "" }));
                     }}
                 >
-                    <div className="h-5 w-5 hover:cursor-pointer">
+                    <div className="h-5 w-5">
                         <Image width={20} height={20} src={plusIcon.src} alt="Add Department" />
-                    </div>
+                    </div>Add
                 </button>
             </div>
+            {departments.map((department, departmentIndex) => (
+                <div key={departmentIndex} className="mb-4 rounded-lg border border-gray-200 bg-white/60 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-primary-dark">Department</p>
+                            <p className="break-words text-lg font-medium text-gray-800">{department.department}</p>
+                        </div>
+                        {canDelete && (
+                            <DeleteButton size="md"
+                                onClick={() => handleRemoveDepartment(brandIndex, departmentIndex, department?.id) }
+                            />
+                        )}
+                    </div>
+                    <Sizes
+                        sizes={department.buyer_department_sizes}
+                        departmentName={department.department}
+                        newSizes={newSizes}
+                        setNewSizes={setNewSizes}
+                        setBrands={setBrands}
+                        brandIndex={brandIndex}
+                        departmentIndex={departmentIndex}
+                        canDelete={canDelete}
+                    />
+                </div>
+            ))}
         </div>
     )
 }

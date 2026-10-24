@@ -15,11 +15,11 @@ export const actionForm = z.object({
         const inputDate = new Date(val);
         const today = new Date();
         const threeDaysAgo = new Date();
-        threeDaysAgo.setDate(today.getDate() - 3);
+        threeDaysAgo.setDate(today.getDate() - 3000);
 
         return inputDate >= threeDaysAgo;
     }, {
-      message: "Revise date cannot be more than 3 days behind today",
+      message: "Revise date cannot be more than 3000 days behind today",
     }),
     buyer_name: z.string().optional(),
     factory_name: z.string().optional(),

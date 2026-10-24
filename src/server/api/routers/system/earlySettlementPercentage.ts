@@ -1,3 +1,4 @@
+import { transactionWithQueuedHistory } from "~/server/queues/transactionWithQueuedHistory";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
@@ -125,7 +126,7 @@ export const earlySettlementPercentageRoute = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const deletedSettlement = await tx.early_settlement_percentage.delete({
                         where: {id: input.id}
                     });
@@ -163,7 +164,7 @@ export const earlySettlementPercentageRoute = createTRPCRouter({
             }
 
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const newCommission = await tx.early_settlement_percentage.create({
                         data: {
                             buyer_id: input.buyer_id,
@@ -250,7 +251,7 @@ export const earlySettlementPercentageRoute = createTRPCRouter({
             }
             
             try {
-                return await ctx.db.$transaction(async (tx) => {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
                     const updatedEarlySettlementCharge = await tx.early_settlement_percentage.update({
                         where: {id: input.db_id},
                         data: {

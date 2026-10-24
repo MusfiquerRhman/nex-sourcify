@@ -5,7 +5,7 @@ export const tableHeaders= [
     { key: 'buyer_name', label: 'Buyer Name' },
     { key: 'styles', label: 'Style' },
     { key: 'pos', label: 'PO' },
-    { key: 'is_authorized', label: 'Status', type: 'chip', chips: {
+    { key: 'is_authorized', label: 'Approval Status', type: 'chip', chips: {
             true: { label: 'AUTHORIZED', type: 'success' },
             false: { label: 'UNAUTHORIZED', type: 'error' },
         }
