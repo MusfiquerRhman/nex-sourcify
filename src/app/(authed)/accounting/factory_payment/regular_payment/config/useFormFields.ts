@@ -14,7 +14,7 @@ export const useFormFields = (): Field<keyof FactoryPaymentFormValues>[] => {
         },
         {
             name: 'fdbc_no',
-            label: 'NexSourcify invoice / FDBC No',
+            label: 'Company invoice / FDBC No',
             disabled: true,
             optional: true,
         },
@@ -27,7 +27,7 @@ export const useFormFields = (): Field<keyof FactoryPaymentFormValues>[] => {
         },
         {
             name: "rdl_invoice_value",
-            label: "NexSourcify Invoice Value",
+            label: "Company Invoice Value",
             disabled: true,
             optional: true,
         },

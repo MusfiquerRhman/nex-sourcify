@@ -25,7 +25,7 @@ export const useBuyerOrderForm = (initialData?: GetBuyerOrderByIdTypes) => {
                     brand_id: '',
                     department_id: '',
                     factory_id: '',
-                    secondary_currency_id: undefined,
+                    secondary_currency_id: '1',
                     currency_rate: 1.00,
                     remarks: "",
                     status: undefined,
@@ -47,7 +47,7 @@ export const useBuyerOrderForm = (initialData?: GetBuyerOrderByIdTypes) => {
                 factory_id: initialData.factory_id?.toString() ?? '',
                 secondary_currency_id: initialData.secondary_currency_id 
                     ? initialData.secondary_currency_id.toString() 
-                    : undefined,
+                    : '1',
                 currency_rate: initialData.currency_rate ?? undefined,
                 status: initialData.status ?? undefined,
                 remarks: initialData.remarks ?? "",

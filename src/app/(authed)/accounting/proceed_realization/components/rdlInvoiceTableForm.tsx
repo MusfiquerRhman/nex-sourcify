@@ -36,7 +36,7 @@ const TableForm = (props: Props) => {
     return (
         <>
             <Heading as ='h3' className="mx-8">
-                NexSourcify Invoice Details
+                Nex-Sourcify Invoice Details
             </Heading>
             <form className="flex flex-col justify-start w-full px-8 pb-8">
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(400px,1fr))] items-center gap-4 w-full">

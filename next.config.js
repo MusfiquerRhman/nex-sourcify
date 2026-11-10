@@ -8,11 +8,25 @@ const config = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // BullMQ's optional Valkey GLIDE adapter loads native .node binaries.
+  serverExternalPackages: ["bullmq", "@valkey/valkey-glide"],
   
-  webpack: (config) => {
-      config.resolve.alias.canvas = false;
-      return config;
-  },
+    webpack: (config, { dev }) => {
+        config.resolve.alias.canvas = false;
+
+        if (dev) {
+            const ignored = config.watchOptions?.ignored;
+            const photoUploads = /[\\/]public[\\/](?:sample_checklist|pp_meeting)(?:[\\/]|$)/;
+            config.watchOptions = {
+                ...config.watchOptions,
+                ignored: ignored instanceof RegExp
+                    ? new RegExp(`${ignored.source}|${photoUploads.source}`, ignored.flags)
+                    : [...(Array.isArray(ignored) ? ignored : ignored ? [ignored] : []), "**/public/sample_checklist/**", "**/public/pp_meeting/**"],
+            };
+        }
+
+        return config;
+    },
 
   output: "standalone",
 

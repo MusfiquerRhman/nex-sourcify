@@ -4,7 +4,7 @@ import type {
     destinationsRouter, banksRouter, companiesRouter, paymentTermsRouter, productTypeRouter,
     fabricsRouter, colorsRouter, fobTypesRouter, freightTermsRouter, courierRouter, tnaActionsRouter,
     buyerRouter ,seasonsRouter, handoverDatesRouter,tnaBaseActionRouter, factoryRouter, productsRouter,
-    toleranceLevelRouter, commissionPercentageRouter, earlySettlementPercentageRoute
+    toleranceLevelRouter, commissionPercentageRouter, earlySettlementPercentageRoute, sampleTypesRouter
 } from "~/server/api";
 
 // Bank types
@@ -21,6 +21,11 @@ export type GetBuyerByIdTypes = BuyerRouterOutput['getBuyerById'];
 type ColorsRouterOutput = inferRouterOutputs<typeof colorsRouter>;
 
 export type GetColorByIdTypes = ColorsRouterOutput['getColorById'];
+
+// Sample Types
+type SampleTypesRouterOutput = inferRouterOutputs<typeof sampleTypesRouter>;
+
+export type GetSampleTypeByIdTypes = SampleTypesRouterOutput['getSampleTypeById'];
 
 // Companies types
 type CompaniesRouterOutput = inferRouterOutputs<typeof companiesRouter>;

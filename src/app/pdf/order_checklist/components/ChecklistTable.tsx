@@ -2,6 +2,7 @@ import { Path, Svg, Text, View } from "@react-pdf/renderer";
 import { styles } from "../../components/pdfConfig";
 import { formatDate } from "~/utils/localDateString";
 import type { GetOrderChecklistPDFDataTypes } from "~/types/qualityAPITypes";
+import { formatTechnicalCheck } from "~/utils/orderChecklist";
 
 type ChecklistDetail = GetOrderChecklistPDFDataTypes['details'][number];
 
@@ -21,7 +22,9 @@ const columns: { key: keyof ChecklistDetail; label: string; width: number }[] = 
 ];
 
 const renderCell = (detail: ChecklistDetail, key: keyof ChecklistDetail) => {
-    if (key === 'technical_check' || key === 'qa_check') {
+    if (key === 'technical_check') return <Text>{formatTechnicalCheck(detail.technical_check)}</Text>;
+
+    if (key === 'qa_check') {
         return detail[key] ? (
             <Svg width={10} height={10} viewBox="0 0 12 12">
                 <Path d="M 2 6 L 5 9 L 10 2" stroke="#000000" strokeWidth={1.5} fill="none" />

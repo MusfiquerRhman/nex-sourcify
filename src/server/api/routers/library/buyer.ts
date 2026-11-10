@@ -1849,8 +1849,11 @@ export const buyerRouter = createTRPCRouter({
                         FROM BUYERS AS B
                             INNER JOIN buyer_brands AS BB ON BB.buyer_id = B.id
                             INNER JOIN buyer_departments AS BD ON BD.buyer_brand_id = BB.id
+                            INNER JOIN TEAMS AS T ON T.buyer_id = B.id
+                            INNER JOIN team_members AS TM ON TM.team_id = T.id
+                            WHERE TM.user_id = ${ctx.user.id}
                         GROUP BY BD.ID;
-                        `
+                    `
                     : Prisma.sql`
                         SELECT DISTINCT
                             BD.ID,
@@ -1864,14 +1867,15 @@ export const buyerRouter = createTRPCRouter({
                         FROM BUYERS AS B
                             INNER JOIN buyer_brands AS BB ON BB.buyer_id = B.id
                             INNER JOIN buyer_departments AS BD ON BD.buyer_brand_id = BB.id
-                        WHERE BB.ID IN (${Prisma.join(brandIds)})
+                            INNER JOIN TEAMS AS T ON T.buyer_id = B.id
+                            INNER JOIN team_members AS TM ON TM.team_id = T.id
+                        WHERE BB.ID IN (${Prisma.join(brandIds)}) AND TM.user_id = ${ctx.user.id}
                         GROUP BY BD.ID;
-                        `
+                    `
                 );
             } catch (error) {
                 await logError(error, ctx, input);
                 handlePrismaError(error);
             }
     }),
-
 });

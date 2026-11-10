@@ -4,10 +4,17 @@ import { notificationFilters, notificationFormSchema } from "~/app/(authed)/main
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import type { NotificationAuditItem, NotificationModuleOption } from "~/types/notification";
 import { ADMIN_DEPARTMENT_ID, ADMIN_LEVEL_ID } from "~/utils/config";
-import { m } from "~/utils/moduleMap";
+import { m, withModuleDisplayName } from "~/utils/moduleMap";
 import { Prisma } from "@prisma/client";
 
 const notificationPageSize = 50;
+
+const withInvoiceDisplayTitle = <T extends { slug: string | null; title: string }>(item: T) => {
+    if (!item.slug?.startsWith("/commercial/rdl_invoice/")) return item;
+
+    // Invoice notifications can come from the separate automation service.
+    return { ...item, title: item.title.replace(/^RDL invoice\b/i, "Nex-Sourcify Invoice") };
+};
 
 const notificationModuleIds = [
     m.FACTORY_ORDERS, 
@@ -42,7 +49,7 @@ export const notificationsRouter = createTRPCRouter({
             ctx.db.departments.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
         ]);
 
-        return { modules, recipients, levels, departments };
+        return { modules: modules.map(withModuleDisplayName), recipients, levels, departments };
     }),
 
     getAll: notificationAuditProcedure
@@ -94,7 +101,7 @@ export const notificationsRouter = createTRPCRouter({
                 OFFSET ${(page - 1) * notificationPageSize}
             `;
 
-            return { items, page, pageSize: notificationPageSize, total, totalPages };
+            return { items: items.map(withInvoiceDisplayTitle), page, pageSize: notificationPageSize, total, totalPages };
         }),
 
     list: protectedProcedure
@@ -171,7 +178,16 @@ export const notificationsRouter = createTRPCRouter({
                 take: notificationPageSize,
             });
 
-            return { items, counts, unreadCount: globalUnreadCount ?? pendingCount, modules, page, pageSize: notificationPageSize, total, totalPages };
+            return {
+                items: items.map(withInvoiceDisplayTitle),
+                counts,
+                unreadCount: globalUnreadCount ?? pendingCount,
+                modules: modules.map(withModuleDisplayName),
+                page,
+                pageSize: notificationPageSize,
+                total,
+                totalPages,
+            };
         }),
 
     markRead: protectedProcedure.input(z.object({ id: z.string().uuid() })).mutation(({ ctx, input }) =>

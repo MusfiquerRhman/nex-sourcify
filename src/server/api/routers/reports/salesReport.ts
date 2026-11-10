@@ -9,6 +9,7 @@ import { currencyFormatter, quantityFormatter } from "~/utils/localNumberStrings
 
 interface SalesReportRow {
     buyer_name: string;
+    season_name?: string;
     factory_name?: string;
     team_name?: string;
     brand?: string;
@@ -27,6 +28,7 @@ export const salesReportRouter = createTRPCRouter({
                 fromDate: z.string().optional(),
                 toDate: z.string().optional(),
                 buyerIds: z.array(z.number()).optional(),
+                seasonIds: z.array(z.number()).optional(),
                 factoryIds: z.array(z.number()).optional(),
                 brandIds: z.array(z.number()).optional(),
                 departmentIds: z.array(z.number()).optional(),
@@ -55,6 +57,7 @@ export const salesReportRouter = createTRPCRouter({
                 const base = input.base;
 
                 const buyerIds = input.buyerIds ?? [];
+                const seasonIds = input.seasonIds ?? [];
                 const factoryIds = input.factoryIds ?? [];
                 const brandIds = input.brandIds ?? [];
                 const departmentIds = input.departmentIds ?? [];
@@ -62,24 +65,28 @@ export const salesReportRouter = createTRPCRouter({
                 const teamIds = input.teamIds ?? [];
 
                 const isFactoryNone = factoryIds.includes(-2);
+                const isSeasonNone = seasonIds.includes(-2);
                 const isBrandNone = brandIds.includes(-2);
                 const isDepartmentNone = departmentIds.includes(-2);
                 const isProductTypeNone = productTypeIds.includes(-2);
                 const isTeamNone = teamIds.includes(-2);
 
                 const isFactoryAll = factoryIds.includes(-1);
+                const isSeasonAll = seasonIds.includes(-1);
                 const isBrandAll = brandIds.includes(-1);
                 const isDepartmentAll = departmentIds.includes(-1);
                 const isProductTypeAll = productTypeIds.includes(-1);
                 const isTeamAll = teamIds.includes(-1);
 
                 const isFactoryDimension = !isFactoryNone && factoryIds.length > 0;
+                const isSeasonDimension = !isSeasonNone && seasonIds.length > 0;
                 const isBrandDimension = !isBrandNone && brandIds.length > 0;
                 const isDepartmentDimension = !isDepartmentNone && departmentIds.length > 0;
                 const isProductTypeDimension = !isProductTypeNone && productTypeIds.length > 0;
                 const isTeamDimension = !isTeamNone && teamIds.length > 0;
 
                 const isFactorySelected = isFactoryDimension && !isFactoryAll;
+                const isSeasonSelected = isSeasonDimension && !isSeasonAll;
                 const isBrandSelected = isBrandDimension && !isBrandAll;
                 const isDepartmentSelected = isDepartmentDimension && !isDepartmentAll;
                 const isProductTypeSelected = isProductTypeDimension && !isProductTypeAll;
@@ -92,6 +99,10 @@ export const salesReportRouter = createTRPCRouter({
                 const selectFields: Prisma.Sql[] = [
                     Prisma.sql`B.buyer_name`,
                 ];
+
+                if (isSeasonDimension) {
+                    selectFields.push(Prisma.sql`S.season_name`);
+                }
 
                 if (isFactoryDimension) {
                     selectFields.push(Prisma.sql`F.name AS factory_name`);
@@ -136,6 +147,10 @@ export const salesReportRouter = createTRPCRouter({
                     Prisma.sql`INNER JOIN shipment_item_details AS SID ON SID.shipment_detail_id = SD.id`,
                     Prisma.sql`INNER JOIN factory_shipment_details AS FSD ON FSD.shipment_detail_id = SD.id`,
                 ];
+
+                if (isSeasonDimension) {
+                    joins.push(Prisma.sql`INNER JOIN seasons AS S ON S.id = BO.season_id`);
+                }
 
                 if (isFactoryDimension) {
                     joins.push(
@@ -211,6 +226,10 @@ export const salesReportRouter = createTRPCRouter({
                     );
                 }
 
+                if (isSeasonSelected) {
+                    filters.push(Prisma.sql`BO.season_id IN (${Prisma.join(seasonIds)})`);
+                }
+
                 if (isBrandSelected) {
                     filters.push(
                         Prisma.sql`BO.brand_id IN (${Prisma.join(brandIds)})`
@@ -247,6 +266,10 @@ export const salesReportRouter = createTRPCRouter({
                 const groupByFields: Prisma.Sql[] = [
                     Prisma.sql`B.id`,
                 ];
+
+                if (isSeasonDimension) {
+                    groupByFields.push(Prisma.sql`S.id`);
+                }
 
                 if (isFactoryDimension) {
                     groupByFields.push(Prisma.sql`F.id`);
@@ -303,6 +326,7 @@ export const salesReportRouter = createTRPCRouter({
 
                 const salesReportData = result.map((row) => ({
                     buyer_name: row.buyer_name,
+                    ...(isSeasonDimension ? { season_name: row.season_name ?? "" } : {}),
                     ...(isFactoryDimension ? 
                         { factory_name: row.factory_name ?? "" } : {}
                     ),

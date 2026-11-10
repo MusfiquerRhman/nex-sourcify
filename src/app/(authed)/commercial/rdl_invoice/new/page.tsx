@@ -24,7 +24,7 @@ const NewRDLInvoicePage = () => {
     const addRDLInvoice = api.rdlInvoice.addRdlInvoice.useMutation({
         onSuccess: async () => {
             setError(null);
-            toast.success("NexSourcify Invoice added successfully!");
+            toast.success("Nex-Sourcify Invoice added successfully!");
             await Promise.all([
                 utils.rdlInvoice.getRdlInvoice.invalidate(),
                 utils.rdlInvoice.searchRdlInvoices.invalidate(),
@@ -48,6 +48,7 @@ const NewRDLInvoicePage = () => {
                 pi_no: rdlInvoiceData.pi_no,
                 remarks: rdlInvoiceData.remarks,
                 container_no: rdlInvoiceData.container_no,
+                contact_no: rdlInvoiceData.contact_no,
                 discount: rdlInvoiceData.discount ? safeNumber(rdlInvoiceData.discount) : undefined,
                 details: (rdlInvoiceData.details ?? []).map((detail) => ({
                     factory_id: safeNumber(detail.factory_id),
@@ -70,7 +71,7 @@ const NewRDLInvoicePage = () => {
         }   
         catch (error) {
             const message = parseTRPCError(error);
-            toast.error(`Failed to add NexSourcify Invoice: ${message}`);
+            toast.error(`Failed to add Nex-Sourcify Invoice: ${message}`);
         }
         finally {
             setIsLoading(false);
@@ -80,10 +81,10 @@ const NewRDLInvoicePage = () => {
 
 
     return (
-        <Wrapper heading='Add NexSourcify Invoice' >
+        <Wrapper heading='Add Nex-Sourcify Invoice' >
             <Form 
                 fields={formFields} 
-                buttonLabel="Add New NexSourcify Invoice" 
+                buttonLabel="Add New Nex-Sourcify Invoice"
                 register={methods.register}
                 isLoading={isLoading}
                 validationError={validationError ?? {}}
@@ -103,7 +104,7 @@ const NewRDLInvoicePage = () => {
             <div className="w-full flex flex-row justify-end">
                 <Button type="button" 
                     onClick={() => onSubmitAll()}
-                    label={"Add NexSourcify Invoice"} 
+                    label={"Add Nex-Sourcify Invoice"}
                     className="text-lg tracking-wide mt-6 max-w-80 m-8"
                     disabled={isLoading}
                 />

@@ -1,0 +1,37 @@
+FROM node:22-alpine AS dependencies
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN npm ci
+
+FROM dependencies AS setup
+ENV APP_ENV=testing
+ENV DATABASE_URL=postgresql://build:build@localhost:5432/sourcify_testing
+COPY prisma.config.ts ./
+COPY deploy/testing ./deploy/testing
+COPY src/utils/moduleMap.ts src/utils/url.config.ts ./src/utils/
+RUN ./node_modules/.bin/prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script --output deploy/testing/schema.sql
+CMD ["node", "deploy/testing/bootstrap.mjs"]
+
+FROM dependencies AS builder
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV SKIP_ENV_VALIDATION=true
+RUN npm run build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=8000
+ENV HOSTNAME=0.0.0.0
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+RUN mkdir -p public/uploads/style_photos public/pp_meeting public/sample_checklist && \
+    chown -R nextjs:nodejs public/uploads public/pp_meeting public/sample_checklist
+USER nextjs
+EXPOSE 8000
+CMD ["node", "server.js"]

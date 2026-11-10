@@ -63,15 +63,15 @@ const SalesContractCommissionTable = ({data, grandTotal, amendment_no, amendment
         { key: 'style', label: 'Style', width: 123.3 },
         { key: 'buyer_po', label: 'PO', width: 123.3 },
         { key: 'quantity', label: 'Qty/Unit', width: 83.3 },
-        { key: 'fob_rate', label: 'NexSourcify FOB', width: 40.9 },
-        { key: 'rdl_value', label: 'NexSourcify Value', width: 83.3 },
+        { key: 'fob_rate', label: 'Company FOB', width: 40.9 },
+        { key: 'rdl_value', label: 'Company Value', width: 83.3 },
         { key: 'factory_rate', label: 'Fac FOB', width: 40.9 },
         { key: 'factory_value', label: 'Factory Value', width: 83.3 },
         { key: 'commissionValue', label: 'Commission Value', width: 83.3 },
         { key: 'commissionPercentage', label: 'Commission Percentage', width: 83.3 },
         { key: 'overseasCommission', label: 'Overseas Commission', width: 83.3 },
         { key: 'othersCommission', label: 'Other Commission', width: 83.3 },
-        { key: 'dhakaCommission', label: 'NexSourcify Commission', width: 83.3 },
+        { key: 'dhakaCommission', label: 'Company Commission', width: 83.3 },
     ], []);
 
     const useColumnStyles = (columns: any[]) => {

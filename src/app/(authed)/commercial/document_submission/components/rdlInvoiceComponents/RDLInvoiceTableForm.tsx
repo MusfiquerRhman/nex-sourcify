@@ -65,7 +65,7 @@ const TableForm = (props: Props) => {
     return (
         <>
             <Heading as ='h2' className="mx-8">
-                NexSourcify Invoices
+                Nex-Sourcify Invoices
             </Heading>
 
             <form className="flex flex-col justify-start w-full px-8 pb-8">

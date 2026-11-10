@@ -20,7 +20,7 @@ async function deleteColorsByShipmentId(tx: Prisma.TransactionClient, shipmentId
         where: {
             shipment_detail_id: shipmentId,
             factory_orders: {
-                approval_status: 2, // Approved status
+                approval_status: 1, // Approved status
             }
         },
     });
@@ -75,7 +75,11 @@ async function deleteShipment(tx: Prisma.TransactionClient, shipmentId: string, 
         where: {
             shipment_details_id: shipmentId
         }
-    })
+    });
+
+    await tx.early_settlement_details.deleteMany({
+        where: {shipment_details_id: shipmentId}
+    });
 
     const existingCommissionDistributionDetails = await tx.commission_distributions_details.findMany({
         where: { shipment_details_id: shipmentId },
@@ -257,7 +261,7 @@ export const buyerOrdersRouter = createTRPCRouter({
                             CASE
                                 WHEN COALESCE(SS.style_count, 0) = 0 THEN 'INCOMPLETE'
                                 WHEN SS.incomplete_style_count > 0 THEN 'INCOMPLETE'
-                                WHEN FO.approval_status = 2 THEN 'APPROVED'
+                                WHEN FO.approval_status = 1 THEN 'APPROVED'
                                 ELSE 'PENDING'
                                 -- ELSE 'COMPLETE'
                             END AS status
@@ -332,7 +336,7 @@ export const buyerOrdersRouter = createTRPCRouter({
                 const isFactoryOrderApproved = await ctx.db.factory_orders.findFirst({
                     where: {
                         order_id: input.id,
-                        approval_status: 2, // Approved status
+                        approval_status: 1, // Approved status
                     },
                 });
 
@@ -469,6 +473,12 @@ export const buyerOrdersRouter = createTRPCRouter({
                         });
                     }
 
+                    await tx.sales_contract_amendment_details.deleteMany({
+                        where: {   
+                            order_id: input.id,
+                        },
+                    });
+
                     const deletedBuyerOrder = await tx.buyer_orders.delete({
                         where: { id: input.id },
                     });
@@ -543,7 +553,7 @@ export const buyerOrdersRouter = createTRPCRouter({
                             GROUP BY BOS.id, BOS.order_quantity
                             HAVING COALESCE(SUM(SC.quantity), 0) < BOS.order_quantity
                         ) THEN 'INCOMPLETE'
-                        WHEN FO.approval_status = 2 THEN 'APPROVED'
+                        WHEN FO.approval_status = 1 THEN 'APPROVED'
                         ELSE 'PENDING'
                         -- ELSE 'COMPLETE'
                     END AS status,
@@ -670,7 +680,7 @@ export const buyerOrdersRouter = createTRPCRouter({
                         },
                     });
 
-                    const newRefNo = `NexSourcify/${buyerShortName?.short_name}/${currentYear}/${String(meta.last_serial).padStart(4, '0')}`;
+                    const newRefNo = `RCL/${buyerShortName?.short_name}/${currentYear}/${String(meta.last_serial).padStart(4, '0')}`;
 
                     const newBuyerOrder = await tx.buyer_orders.create({
                         data: {
@@ -1005,8 +1015,6 @@ export const buyerOrdersRouter = createTRPCRouter({
             try {
                 const can_edit = ctx.permissions[m.BUYER_ORDERS]?.can_update;
 
-                console.log('input', input);
-
                 if (!can_edit) {
                     throw new TRPCError({
                         code: 'FORBIDDEN',
@@ -1017,7 +1025,7 @@ export const buyerOrdersRouter = createTRPCRouter({
                 const isFactoryOrderApproved = await ctx.db.factory_orders.findFirst({
                     where: {
                         order_id: input.db_id,
-                        approval_status: 2,
+                        approval_status: 1,
                     },
                 });
 

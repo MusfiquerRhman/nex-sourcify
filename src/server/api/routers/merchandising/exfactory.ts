@@ -499,12 +499,12 @@ export const exFactoryRouter = createTRPCRouter({
                 });
 
                 const paymentTerm = await ctx.db.$queryRaw<{ name: string }[]>`
-                    SELECT T.NAME FROM payment_terms AS PT
-                        INNER JOIN TERMS AS T ON T.id = PT.term_id
-                    WHERE PT.id = ${input.payment_term_id};
+                    SELECT T.NAME FROM TERMS AS T WHERE T.id = ${input.payment_term_id};
                 `;
 
                 const isLC = paymentTerm?.[0]?.name.toLocaleLowerCase() === "lc";
+
+                console.log("Payment Term:", paymentTerm, isLC, input.payment_term_id);
 
                 const lcTransferCheck = isLC
                     ? Prisma.sql`
@@ -682,6 +682,7 @@ export const exFactoryRouter = createTRPCRouter({
                     where: { id: input.order_id },
                     select: { buyer_id: true },
                 });
+                
                 const getTolerance = await ctx.db.shipment_tolerance_level.findUnique({
                     where: {
                         buyer_id: buyerId?.buyer_id                    
@@ -692,9 +693,7 @@ export const exFactoryRouter = createTRPCRouter({
                 })
 
                 const paymentTerm = await ctx.db.$queryRaw<{ name: string }[]>`
-                    SELECT T.NAME FROM payment_terms AS PT
-                        INNER JOIN TERMS AS T ON T.id = PT.term_id
-                    WHERE PT.id = ${input.payment_type};
+                    SELECT T.NAME FROM TERMS AS T WHERE T.id = ${input.payment_type};
                 `;
 
                 const isLC = paymentTerm?.[0]?.name.toLocaleLowerCase() === "lc";
@@ -704,6 +703,7 @@ export const exFactoryRouter = createTRPCRouter({
                         INNER JOIN SALES_CONTRACT_DETAILS AS SCD ON SCD.order_id = BO.id
                         INNER JOIN SALES_CONTRACTS AS SC ON SC.ID = SCD.sales_contract_id
                         INNER JOIN lc_transfer_details AS LTD ON LTD.sales_contract_id = SCD.sales_contract_id
+                        INNER JOIN lc_shipments AS LS ON LS.shipment_details_id = SD.id
                     `
                     : Prisma.empty;
 
@@ -945,8 +945,7 @@ export const exFactoryRouter = createTRPCRouter({
                     if (exfactory.is_authorized) {
                         throw new TRPCError({
                             code: "FORBIDDEN",
-                            message:
-                                "Authorized ex-factory records cannot be updated.",
+                            message: "Authorized ex-factory records cannot be updated.",
                         });
                     }
 

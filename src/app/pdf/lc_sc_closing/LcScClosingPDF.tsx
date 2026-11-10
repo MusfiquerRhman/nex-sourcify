@@ -1,6 +1,6 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, secondaryTableHeaderColor, styles, tableBorderColor, tableHeaderColor } from "../components/pdfConfig";
-import { HeaderPart, PrintByAndDate, RenaissanceLogo, ReportTitle, Signature, Table, TableSummary } from "../components";
+import { HeaderPart, PrintByAndDate, NexSourcifyLogo, ReportTitle, Signature, Table, TableSummary } from "../components";
 import { useDecodedUser } from "~/hooks";
 import type { inferRouterOutputs } from '@trpc/server';
 import type { lcScClosingRouter } from '~/server/api/routers/reports/lcScClosing'
@@ -53,7 +53,7 @@ const LcScClosingPDF = ({ data, base, isPartial }: LcScClosingReportPDFProps) =>
 	const tableColumns = [
 		{ 
 			key: 'invoice_period', 
-			label: 'NexSourcify Export Invoice Period', 
+			label: 'Company Export Invoice Period',
 			width: 90.9
 		},
 		{ 
@@ -64,13 +64,13 @@ const LcScClosingPDF = ({ data, base, isPartial }: LcScClosingReportPDFProps) =>
 		...(hasInvoiceValueColumn
 			? [{ 
 				key: 'invoice_value', 
-				label: 'NexSourcify Export Invoice Value in Primary Currency', 
+				label: 'Company Export Invoice Value in Primary Currency',
 				width: 90.9
 			 }]
 			: []),
 		{ 
 			key: 'invoice_value_usd', 
-			label: 'NexSourcify Export Invoice value in Primary Currency', 
+			label: 'Company Export Invoice value in Primary Currency',
 			width: 90.9
 		 },
 		{ 
@@ -303,16 +303,16 @@ const LcScClosingPDF = ({ data, base, isPartial }: LcScClosingReportPDFProps) =>
     return (
 		<Document
             title={title}
-            author="NexSourcify Nexus"
+            author="Nex-Sourcify"
             subject="Factory Invoice PDF"
-            keywords="Factory, Invoice, PDF, NexSourcify Nexus, ERP"
+            keywords="Factory, Invoice, PDF, Nex-Sourcify, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="NexSourcify Nexus"
+            producer="Nex-Sourcify"
 			pageMode='useOutlines'
 			creationDate={new Date()}
         >
 			<Page orientation="landscape" size="A4" style={styles.body} wrap>
-				<RenaissanceLogo />
+				<NexSourcifyLogo />
 				
 				<ReportTitle title={title} />
 

@@ -5,6 +5,7 @@ export const ExportReportFormSchema = z.object({
     from_date: z.string().min(1, "From Date is required"),
     to_date: z.string().min(1, "To Date is required"),
     buyer_ids: z.array(z.number()).optional(),
+    season_ids: z.array(z.string()).optional(),
     factory_ids: z.array(z.string()).optional(),
     brand_ids: z.array(z.string()).optional(),
     department_ids: z.array(z.string()).optional(),

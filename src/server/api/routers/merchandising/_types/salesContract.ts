@@ -1,5 +1,5 @@
 export interface SalesContractResponse {
-    id: number;
+    id: string;
     sales_contract_no: string;
     sales_contract_date: Date;
     sales_contract_value: number;

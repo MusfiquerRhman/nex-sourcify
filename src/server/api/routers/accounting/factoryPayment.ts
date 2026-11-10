@@ -409,7 +409,12 @@ export const factoryPaymentRouter = createTRPCRouter({
                             TTD.RID AS RDL_INVOICE_ID,
                             TTD.INVOICE_NO,
                             LCD.FDBC_NO AS LC_FDBC_NO,
-                            B.BUYER_NAME
+                            B.BUYER_NAME,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY PR.term_id,
+                                    CASE WHEN PR.term_id = ${TT_ID} THEN TTD.RID ELSE PR.id END
+                                ORDER BY PR.realization_date DESC NULLS LAST, PR.id DESC
+                            ) AS PAYMENT_ROW_NUMBER
                         FROM proceed_realization AS PR
                             INNER JOIN terms AS T ON T.id = PR.term_id
                             LEFT JOIN TT_DETAILS AS TTD ON PR.term_id = ${TT_ID} AND TTD.realization_id = PR.id
@@ -563,11 +568,16 @@ export const factoryPaymentRouter = createTRPCRouter({
                             END AS SEARCH_RANK
 
                         FROM FACTORY_PAYMENTS_BASE AS FPB
+                        WHERE FPB.PAYMENT_ROW_NUMBER = 1
+                    ),
+                    DISTINCT_FACTORY_PAYMENTS AS (
+                        SELECT DISTINCT *
+                        FROM FACTORY_PAYMENTS_LIST
                     )
-                    SELECT DISTINCT
+                    SELECT
                         *,
                         COUNT(*) OVER() AS TOTAL_COUNT
-                    FROM FACTORY_PAYMENTS_LIST AS PFL
+                    FROM DISTINCT_FACTORY_PAYMENTS AS PFL
                     ORDER BY
                         SEARCH_RANK ASC,
                         REALIZATION_DATE DESC

@@ -1,7 +1,22 @@
 // middleware.ts
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
-export function middleware() {
+export function middleware(req: NextRequest) {
+    const segments: string[] = [];
+    try {
+        for (const segment of decodeURIComponent(req.nextUrl.pathname).replaceAll('\\', '/').split('/')) {
+            if (segment === '..') segments.pop();
+            else if (segment && segment !== '.') segments.push(segment);
+        }
+    } catch {
+        return new NextResponse('Invalid path', { status: 400 });
+    }
+
+    // Checklist photos must go through the authenticated /uploads route, even though they live in public.
+    if (segments[0]?.toLowerCase() === 'sample_checklist') {
+        return new NextResponse('File not found', { status: 404 });
+    }
+
     const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
     const isDev = process.env.NODE_ENV === 'development';
 

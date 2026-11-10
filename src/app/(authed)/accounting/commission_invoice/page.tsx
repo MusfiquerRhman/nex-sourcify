@@ -56,7 +56,7 @@ const CommissionInvoicePage = () => {
                 subSectionLeft={
                     <SearchField
                         placeholder="Search Commission Invoices..."
-                        infoText="Commission Invoice No, LC No, Sales Contract No, Buyer Name, Factory Invoice, NexSourcify Invoice, Term"
+                        infoText="Commission Invoice No, LC No, Sales Contract No, Buyer Name, Factory Invoice, Company Invoice, Term"
                         handleSearchChange={handleSearchChange}
                     />
                 }

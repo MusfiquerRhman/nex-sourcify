@@ -6,7 +6,7 @@ export const tableFormColumns = [
     { key: 'order_quantity', label: 'Shipment Quantity' },
     { key: 'previous_quantity', label: 'Previous Quantity' },
     { key: 'invoice_quantity', label: 'Invoice Quantity' },
-    { key: 'fob_rate', label: 'NexSourcify FOB' },
-    { key: 'invoice_value', label: 'NexSourcify Value' },
+    { key: 'fob_rate', label: 'Company FOB' },
+    { key: 'invoice_value', label: 'Company Value' },
     { key: 'actions', label: '', type: 'action' }
 ]

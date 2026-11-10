@@ -96,9 +96,11 @@ const EditFactoryOrderPage = ({ params }: ParamsProp) => {
         { factoryOrderId: id }
     );
 
-    const isFirstLevelAuthorized = authorizations?.authorizations?.approval_status === 1;
-    const isAuthorized = authorizations?.authorizations?.approval_status === 2;
-    const approvalLevel = authorizations?.authorizationPermission?.approval_level ?? 0;
+    const isAuthorized = authorizations?.authorizations?.approval_status === 1;
+
+    useEffect(() => {
+        console.log('Authorizations:', authorizations, canAuthorize);
+    }, [authorizations, canAuthorize]);
 
     useEffect(() => {
         setCanAuthorize(
@@ -172,29 +174,21 @@ const EditFactoryOrderPage = ({ params }: ParamsProp) => {
                 validationError={validationError.factoryOrder ?? {}}
                 error={error}
                 control={control}
-                // disabled={!can_update}
-                disabled={!can_update || authorizations?.authorizations?.approval_status === 2}
+                disabled={!can_update || authorizations?.authorizations?.approval_status === 1}
             />
 
             <StylesDetails 
                 methods={methods}
                 validationError={validationError.factoryOrder ?? {}}
-                // disabled={!can_update}
-                disabled={!can_update || authorizations?.authorizations?.approval_status === 2}
+                disabled={!can_update || authorizations?.authorizations?.approval_status === 1}
             />
 
             {/* Shipment Portal anchor */}
             <div id='shipment_details_portal'/>
 
             <MessageBox 
-                message="This Factory Order is First Level Authorized, and ready for final authorization." 
-                active={authorizations?.authorizations?.approval_status === 1} 
-                type="primary" 
-            />
-
-            <MessageBox 
                 message="Factory order has been approved, and cannot be updated or deleted." 
-                active={authorizations?.authorizations?.approval_status === 2} 
+                active={authorizations?.authorizations?.approval_status === 1} 
                 type="secondary" 
             />
 
@@ -220,9 +214,8 @@ const EditFactoryOrderPage = ({ params }: ParamsProp) => {
                         || isLoadingSubmit 
                         || !can_update 
                         || !hasPermission.data
-                        // && (isCommissionDistributionAuthorized ?? false)
                         && (
-                            authorizations?.authorizations?.approval_status === 2 
+                            authorizations?.authorizations?.approval_status === 1 
                             || (isCommissionDistributionAuthorized ?? false)
                         )
                     }
@@ -238,58 +231,24 @@ const EditFactoryOrderPage = ({ params }: ParamsProp) => {
                             onClick={() => onSetAuthorization(0)}
                             label="Authorized, Click to Unauthorize"
                             className="text-lg tracking-wide mt-6 max-w-80"
-                            disabled={((isAdmin || (canAuthorize && approvalLevel === 2)) ? false : true) 
+                            disabled={((isAdmin || (canAuthorize)) ? false : true) 
                                                 || (isCommissionDistributionAuthorized ?? false)}
                         />
                     </div>
                 ) : (
-                    isFirstLevelAuthorized ? (
-                        <>
-                            {((canAuthorize && approvalLevel === 2) || isAdmin) && (
-                                <div className="flex flex-row justify-start">
-                                    <Button 
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={() => onSetAuthorization(2)}
-                                        label="Authorize This Factory Order"
-                                        className="text-lg tracking-wide mt-6 max-w-80"
-                                        disabled={((isAdmin || (canAuthorize && approvalLevel === 2)) && isFirstLevelAuthorized ? false : true) 
-                                                            || (isCommissionDistributionAuthorized ?? false)
-                                                            || !authorizations?.authorizations?.is_complete
-                                                }
-                                    />
-                                </div> 
-                            )}
-
-                            {((canAuthorize && approvalLevel === 1) || isAdmin) && (
-                                <div className="flex flex-row justify-start">
-                                    <Button 
-                                        type="button"
-                                        variant="delete"
-                                        onClick={() => onSetAuthorization(0)}
-                                        label="Unauthorize 1st Level Authorization"
-                                        className="text-lg tracking-wide mt-6 max-w-80"
-                                        disabled={((isAdmin || (canAuthorize && approvalLevel === 1)) && isFirstLevelAuthorized ? false : true) 
-                                                            || (isCommissionDistributionAuthorized ?? false)}
-                                    />
-                                </div> 
-                            )}
-                        </>
-                    ) : (
-                        <div className="flex flex-row justify-start">
-                            <Button 
-                                type="button"
-                                variant="secondary"
-                                onClick={() => onSetAuthorization(1)}
-                                label="Authorize First level"
-                                className="text-lg tracking-wide mt-6 max-w-80"
-                                disabled={((isAdmin || (canAuthorize && approvalLevel === 1)) && !isFirstLevelAuthorized ? false : true) 
-                                                    || (isCommissionDistributionAuthorized ?? false)
-                                                    || !authorizations?.authorizations?.is_complete
-                                        }
-                            />
-                        </div>
-                    )
+                    <div className="flex flex-row justify-start">
+                        <Button 
+                            type="button"
+                            variant="secondary"
+                            onClick={() => onSetAuthorization(1)}
+                            label="Authorize This Factory Order"
+                            className="text-lg tracking-wide mt-6 max-w-80"
+                            disabled={((isAdmin || canAuthorize) ? false : true) 
+                                                || (isCommissionDistributionAuthorized ?? false)
+                                                || !authorizations?.authorizations?.is_complete
+                            }
+                        />
+                    </div> 
                 )}
             </div>
         </Wrapper>

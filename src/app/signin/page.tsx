@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
 import { z } from "zod";
 import { api } from "~/trpc/react";
 import { Heading, TextField, Button, Loader } from "~/components";
@@ -102,7 +103,15 @@ const SignInPage = () => {
     return (
         <div className="nex-signin">
             <div className="nex-signin-story">
-                <img src="/nexsourcify-logo.png" alt="NexSourcify" className="nex-signin-logo" />
+                <Image
+                    src="/nexsourcify-logo.png"
+                    alt="Nex-Sourcify"
+                    width={1024}
+                    height={1024}
+                    sizes="320px"
+                    priority
+                    className="nex-signin-logo"
+                />
                 <div className="nex-signin-copy">
                     <p className="text-sm tracking-[0.3em]">SMART SOURCING</p>
                     <h1 className="mt-4 text-5xl font-semibold leading-tight">Better Production.</h1>
@@ -111,7 +120,7 @@ const SignInPage = () => {
             </div>
             <div className="nex-signin-form">
                 <div className="mx-auto w-full max-w-xl px-8 py-10">
-                    <Heading className="text-center font-rajdhani tracking-wide">NexSourcify</Heading>
+                    <Heading className="text-center font-rajdhani tracking-wide">Nex-Sourcify</Heading>
                     <Heading as='h3' className="text-center font-rajdhani">Welcome Back</Heading>
                     {!clicked ? (
                         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
@@ -136,7 +145,7 @@ const SignInPage = () => {
                     ) : (
                         <Loader />
                     )}
-                    <Heading as='h3' className="text-center font-rajdhani mt-2">NexSourcify</Heading>
+                    <Heading as='h3' className="text-center font-rajdhani mt-2">Nex-Sourcify</Heading>
                 </div>
             </div>
         </div>

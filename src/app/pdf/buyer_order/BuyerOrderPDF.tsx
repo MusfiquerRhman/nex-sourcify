@@ -1,6 +1,6 @@
 import { Document, Page, Text } from "@react-pdf/renderer";
 import { registerPdfFonts, styles } from "../components/pdfConfig";
-import { PrintByAndDate, RenaissanceLogo, ReportTitle, HeaderPart, Table, TableSummary, Signature } from "../components";
+import { PrintByAndDate, NexSourcifyLogo, ReportTitle, HeaderPart, Table, TableSummary, Signature } from "../components";
 import { formatDate } from "~/utils/localDateString";
 
 import type { HeaderData } from "~/types/pdf";
@@ -23,13 +23,13 @@ const BuyerOrderPDF = ({ data }: { data: GetPDFDataOutput }) => {
 		{ key: 'product_name', label: 'Product Name', width: 110 },
 		{ key: 'color_names', label: 'Color', width: 110 },
 		{ key: 'quantity', label: 'Quantity', width: 110 },
-		{ key: 'rdl_fob', label: 'NexSourcify FOB', width: 80 },
-		{ key: 'rdl_value', label: 'NexSourcify Value', width: 110 },
+		{ key: 'rdl_fob', label: 'Company FOB', width: 80 },
+		{ key: 'rdl_value', label: 'Company Value', width: 110 },
 	]
 
     const buyerOrderData: HeaderData = [
 		[
-			{ label: "NexSourcify Order No", value: data.header[0]?.ref_no ?? '' },
+			{ label: "Company Order No", value: data.header[0]?.ref_no ?? '' },
 			{ label: "Buyer Name", value: data.header[0]?.buyer_name ?? '' },
 			{ label: "Brand Name", value: data.header[0]?.brand_name ?? '' },
 			{ label: "Secondary Currency", value: data.header[0]?.currency_name ?? '' },
@@ -55,16 +55,16 @@ const BuyerOrderPDF = ({ data }: { data: GetPDFDataOutput }) => {
     return (
 		<Document
             title={`Buyer Order - ${data.header[0]?.ref_no}`}
-            author="NexSourcify Nexus"
+            author="Nex-Sourcify"
             subject="Buyer Order PDF"
-            keywords="Buyer, Order, PDF, NexSourcify Nexus, ERP"
+            keywords="Buyer, Order, PDF, Nex-Sourcify, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="NexSourcify Nexus"
+            producer="Nex-Sourcify"
 			pageMode='useOutlines'
 			creationDate={new Date()}
         >
 			<Page orientation="landscape" size="A4" style={styles.body} wrap>
-				<RenaissanceLogo />
+				<NexSourcifyLogo />
 				<PrintByAndDate />
 				<ReportTitle title="BUYER ORDER" />
 				<HeaderPart data={buyerOrderData}/>

@@ -42,10 +42,10 @@ const tableHeader = [
     'Factory Payment Date',
     'FDBC No',
     'Proceed Date',
-    'NexSourcify invoice',
-    'NexSourcify invoice Date',
-    'NexSourcify Invoice Quantity',
-    'NexSourcify Invoice Value',
+    'Company invoice',
+    'Company invoice Date',
+    'Company Invoice Quantity',
+    'Company Invoice Value',
     'Regularized Date'
 ]
 
@@ -69,7 +69,7 @@ export const generateCrossPaymentReportExcel = async (props: Props) => {
     // Set file metadata
     workbook.creator = generatedBy; 
     workbook.created = new Date();
-    workbook.company = "NexSourcify";
+    workbook.company = "Nex-Sourcify";
     workbook.subject = "Post-Exfactory Commercial Activity Report";
     workbook.title = "Post-Exfactory Commercial Activity Report";
     workbook.category = "Commercial Reports";

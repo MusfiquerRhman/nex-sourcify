@@ -3,7 +3,7 @@ import TableSummaryRow from "./TableSummaryRow";
 import { styles, tableBorderColor } from "../../components/pdfConfig";
 
 const TableHeader = () => (
-    <View style={styles.headerRow} fixed>
+    <View style={styles.headerRow}>
         <Text style={[styles.headerCell, { width: 100, padding: 5}]}>
             SL No.
         </Text>
@@ -21,30 +21,41 @@ const TableHeader = () => (
 
 interface InvoiceTableProps {
     rows: React.ReactNode[];
+    additionalSummaryRows?: { label: string; quantity?: string; value: string }[];
+    marginTop?: number;
     summaryLabel: string;
     totalQuantity: string;
     totalValue: string;
 }
 
-const InvoiceTable = ({ rows, summaryLabel, totalQuantity, totalValue }: InvoiceTableProps) => (
-    <View
-        style={{
-            ...styles.tableContainer,
-			fontFamily: 'Roboto',
-            borderBottomWidth: 0.75,
-            borderBottomColor: tableBorderColor,
-        }}
-    >
-        <TableHeader />
+const InvoiceTable = (props: InvoiceTableProps) => {
+    const { rows, additionalSummaryRows, marginTop, summaryLabel, totalQuantity, totalValue } = props;
+    const [firstRow, ...remainingRows] = rows;
 
-        {rows}
+    return (
+        <View
+            style={{
+                ...styles.tableContainer,
+                marginTop,
+                fontFamily: 'Roboto',
+                borderBottomWidth: 0.75,
+                borderBottomColor: tableBorderColor,
+            }}
+        >
+            {rows.length > 0 && (
+                <View wrap={false}>
+                    <TableHeader />
+                    {firstRow}
+                </View>
+            )}
+            {remainingRows}
 
-        <TableSummaryRow
-            label={summaryLabel}
-            quantity={totalQuantity}
-            value={totalValue}
-        />
-    </View>
-);
+            {additionalSummaryRows?.map(({ label, quantity, value }) => (
+                <TableSummaryRow key={label} label={label} quantity={quantity ?? ""} value={value} />
+            ))}
+            <TableSummaryRow label={summaryLabel} quantity={totalQuantity} value={totalValue} />
+        </View>
+    );
+};
 
 export default InvoiceTable;

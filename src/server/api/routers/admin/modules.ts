@@ -1,4 +1,5 @@
 // import { DEV, DEVELOPER_ID, ERROR_LOGS } from "~/utils/config";
+import { withModuleDisplayName } from "~/utils/moduleMap";
 import { createTRPCRouter, protectedProcedure } from "../../trpc";
 
 export const modulesRouter = createTRPCRouter({
@@ -40,11 +41,11 @@ export const modulesRouter = createTRPCRouter({
         //     })
         // }
 
-        return Array.isArray(modulesWithParents) ? modulesWithParents : [];
+        return Array.isArray(modulesWithParents) ? modulesWithParents.map(withModuleDisplayName) : [];
     }),
 
     getModules: protectedProcedure.query(async ({ ctx }) => {
         const modules = await ctx.db.modules.findMany();
-        return modules;
+        return modules.map(withModuleDisplayName);
     }),  
 });

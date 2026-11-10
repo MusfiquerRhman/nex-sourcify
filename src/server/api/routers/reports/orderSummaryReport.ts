@@ -114,6 +114,10 @@ export const orderSummaryReportRouter = createTRPCRouter({
 
                 const joinType = input.base === "ACTUAL EXFACTORY" ? "INNER" : "LEFT";
                 const joinTypeRaw = Prisma.raw(joinType);
+                // Actual deliveries must be summed per shipment, even when separate deliveries have equal quantities.
+                const deliveryQuantity = input.base === "ACTUAL EXFACTORY" ? Prisma.sql`SUM(ES.delivery_quantity)` : Prisma.sql`ES.delivery_quantity`;
+                const poClose = input.base === "ACTUAL EXFACTORY" ? Prisma.sql`BOOL_AND(ES.PO_CLOSE)` : Prisma.sql`ES.PO_CLOSE`;
+                const deliveryGroupBy = input.base === "ACTUAL EXFACTORY" ? Prisma.empty : Prisma.sql`, ES.delivery_quantity, ES.PO_CLOSE`;
 
                 const results = await ctx.db.$queryRaw<OrderSummaryReportRow[]>`
                     WITH IID AS (
@@ -155,17 +159,17 @@ export const orderSummaryReportRouter = createTRPCRouter({
                         TO_CHAR(SD.HANDOVER_DATE, 'DD Mon YYYY') AS "HANDOVER_DATE",
                         TO_CHAR(SD.ETD_DATE, 'DD Mon YYYY') AS "ETD_DATE" ,
                         IID.IID_QUANTITY AS "LOT_QUANTITY",
-                        ES.delivery_quantity AS "DELIVERY_QUANTITY",
+                        ${deliveryQuantity} AS "DELIVERY_QUANTITY",
                         SD.FOB_RATE / COALESCE(BO.currency_rate, 1) AS "FOB_RATE",
                         FSD.FACTORY_RATE / COALESCE(FO.currency_rate, 1) AS "FACTORY_RATE",
                         CASE 
-                            WHEN ES.PO_CLOSE THEN 'CLOSED'
+                            WHEN ${poClose} THEN 'CLOSED'
                             ELSE 'OPEN'
                         END AS "PO_CLOSE",
                         IID.IID_QUANTITY * SD.FOB_RATE / COALESCE(BO.currency_rate, 1) AS "ORDER_RDL_VALUE",
-                        ES.delivery_quantity * SD.FOB_RATE / COALESCE(BO.currency_rate, 1) AS "DELIVERED_RDL_VALUE",
+                        ${deliveryQuantity} * SD.FOB_RATE / COALESCE(BO.currency_rate, 1) AS "DELIVERED_RDL_VALUE",
                         IID.IID_QUANTITY * FSD.FACTORY_RATE / COALESCE(FO.currency_rate, 1) AS "FACTORY_ORDER_VALUE",
-                        ES.delivery_quantity * FSD.FACTORY_RATE / COALESCE(FO.currency_rate, 1) AS "FACTORY_DELIVERY_VALUE",
+                        ${deliveryQuantity} * FSD.FACTORY_RATE / COALESCE(FO.currency_rate, 1) AS "FACTORY_DELIVERY_VALUE",
                         T.TEAM_NAME AS "TEAM_NAME"
                     FROM buyer_orders AS BO
                         INNER JOIN order_styles AS OS ON OS.order_id = BO.id
@@ -224,9 +228,8 @@ export const orderSummaryReportRouter = createTRPCRouter({
                         T.ID, 
                         IID.SD_ID, 
                         IID.COLORS, 
-                        IID.IID_QUANTITY, 
-                        ES.delivery_quantity, 
-                        ES.PO_CLOSE;
+                        IID.IID_QUANTITY
+                        ${deliveryGroupBy};
                 `;
 
                 const normalizedResults = results.map(normalizeOrderSummaryRow);

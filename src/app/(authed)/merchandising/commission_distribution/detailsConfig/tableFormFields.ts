@@ -44,9 +44,9 @@ export const formFields = () => {
         },
         {
             name: 'rdl_fob',
-            label: 'NexSourcify FOB',
+            label: 'Company FOB',
             type: 'text',
-            placeholder: 'Enter NexSourcify FOB',
+            placeholder: 'Enter Company FOB',
             disabled: true,
         },
         {
@@ -58,9 +58,9 @@ export const formFields = () => {
         },
         {
             name: 'rdl_value',
-            label: 'NexSourcify Value',
+            label: 'Company Value',
             type: 'text',
-            placeholder: 'Enter NexSourcify value',
+            placeholder: 'Enter Company value',
             disabled: true,
         },
         {

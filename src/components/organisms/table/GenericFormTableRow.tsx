@@ -21,10 +21,11 @@ type Props<T extends FieldValues> = {
     className?: string;
     canDelete?: boolean;
     onCheckboxChange?: (fieldName: string, checked: boolean, index: number) => void;
+    onSelectChange?: (fieldName: string, value: string | number | boolean | null, index: number) => void;
 }
 
 const GenericFormTableRow = <T extends FieldValues, >(props: Props<T>) => {
-    const {fields, register, removeRow, disabled = false, validationError, name, control, index, handleAction, copyRow, className, canDelete = true, onCheckboxChange} =  props;
+    const {fields, register, removeRow, disabled = false, validationError, name, control, index, handleAction, copyRow, className, canDelete = true, onCheckboxChange, onSelectChange} =  props;
 
     return (
         <TableRow key={index} className={className}>
@@ -46,7 +47,10 @@ const GenericFormTableRow = <T extends FieldValues, >(props: Props<T>) => {
                                                     options={col.options}
                                                     value={selectField.value}
                                                     disabled={isDisabled}
-                                                    onChange={selectField.onChange}
+                                                    onChange={(value) => {
+                                                        selectField.onChange(value);
+                                                        onSelectChange?.(col.name, value, index);
+                                                    }}
                                                     error={!!validationMessage}
                                                 />
                                             )}

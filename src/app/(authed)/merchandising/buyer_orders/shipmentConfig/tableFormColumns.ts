@@ -9,9 +9,9 @@ export const tableFormColumns = [
     { key: 'add_colors', label: 'Add Colors' },
     { key: 'selected_colors', label: 'Colors'},
     { key: 'lot_quantity', label: 'Quantity' },
-    { key: 'fob_rate', label: 'NexSourcify FOB' },
-    { key: 'rdl_fob_usd', label: 'NexSourcify FOB (USD)' },
-    { key: 'rdl_value', label: 'NexSourcify Value' },
-    { key: 'rdl_value_usd', label: 'NexSourcify Value (USD)' },
+    { key: 'fob_rate', label: 'Company FOB' },
+    { key: 'rdl_fob_usd', label: 'Company FOB (USD)' },
+    { key: 'rdl_value', label: 'Company Value' },
+    { key: 'rdl_value_usd', label: 'Company Value (USD)' },
     { key: 'actions', label: '', type: 'action' }
 ]

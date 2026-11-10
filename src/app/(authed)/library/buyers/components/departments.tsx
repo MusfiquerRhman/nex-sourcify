@@ -119,7 +119,7 @@ const Departments = ({departments, brandName, setBrands, newSizes, setNewSizes, 
                 </button>
             </div>
             {departments.map((department, departmentIndex) => (
-                <div key={departmentIndex} className="mb-4 rounded-lg border border-gray-200 bg-white/60 p-3">
+                <div key={departmentIndex} className="mb-4 rounded-lg border border-gray-200 bg-white p-3">
                     <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                             <p className="mb-1 text-xs font-bold uppercase tracking-wide text-primary-dark">Department</p>

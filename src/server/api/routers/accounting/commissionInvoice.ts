@@ -752,6 +752,7 @@ export const commissionInvoiceRouter = createTRPCRouter({
                                 RID.INVOICE_QUANTITY,
                                 (RID.INVOICE_VALUE - COALESCE(RI.DISCOUNT, 0)) AS INVOICE_VALUE,
                                 RID.CHARGE_VALUE,
+                                RID.EARLY_SETTLEMENT_RATES,
                                 DS.ID AS DS_ID
                             FROM document_submissions AS DS
                                 INNER JOIN document_submissions_details AS DSD ON DSD.document_submissions_id = DS.id
@@ -761,7 +762,9 @@ export const commissionInvoiceRouter = createTRPCRouter({
                                         RID.RDL_INVOICE_ID AS RIID,
                                         SUM(RISD.INVOICE_QUANTITY) AS INVOICE_QUANTITY,
                                         SUM(RISD.INVOICE_QUANTITY * SD.FOB_RATE) AS INVOICE_VALUE,
-                                        SUM(RISD.INVOICE_QUANTITY * SD.FOB_RATE * ESD.early_settlement_charge / 100) AS CHARGE_VALUE
+                                        SUM(RISD.INVOICE_QUANTITY * SD.FOB_RATE * ESD.early_settlement_charge / 100) AS CHARGE_VALUE,
+                                        ARRAY_AGG(DISTINCT ESD.early_settlement_charge)
+                                            FILTER (WHERE ESD.early_settlement_charge IS NOT NULL) AS EARLY_SETTLEMENT_RATES
                                     FROM rdl_invoice_details AS RID
                                         INNER JOIN rdl_invoice_shipment_details AS RISD ON RISD.rdl_invoice_details_id = RID.id
                                         INNER JOIN shipment_details AS SD ON SD.id = RISD.shipment_details_id
@@ -776,6 +779,7 @@ export const commissionInvoiceRouter = createTRPCRouter({
                                 RID.INVOICE_QUANTITY,
                                 (RID.INVOICE_VALUE - COALESCE(RI.DISCOUNT, 0)) AS INVOICE_VALUE,
                                 RID.CHARGE_VALUE,
+                                RID.EARLY_SETTLEMENT_RATES,
                                 RI.ID AS RI_ID
                             FROM rdl_invoice AS RI
                                 INNER JOIN (
@@ -783,7 +787,9 @@ export const commissionInvoiceRouter = createTRPCRouter({
                                         RID.RDL_INVOICE_ID AS RIID,
                                         SUM(RISD.INVOICE_QUANTITY) AS INVOICE_QUANTITY,
                                         SUM(RISD.INVOICE_QUANTITY * SD.FOB_RATE) AS INVOICE_VALUE,
-                                        SUM(RISD.INVOICE_QUANTITY * SD.FOB_RATE * ESD.early_settlement_charge / 100) AS CHARGE_VALUE
+                                        SUM(RISD.INVOICE_QUANTITY * SD.FOB_RATE * ESD.early_settlement_charge / 100) AS CHARGE_VALUE,
+                                        ARRAY_AGG(DISTINCT ESD.early_settlement_charge)
+                                            FILTER (WHERE ESD.early_settlement_charge IS NOT NULL) AS EARLY_SETTLEMENT_RATES
                                     FROM rdl_invoice_details AS RID
                                         INNER JOIN rdl_invoice_shipment_details AS RISD ON RISD.rdl_invoice_details_id = RID.id
                                         INNER JOIN shipment_details AS SD ON SD.id = RISD.shipment_details_id
@@ -798,11 +804,13 @@ export const commissionInvoiceRouter = createTRPCRouter({
                             RFL.INVOICE_QUANTITY AS rfl_invoice_quantity,
                             RFL.INVOICE_VALUE AS rfl_invoice_value,
                             RFL.CHARGE_VALUE AS rfl_charge_value,
+                            RFL.EARLY_SETTLEMENT_RATES AS rfl_early_settlement_rates,
                             RFT.INVOICE_NO AS rft_invoice_no,
                             RFT.INVOICE_DATE AS rft_invoice_date,
                             RFT.INVOICE_QUANTITY AS rft_invoice_quantity,
                             RFT.INVOICE_VALUE AS rft_invoice_value,
-                            RFT.CHARGE_VALUE AS rft_charge_value
+                            RFT.CHARGE_VALUE AS rft_charge_value,
+                            RFT.EARLY_SETTLEMENT_RATES AS rft_early_settlement_rates
                         FROM commission_invoice AS CI
                             INNER JOIN TERMS AS T ON T.id = CI.term_id
                             LEFT JOIN RI_FOR_LC AS RFL ON RFL.DS_ID = CI.document_submission_id AND T.NAME = 'LC'
@@ -927,7 +935,7 @@ export const commissionInvoiceRouter = createTRPCRouter({
                             SELECT
                                 DS.id AS DS_ID,
 
-                                -- Original NexSourcify value
+                                -- Original RDL value
                                 SUM(INV.INVOICE_QUANTITY * SC.FOB_RATE) AS TOTAL_RDL_VALUE,
 
                                 -- Effective CI after early settlement
@@ -966,7 +974,7 @@ export const commissionInvoiceRouter = createTRPCRouter({
                             SELECT
                                 RI.id AS RI_ID,
 
-                                -- Original NexSourcify value
+                                -- Original RDL value
                                 SUM(INV.INVOICE_QUANTITY * SC.FOB_RATE) AS TOTAL_RDL_VALUE,
 
                                 -- Effective CI after early settlement
@@ -1007,15 +1015,15 @@ export const commissionInvoiceRouter = createTRPCRouter({
                             SUM(CFL.TOTAL_CI * (CFL.TOTAL_OTHER_CI / NULLIF(CFL.TOTAL_DHAKA_CI + CFL.TOTAL_OTHER_CI + CFL.TOTAL_OVERSEAS_CI, 0))) AS CFL_OTHER_VALUE,
 
                             SUM(
-                                CFL.TOTAL_CI *(CFL.TOTAL_DHAKA_CI /NULLIF(CFL.TOTAL_DHAKA_CI +CFL.TOTAL_OTHER_CI +CFL.TOTAL_OVERSEAS_CI,0))
+                                CFL.TOTAL_CI *(CFL.TOTAL_DHAKA_CI / NULLIF(CFL.TOTAL_DHAKA_CI + CFL.TOTAL_OTHER_CI + CFL.TOTAL_OVERSEAS_CI, 0))
                             ) / NULLIF(SUM(CFL.TOTAL_RDL_VALUE), 0) * 100 AS CFL_DHAKA_PERCENTAGE,
 
                             SUM(
-                                CFL.TOTAL_CI *(CFL.TOTAL_OVERSEAS_CI /NULLIF(CFL.TOTAL_DHAKA_CI +CFL.TOTAL_OTHER_CI +CFL.TOTAL_OVERSEAS_CI,0))
+                                CFL.TOTAL_CI *(CFL.TOTAL_OVERSEAS_CI / NULLIF(CFL.TOTAL_DHAKA_CI + CFL.TOTAL_OTHER_CI + CFL.TOTAL_OVERSEAS_CI, 0))
                             ) / NULLIF(SUM(CFL.TOTAL_RDL_VALUE), 0) * 100 AS CFL_OVERSEAS_PERCENTAGE,
 
                             SUM(
-                                CFL.TOTAL_CI *(CFL.TOTAL_OTHER_CI /NULLIF(CFL.TOTAL_DHAKA_CI +CFL.TOTAL_OTHER_CI +CFL.TOTAL_OVERSEAS_CI,0))
+                                CFL.TOTAL_CI *(CFL.TOTAL_OTHER_CI / NULLIF(CFL.TOTAL_DHAKA_CI + CFL.TOTAL_OTHER_CI + CFL.TOTAL_OVERSEAS_CI, 0))
                             ) / NULLIF(SUM(CFL.TOTAL_RDL_VALUE), 0) * 100 AS CFL_OTHER_PERCENTAGE,
 
                             -- TT, CI Allocation
@@ -1109,7 +1117,7 @@ export const commissionInvoiceRouter = createTRPCRouter({
                     fdbc_no: headerData[0]?.fdbc_no ?? null,
                 }
 
-                // NexSourcify invoice processing
+                // RDL invoice processing
                 const rdl_invoices = rdl_invoices_data.map((data) => ({
                     invoice_no: isTT ? data.rft_invoice_no : data.rfl_invoice_no,
                     invoice_date: isTT ? data.rft_invoice_date : data.rfl_invoice_date,
@@ -1199,6 +1207,8 @@ export const commissionInvoiceRouter = createTRPCRouter({
                 } : null;
 
                 // Total Calculations
+                const totalGrossRdlInvoiceValue = rdl_invoices.reduce((sum, ri) => sum + safeNumber(ri.invoice_value), 0);
+                const totalEarlySettlementValue = rdl_invoices.reduce((sum, ri) => sum - safeNumber(ri.charge), 0);
                 const totalRdlInvoiceValue = rdl_invoices.reduce((sum, ri) => sum + safeNumber(ri.invoice_value) - safeNumber(ri.charge), 0);
                 const totalRdlInvoiceQuantity = rdl_invoices.reduce((sum, ri) => sum + safeNumber(ri.invoice_quantity), 0);
                 const totalFactoryInvoiceValue = factoryInvoices.reduce((sum, fi) => sum + safeNumber(fi.invoice_value), 0);
@@ -1221,8 +1231,14 @@ export const commissionInvoiceRouter = createTRPCRouter({
                     + (commissionDistribution?.dn_other_percentage ?? 0);
 
                 const totalValue = totalCiAllocationValue + totalDnAllocationValue;
+                const earlySettlementRates = new Set(rdl_invoices_data.flatMap((data) => (
+                    (isTT ? data.rft_early_settlement_rates : data.rfl_early_settlement_rates) ?? []
+                )));
 
                 const rdlInvoiceResults = {
+                    total_gross_invoice_value: currencyFormatter(totalGrossRdlInvoiceValue, '$'),
+                    total_early_settlement_value: currencyFormatter(totalEarlySettlementValue, '$'),
+                    early_settlement_rates: [...earlySettlementRates].sort((a, b) => a - b).map((rate) => `${rate}%`).join(', '),
                     total_invoice_value: currencyFormatter(totalRdlInvoiceValue, '$'),
                     total_invoice_quantity: quantityFormatter(totalRdlInvoiceQuantity),
                 }

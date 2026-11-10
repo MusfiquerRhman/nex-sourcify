@@ -17,7 +17,7 @@ const tableColumns = [
 
 const tableHeader = [
     'Buyer Name',
-    'NexSourcify Value',
+    'Company Value',
     'Factory Value',
     'Commission',
     'Other Commission',
@@ -50,7 +50,7 @@ export const generateCommissionDistributionReportExcel = async (props: Props) =>
     // Set file metadata
     workbook.creator = generatedBy; 
     workbook.created = new Date();
-    workbook.company = "NexSourcify";
+    workbook.company = "Nex-Sourcify";
     workbook.subject = "Post-Exfactory Commercial Activity Report";
     workbook.title = "Post-Exfactory Commercial Activity Report";
     workbook.category = "Commercial Reports";

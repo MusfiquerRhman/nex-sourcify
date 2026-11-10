@@ -86,7 +86,7 @@ const Sizes = ({sizes, departmentName, newSizes, setNewSizes, setBrands, brandIn
     }
 
     return (
-        <div className="mt-4 border-l-2 border-gray-200 pl-4 sm:pl-5">
+        <div className="mt-4 rounded-md border border-gray-200 bg-white p-3">
             <div className="mb-2 flex items-center justify-between gap-3">
                 <div>
                     <p className="text-xs font-bold uppercase tracking-wide text-gray-600">Sizes</p>

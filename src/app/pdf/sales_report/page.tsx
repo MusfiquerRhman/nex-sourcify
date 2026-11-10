@@ -12,6 +12,7 @@ const PDF = () => {
     const searchParams = useSearchParams();
 
     const buyerIds = searchParams.get("buyers")?.split(",").map(Number) ?? [];
+    const seasonIds = searchParams.get("seasons")?.split(",").map(Number) ?? [];
     const factoryIds = searchParams.get("factories")?.split(",").map(Number) ?? [];
     const brandIds = searchParams.get("brands")?.split(",").map(Number) ?? [];
     const departmentIds = searchParams.get("departments")?.split(",").map(Number) ?? [];
@@ -28,6 +29,7 @@ const PDF = () => {
     const { data, isLoading } = api.salesReport.getSalesReport.useQuery(
         !!fromDate && !!toDate ? {
             buyerIds: buyerIds.length > 0 ? buyerIds : undefined,
+            seasonIds: seasonIds.length > 0 ? seasonIds : undefined,
             factoryIds: factoryIds.length > 0 ? factoryIds : undefined,
             brandIds: brandIds.length > 0 ? brandIds : undefined,
             departmentIds: departmentIds.length > 0 ? departmentIds : undefined,
@@ -45,6 +47,7 @@ const PDF = () => {
 
     const selectedFields = {
         buyers: true,
+        season: seasonIds.length > 0 && !seasonIds.includes(-2),
         factory_name: factoryIds.length > 0 && !factoryIds.includes(-2),
         brand: brandIds.length > 0 && !brandIds.includes(-2),
         department: departmentIds.length > 0 && !departmentIds.includes(-2),

@@ -88,7 +88,19 @@ enum moduleMap {
     LC_TRANSFER_REPORT = 92,
     CROSS_PAYMENT_REPORT = 93,
     NOTIFICATIONS = 94,
-    ORDER_CHECKLIST = 58,
+    SAMPLE_CHECKLIST = 58,
+    ORDER_CHECKLIST = 95,
+    PP_MEETING = 96,
+    SAMPLE_TYPES = 97,
+    CASHFLOW_REPORT = 98,
 }
+
+export const formatModuleName = (name: string) =>
+    name.replace(/\b(?:RDL|NexSourcify)\b/gi, "Nex-Sourcify");
+
+export const withModuleDisplayName = <T extends { name: string }>(module: T) => ({
+    ...module,
+    name: formatModuleName(module.name),
+});
 
 export { moduleMap as m };

@@ -8,3 +8,6 @@ README.md
 .git
 out
 build
+.testing-server-credentials.txt
+public/uploads
+source.tar.gz

@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import z from "zod";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
-import { m } from "~/utils/moduleMap";
+import { formatModuleName, m } from "~/utils/moduleMap";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 export const authorizationsRouter = createTRPCRouter({
@@ -50,7 +50,7 @@ export const authorizationsRouter = createTRPCRouter({
 
 		const authorizations = authorizationsObj.map(({modules, levels, users, departments, ...rest}) => ({
 			...rest, 
-			module_name: modules?.name,
+			module_name: modules ? formatModuleName(modules.name) : undefined,
 			level_name: levels?.name,
 			level_id: levels?.id,
 			department_name: departments?.name,

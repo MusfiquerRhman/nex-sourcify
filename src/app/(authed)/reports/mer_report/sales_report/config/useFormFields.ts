@@ -10,8 +10,19 @@ interface PropsType {
     brand_ids?: number[];
 }
 
-export const useFormFields = ({buyer_ids, brand_ids}: PropsType): Field<keyof SalesReportFormValues>[] => {
+export const useFormFields = (props: PropsType): Field<keyof SalesReportFormValues>[] => {
+    const { buyer_ids, brand_ids } = props;
+
     const buyers = api.buyers.getAllBuyersByTeam.useQuery().data ?? [];
+    const seasonBuyerIds = buyer_ids?.length ? buyer_ids : buyers.map((buyer) => buyer.id);
+
+    const seasons = [
+        { id: -1, season_name: "All" },
+        { id: -2, season_name: "None" },
+        ...(api.seasons.getSeasonsByBuyers.useQuery(
+            seasonBuyerIds.length > 0 ? seasonBuyerIds : skipToken
+        ).data ?? []),
+    ];
 
     const factories = [
         { id: -1, name: "All" },
@@ -84,6 +95,14 @@ export const useFormFields = ({buyer_ids, brand_ids}: PropsType): Field<keyof Sa
             optional: true,
         },
         {
+            name: "season_ids",
+            label: "Select Seasons",
+            placeholder: "Select seasons, or leave blank for none",
+            type: "multiselect",
+            options: seasons.map((season) => ({ label: season.season_name, value: season.id.toString() })),
+            optional: true,
+        },
+        {
             name: "factory_ids",
             label: "Select Factories",
             placeholder: "Select factories, or leave blank for all",
@@ -131,7 +150,7 @@ export const useFormFields = ({buyer_ids, brand_ids}: PropsType): Field<keyof Sa
         },
         {
             name: 'rdl_value',
-            label: 'NexSourcify Value',
+            label: 'Company Value',
             type: "checkbox",
             optional: true
         },

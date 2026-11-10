@@ -1,0 +1,113 @@
+name: nex-sourcify-testing
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sourcify_testing
+      POSTGRES_USER: sourcify_testing
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD:?Set a new testing database password}
+      TZ: Asia/Dhaka
+    volumes:
+      - testing-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sourcify_testing -d sourcify_testing"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [testing]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - testing-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [testing]
+
+  setup:
+    image: nex-sourcify-testing-setup:local
+    build:
+      context: .
+      dockerfile: Dockerfile.testing
+      target: setup
+    restart: "no"
+    environment:
+      APP_ENV: testing
+      DATABASE_URL: postgresql://sourcify_testing:${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD}@postgres:5432/sourcify_testing
+      TEST_ADMIN_USER: trainingadmin
+      TEST_ADMIN_PASSWORD: ${TEST_ADMIN_PASSWORD:?Set a new training administrator password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [testing]
+
+  app:
+    image: nex-sourcify-testing:local
+    build:
+      context: .
+      dockerfile: Dockerfile.testing
+      target: runner
+    restart: unless-stopped
+    init: true
+    ports:
+      - "8000:8000"
+    environment:
+      NODE_ENV: production
+      APP_ENV: testing
+      PORT: "8000"
+      HOSTNAME: "0.0.0.0"
+      TZ: Asia/Dhaka
+      DATABASE_URL: postgresql://sourcify_testing:${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD}@postgres:5432/sourcify_testing
+      JWT_SECRET: ${TEST_JWT_SECRET:?Set a new testing signing secret}
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - testing-uploads:/app/public/uploads
+      - testing-pp-meeting:/app/public/pp_meeting
+      - testing-sample-checklist:/app/public/sample_checklist
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/signin').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks: [testing]
+
+  automation:
+    image: musfiquerrhman/nexus-automation:letest
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 60s
+    environment:
+      NODE_ENV: production
+      APP_ENV: testing
+      TZ: Asia/Dhaka
+      DATABASE_URL: postgresql://sourcify_testing:${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD}@postgres:5432/sourcify_testing
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks: [testing]
+
+volumes:
+  testing-postgres:
+  testing-redis:
+  testing-uploads:
+  testing-pp-meeting:
+  testing-sample-checklist:
+
+networks:
+  testing:

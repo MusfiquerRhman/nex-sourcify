@@ -56,7 +56,7 @@ const DocumentSubmissionPage = () => {
                 subSectionLeft={
                     <SearchField
                         placeholder="Search Document Submissions..."
-                        infoText="Document Submission No, Buyer Name, Payment Term, NexSourcify Invoice No, Factory Invoice No"
+                        infoText="Document Submission No, Buyer Name, Payment Term, Company Invoice No, Factory Invoice No"
                         handleSearchChange={handleSearchChange}
                     />
                 }

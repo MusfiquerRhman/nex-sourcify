@@ -2,6 +2,7 @@ import { useDecodedUser } from "~/hooks";
 import type { OrderFormDetailsValues } from "../config/formSchema";
 import type { BaseField } from "~/types/form";
 import { safeNumber } from "~/utils/numbers";
+import { technicalCheckOptions } from "~/utils/orderChecklist";
 
 export type Field<T extends keyof OrderFormDetailsValues> = BaseField<T>;
 
@@ -31,8 +32,8 @@ export const useTableFormFields = (): Field<keyof OrderFormDetailsValues>[] => {
         {
             name: "technical_check",
             label: "Technical",
-            placeholder: "Enter Destination",
-            type: 'checkbox',
+            type: 'select',
+            options: technicalCheckOptions,
             optional: true,
             disabled: !(isTechnicalUser || isAdmin)
         },

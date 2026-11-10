@@ -23,7 +23,7 @@ interface TRPCContextOptions {
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-// Extract the Bearer token from headers
+// Read the bearer credential from the request authorization header.
 const getBearerToken = (headers: Headers): string | null => {
 	const authHeader = headers.get("authorization");
 	if (!authHeader?.startsWith("Bearer ")) return null;
@@ -31,7 +31,7 @@ const getBearerToken = (headers: Headers): string | null => {
 	return parts[1] ?? null;
 };
 
-// Decode and verify JWT token
+// Invalid or expired tokens are treated as unauthenticated requests.
 const verifyToken = (token: string) => {
 	try {
 		const decoded = jwt.verify(token, JWT_SECRET);
@@ -42,13 +42,14 @@ const verifyToken = (token: string) => {
 	}
 };
 
-// Fetch user from database
+// Resolve the token's user, using a short-lived cache to avoid repeated database lookups.
 const getUserFromPayload = async (payload: { user_id: string } | null) => {
 	if (!payload) return null;
 
 	const cacheKey = `auth:user:${payload.user_id}`;
 	const redis = await getRedis();
 	const cached = redis ? await redis.get(cacheKey) : null;
+
 	if (cached) {
 		return superjson.parse(cached) as Awaited<ReturnType<typeof db.users.findUnique>>;
 	}
@@ -78,6 +79,7 @@ export const invalidateAuthUserCache = async (...userIds: string[]) => {
 	if (redis) await Promise.all(userIds.map((userId) => redis.del(`auth:user:${userId}`)));
 };
 
+// Permission entries are cached by level and department, so clear all variants after permission changes.
 export const invalidateAuthPermissionsCache = async () => {
     const redis = await getRedis();
     if (!redis) return;
@@ -86,16 +88,18 @@ export const invalidateAuthPermissionsCache = async () => {
         if (keys.length > 0) await redis.del(keys);
     }
 };
-
+ 
 // Main context creator
 export const createTRPCContext = async (opts: TRPCContextOptions) => {
 	const token = getBearerToken(opts.headers);
 	const payload = token ? verifyToken(token) : null;
 	const user = await getUserFromPayload(payload);
 
+	// Scope permissions to both level and department to avoid reusing another user's permission set.
 	const cacheKey = `auth:permissions:${user?.level_id}:${user?.department_id}`;
 	const redis = await getRedis();
 	const cached = user && redis ? await redis.get(cacheKey) : null;
+
 	const permissionsArray: Awaited<ReturnType<typeof db.level_permission.findMany>> = user
 		? cached
 			? JSON.parse(cached) as Awaited<ReturnType<typeof db.level_permission.findMany>>
@@ -111,18 +115,13 @@ export const createTRPCContext = async (opts: TRPCContextOptions) => {
 		await redis.set(cacheKey, JSON.stringify(permissionsArray), { EX: 600 });
 	}
 
-	// Convert permissions array to a map for fast access
+	// Procedures can check a module's permission directly by its module ID.
 	const permissions = permissionsArray.reduce((map, permission) => {
 		map[permission.module_id] = permission;
 		return map;
 	}, {} as Record<number, typeof permissionsArray[number]>);
 
-	return {
-		db,
-		user,
-		permissions,
-		...opts,
-	};
+	return { db, user, permissions, ...opts };
 };
 
 // INITIALIZATION
@@ -173,7 +172,7 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 // Public (unauthenticated) procedure
 export const publicProcedure = t.procedure.use(timingMiddleware);
 
-// Protected (authenticated) procedure
+// Reject requests without a resolved user before running protected procedure logic.
 export const protectedProcedure = t.procedure
 	.use(
 		t.middleware(({ ctx, next }) => {

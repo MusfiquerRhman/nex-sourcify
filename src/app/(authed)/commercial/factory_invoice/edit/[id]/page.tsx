@@ -125,7 +125,7 @@ const EditFactoryInvoicePage = ({ params }: ParamsProp) => {
             />
 
             <MessageBox 
-                message="This Factory Invoice has associated NexSourcify Invoice and cannot be updated or deleted." 
+                message="This Factory Invoice has associated Nex-Sourcify Invoice and cannot be updated or deleted."
                 active={exists} 
                 type="primary" 
             />

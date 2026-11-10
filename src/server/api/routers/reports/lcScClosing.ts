@@ -364,7 +364,7 @@ export const lcScClosingRouter = createTRPCRouter({
                                     GROUP BY ES.SHIPMENT_DETAILS_ID
                                 ),
                             ` : Prisma.empty}
-                            NexSourcify AS (
+                            RDL AS (
                                 SELECT
                                     DSD.document_submissions_id AS DS_ID,
                                     DSD.rdl_invoice_id AS RI_ID,
@@ -403,7 +403,7 @@ export const lcScClosingRouter = createTRPCRouter({
                                     RDL.ESS_VALUE,
                                     FACTORY.FACTORY_VALUE
                                 FROM rdl_invoice RI
-                                INNER JOIN NexSourcify ON RDL.RI_ID = RI.id
+                                INNER JOIN RDL ON RDL.RI_ID = RI.id
                                 LEFT JOIN FACTORY ON FACTORY.RI_ID = RI.id AND FACTORY.DS_ID = RDL.DS_ID
                             )
                             SELECT
@@ -684,7 +684,7 @@ export const lcScClosingRouter = createTRPCRouter({
                                     GROUP BY ES.SHIPMENT_DETAILS_ID
                                 ),
                             ` : Prisma.empty}
-                            NexSourcify AS (
+                            RDL AS (
                                 SELECT
                                     RID.rdl_invoice_id AS RI_ID,
                                     SUM(RISD.invoice_quantity * SD.fob_rate) AS RDL_VALUE,
@@ -723,7 +723,7 @@ export const lcScClosingRouter = createTRPCRouter({
                                     RDL.ESS_VALUE,
                                     FACTORY.FACTORY_VALUE
                                 FROM rdl_invoice RI
-                                INNER JOIN NexSourcify ON RDL.RI_ID = RI.id
+                                INNER JOIN RDL ON RDL.RI_ID = RI.id
                                 LEFT JOIN FACTORY ON FACTORY.RI_ID = RI.id
                             )
                             SELECT

@@ -561,7 +561,7 @@ export const proceedRealizationRouter = createTRPCRouter({
             if (!can_view) {
                 throw new TRPCError({
                     code: "FORBIDDEN",
-                    message: "You do not have permission to view NexSourcify invoice details for proceed realization.",
+                    message: "You do not have permission to view Nex-Sourcify invoice details for proceed realization.",
                 });
             }
             

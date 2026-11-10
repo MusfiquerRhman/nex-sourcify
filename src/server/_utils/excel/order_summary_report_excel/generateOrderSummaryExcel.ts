@@ -28,11 +28,11 @@ const tableHeaders = [
     "ETD",
     "Lot Qty",
     "Delivery Qty",
-    "NexSourcify FOB Rate",
+    "Company FOB Rate",
     "Factory Rate",
     "PO Close",
-    "Order NexSourcify Value",
-    "Delivered NexSourcify Value",
+    "Order Company Value",
+    "Delivered Company Value",
     "Factory Order Value",
     "Factory Delivery Value",
     "Team",
@@ -60,7 +60,7 @@ export const generateOrderSummaryExcel = async (rows: OrderSummaryReportRow[], r
 
     workbook.creator = reportMeta.generatedBy;
     workbook.created = new Date();
-    workbook.company = "NexSourcify";
+    workbook.company = "Nex-Sourcify";
     workbook.subject = "Order Summary Report";
     workbook.title = "Order Summary Report";
     workbook.category = "Merchandising Reports";

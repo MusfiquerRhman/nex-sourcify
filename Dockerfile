@@ -25,6 +25,10 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV SKIP_ENV_VALIDATION=true
 
+# Allow the Next.js type-check worker more heap during the image build.
+ARG NODE_BUILD_MAX_OLD_SPACE_SIZE=4096
+ENV NODE_OPTIONS="--max-old-space-size=${NODE_BUILD_MAX_OLD_SPACE_SIZE}"
+
 RUN \
   if [ -f yarn.lock ]; then yarn build; \
   elif [ -f package-lock.json ]; then npm run build; \
@@ -40,6 +44,9 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=7000
 ENV HOSTNAME="0.0.0.0"
+ENV TZ=Asia/Dhaka
+
+RUN apk add --no-cache tzdata
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -51,9 +58,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Ensure the upload directory exists and is writable by nextjs user
 # We do this as root BEFORE switching to the nextjs user
-RUN mkdir -p /app/public/uploads/style_photos && \
-    chown -R nextjs:nodejs /app/public/uploads && \
-    chmod -R 755 /app/public/uploads
+RUN mkdir -p /app/public/uploads/style_photos /app/public/pp_meeting/pps_views /app/public/pp_meeting/size_set_views /app/public/pp_meeting/attendance_lists /app/public/sample_checklist && \
+    chown -R nextjs:nodejs /app/public/uploads /app/public/pp_meeting /app/public/sample_checklist && \
+    chmod -R 755 /app/public/uploads /app/public/pp_meeting /app/public/sample_checklist
 
 # Switch to non-root user
 USER nextjs

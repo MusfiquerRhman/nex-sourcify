@@ -20,6 +20,7 @@ const SalesReportPage = () => {
 			from_date: salesReportData.from_date,
 			to_date: salesReportData.to_date,
 			buyers: salesReportData.buyer_ids?.join(","),
+            seasons: salesReportData.season_ids?.join(","),
 			factories: salesReportData.factory_ids?.join(","),
 			brands: salesReportData.brand_ids?.join(","),
 			departments: salesReportData.department_ids?.join(","),

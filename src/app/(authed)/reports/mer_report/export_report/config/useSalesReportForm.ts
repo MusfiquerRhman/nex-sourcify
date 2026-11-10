@@ -6,7 +6,7 @@ import { useFormFields } from "./useFormFields";
 import { formatDateForInput } from "~/utils/localDateString";
 import { useEffect } from "react";
 
-const specialFields = [ "factory_ids", "brand_ids", "department_ids", "product_type_ids", "team_id" ] as const;
+const specialFields = [ "season_ids", "factory_ids", "brand_ids", "department_ids", "product_type_ids", "team_id" ] as const;
 
 export const useExportReportForm = () => {
     const methods = useForm<ExportReportFormValues>({
@@ -15,6 +15,7 @@ export const useExportReportForm = () => {
             from_date: formatDateForInput(new Date()),
             to_date: formatDateForInput(new Date()),
             buyer_ids: undefined,
+            season_ids: ['-2'],
             factory_ids: ['-2'],
             brand_ids: ['-2'],
             department_ids: ['-2'],
@@ -58,6 +59,12 @@ export const useExportReportForm = () => {
             }
         });
     }, [watchedValues, methods]);
+
+    const buyerSelectionKey = JSON.stringify([...(buyer_ids ?? [])].sort((a, b) => a - b));
+
+    useEffect(() => {
+        methods.setValue("season_ids", ["-2"]);
+    }, [buyerSelectionKey, methods]);
 
     const formFields = useFormFields({
         buyer_ids: buyer_ids?.map(id => Number(id)), 

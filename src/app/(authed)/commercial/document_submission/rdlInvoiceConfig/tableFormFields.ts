@@ -12,8 +12,8 @@ export const formFields = ({rdlInvoice, isEdit}: {rdlInvoice: RDLInvoiceProp[] |
     return [
         {
             name: "rdl_invoice_id",
-            label: "rdl Invoice",
-            placeholder: "Select NexSourcify invoice",
+            label: "Company Invoice",
+            placeholder: "Select Company invoice",
             type: "select",
             options: rdlInvoice?.map((f) => ({ label: f.invoice_no, value: f.id.toString() })) ?? [],
             disabled: isEdit,
@@ -37,24 +37,25 @@ export const formFields = ({rdlInvoice, isEdit}: {rdlInvoice: RDLInvoiceProp[] |
         },
         {
             name: "rdl_value",
-            label: "NexSourcify Value",
-            placeholder: "Enter NexSourcify value",
+            label: "Company Value",
+            placeholder: "Enter Company value",
             type: 'text',
             disabled: true,
             optional: true,
         },
         {
             name: "previously_received_rdl_value",
-            label: "Previously Received NexSourcify Value",
-            placeholder: "Enter NexSourcify value",
+            label: "Previously Received Company Value",
+            placeholder: "Enter Company value",
             type: 'text',
             disabled: true,
             optional: true,
         },
         {
             name: "received_rdl_value",
-            label: "Received NexSourcify Value",
-            placeholder: "Enter NexSourcify value",
+            label: "Received Company Value",
+            placeholder: "Enter Company value",
+            type: 'number'
         },
     ]
 }

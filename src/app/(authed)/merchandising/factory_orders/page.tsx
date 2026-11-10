@@ -86,8 +86,7 @@ const FactoryOrders = () => {
                         label='Approval Status'
                         options={[
                             {label: 'ALL', value: -1}, 
-                            {label: 'APPROVED', value: 3},
-                            {label: 'LEVEL 1 AUTHORIZED', value: 2}, 
+                            {label: 'APPROVED', value: 2}, 
                             {label: 'PENDING', value: 1}, 
                             {label: 'INCOMPLETE', value: 0}, 
                         ]}

@@ -10,6 +10,8 @@ import { currencyFormatter, quantityFormatter } from "~/utils/localNumberStrings
 interface ExportReportBaseRow {
     buyer_id: string;
     buyer_name: string;
+    season_id?: number;
+    season_name?: string;
     factory_id?: string;
     factory_name?: string;
     team_id?: string;
@@ -33,6 +35,7 @@ export const exportReportRouter = createTRPCRouter({
                 fromDate: z.string().optional(),
                 toDate: z.string().optional(),
                 buyerIds: z.array(z.number()).optional(),
+                seasonIds: z.array(z.number()).optional(),
                 factoryIds: z.array(z.number()).optional(),
                 brandIds: z.array(z.number()).optional(),
                 departmentIds: z.array(z.number()).optional(),
@@ -46,12 +49,12 @@ export const exportReportRouter = createTRPCRouter({
             })
         )
         .query(async ({ ctx, input }) => {
-            const can_view = ctx.permissions[m.SALES_REPORT]?.can_view;
+            const can_view = ctx.permissions[m.EXPORT_REPORT]?.can_view;
             
             if (!can_view) {
                 throw new TRPCError({
                     code: "FORBIDDEN",
-                    message: "You do not have permission to view sales report.",
+                    message: "You do not have permission to view export report.",
                 });
             }
             
@@ -60,6 +63,7 @@ export const exportReportRouter = createTRPCRouter({
                 const toDate = input.toDate;
 
                 const buyerIds = input.buyerIds ?? [];
+                const seasonIds = input.seasonIds ?? [];
                 const factoryIds = input.factoryIds ?? [];
                 const brandIds = input.brandIds ?? [];
                 const departmentIds = input.departmentIds ?? [];
@@ -67,24 +71,28 @@ export const exportReportRouter = createTRPCRouter({
                 const teamIds = input.teamIds ?? [];
 
                 const isFactoryNone = factoryIds.includes(-2);
+                const isSeasonNone = seasonIds.includes(-2);
                 const isBrandNone = brandIds.includes(-2);
                 const isDepartmentNone = departmentIds.includes(-2);
                 const isProductTypeNone = productTypeIds.includes(-2);
                 const isTeamNone = teamIds.includes(-2);
 
                 const isFactoryAll = factoryIds.includes(-1);
+                const isSeasonAll = seasonIds.includes(-1);
                 const isBrandAll = brandIds.includes(-1);
                 const isDepartmentAll = departmentIds.includes(-1);
                 const isProductTypeAll = productTypeIds.includes(-1);
                 const isTeamAll = teamIds.includes(-1);
 
                 const isFactoryDimension = !isFactoryNone && factoryIds.length > 0;
+                const isSeasonDimension = !isSeasonNone && seasonIds.length > 0;
                 const isBrandDimension = !isBrandNone && brandIds.length > 0;
                 const isDepartmentDimension = !isDepartmentNone && departmentIds.length > 0;
                 const isProductTypeDimension = !isProductTypeNone && productTypeIds.length > 0;
                 const isTeamDimension = !isTeamNone && teamIds.length > 0;
 
                 const isFactorySelected = isFactoryDimension && !isFactoryAll;
+                const isSeasonSelected = isSeasonDimension && !isSeasonAll;
                 const isBrandSelected = isBrandDimension && !isBrandAll;
                 const isDepartmentSelected = isDepartmentDimension && !isDepartmentAll;
                 const isProductTypeSelected = isProductTypeDimension && !isProductTypeAll;
@@ -101,6 +109,10 @@ export const exportReportRouter = createTRPCRouter({
                     Prisma.sql`ES.delivery_quantity * SD.FOB_RATE AS rdl_value`,
                     Prisma.sql`ES.delivery_quantity * FSD.FACTORY_RATE AS factory_value`,
                 ];
+
+                if (isSeasonDimension) {
+                    baseSelectFields.push(Prisma.sql`S.id AS season_id`, Prisma.sql`S.season_name`);
+                }
 
                 if (isFactoryDimension) {
                     baseSelectFields.push(
@@ -158,6 +170,10 @@ export const exportReportRouter = createTRPCRouter({
                     Prisma.sql`INNER JOIN teams AS T ON T.id = BO.team_id`,
                 ];
 
+                if (isSeasonDimension) {
+                    joins.push(Prisma.sql`INNER JOIN seasons AS S ON S.id = BO.season_id`);
+                }
+
                 if (isBrandDimension) {
                     joins.push(
                         Prisma.sql`INNER JOIN buyer_brands AS BB ON BB.id = BO.brand_id`
@@ -195,6 +211,10 @@ export const exportReportRouter = createTRPCRouter({
                     );
                 }
 
+                if (isSeasonSelected) {
+                    filters.push(Prisma.sql`BO.season_id IN (${Prisma.join(seasonIds)})`);
+                }
+
                 if (isBrandSelected) {
                     filters.push(
                         Prisma.sql`BO.brand_id IN (${Prisma.join(brandIds)})`
@@ -227,6 +247,11 @@ export const exportReportRouter = createTRPCRouter({
 
                 const outerSelectFields: Prisma.Sql[] = [Prisma.sql`buyer_id`, Prisma.sql`buyer_name`];
                 const outerGroupByFields: Prisma.Sql[] = [Prisma.sql`buyer_id`, Prisma.sql`buyer_name`];
+
+                if (isSeasonDimension) {
+                    outerSelectFields.push(Prisma.sql`season_id`, Prisma.sql`season_name`);
+                    outerGroupByFields.push(Prisma.sql`season_id`, Prisma.sql`season_name`);
+                }
 
                 if (isFactoryDimension) {
                     outerSelectFields.push(Prisma.sql`factory_id`, Prisma.sql`factory_name`);
@@ -296,6 +321,7 @@ export const exportReportRouter = createTRPCRouter({
 
                 const exportReportData = result.map((row) => ({
                     buyer_name: row.buyer_name,
+                    ...(isSeasonDimension ? { season_name: row.season_name ?? "" } : {}),
                     ...(isFactoryDimension ? 
                         { factory_name: row.factory_name ?? "" } : {}
                     ),

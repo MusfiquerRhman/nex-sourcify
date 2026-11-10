@@ -72,7 +72,14 @@ const SideBar = ({navData, children}: SideBarProps) => {
                     transition={{ type: "tween", duration: 0.25, ease: 'linear' }}
                 >
                     <header className="nex-sidebar-brand">
-                        <Image width={1024} height={1024} src="/nexsourcify-logo.png" alt="NexSourcify" className="nex-sidebar-logo" />
+                        <Image
+                            src="/nexsourcify-logo.png"
+                            alt="Nex-Sourcify"
+                            width={1024}
+                            height={1024}
+                            sizes="208px"
+                            className="nex-sidebar-logo"
+                        />
                     </header>
 
                     <nav aria-label="Main navigation" className="nex-sidebar-nav">

@@ -50,7 +50,7 @@ export async function logError(error: unknown, ctx: any, input?: unknown): Promi
 
 // Convert any error into a TRPCError.
 // This function NEVER returns.
-export function handlePrismaError(error: unknown): never {
+export function handlePrismaError(error: unknown, foreignKeyMessages?: Record<string, string>): never {
     if (error instanceof TRPCError) {
         throw error;
     }
@@ -91,7 +91,7 @@ export function handlePrismaError(error: unknown): never {
                 throw new TRPCError({
                     code: "CONFLICT",
                     message: typeof constraint === "string"
-                        ? friendlyMessages[constraint]
+                        ? foreignKeyMessages?.[constraint] ?? friendlyMessages[constraint]
                         : "This record is being used by another record and cannot be deleted.",
                     cause: error,
                 });

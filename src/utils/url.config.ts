@@ -54,6 +54,7 @@ const sideBarConfig: Record<number, {href: string;}> = {
     [m.FOB_TYPES]: { href: "/library/fob_types" },
     [m.PAYMENT_TERMS]: { href: "/library/payment_terms" },
     [m.FREIGHT_TERMS]: { href: "/library/freight_terms" },
+    [m.SAMPLE_TYPES]: { href: "/library/sample_types" },
     
     // System Tweaks Module
     [m.TNA_BASE_ACTION]: { href: "/system/tna_base_action" },
@@ -114,6 +115,7 @@ const sideBarConfig: Record<number, {href: string;}> = {
     [m.COMMISSION_REPORT]: { href: "/reports/acc_reports/commission_report" },
     [m.LC_TRANSFER_REPORT]: { href: "/reports/com_report/lc_transfer_report"},
     [m.CROSS_PAYMENT_REPORT]: { href: "/reports/acc_reports/cross_payment_report" },
+    [m.CASHFLOW_REPORT]: { href: "/reports/acc_reports/cashflow_report" },
 
     // Maintenance Module
     [m.ERROR_LOGS]: { href: "/maintenance/error_logs" },
@@ -121,7 +123,9 @@ const sideBarConfig: Record<number, {href: string;}> = {
     [m.NOTIFICATIONS]: { href: "/maintenance/notifications" },
 
     // Quality Module
-    [m.ORDER_CHECKLIST]: {href: "/quality/order_checklist"}
+    [m.SAMPLE_CHECKLIST]: {href: "/quality/sample_checklist"},
+    [m.ORDER_CHECKLIST]: {href: "/quality/order_checklist"},
+    [m.PP_MEETING]: {href: "/quality/pp_meeting"}
 };
 
 export default sideBarConfig;

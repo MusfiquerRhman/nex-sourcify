@@ -25,7 +25,7 @@ export const generateActivityReportExcel = async (props: ActivityReportProps) =>
     // Set file metadata
     workbook.creator = reportMeta.generatedBy; 
     workbook.created = new Date();
-    workbook.company = "NexSourcify";
+    workbook.company = "Nex-Sourcify";
     workbook.subject = "Post-Exfactory Commercial Activity Report";
     workbook.title = "Post-Exfactory Commercial Activity Report";
     workbook.category = "Commercial Reports";

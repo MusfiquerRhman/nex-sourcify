@@ -1,6 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, styles } from "../components/pdfConfig";
-import { PrintByAndDate, RenaissanceLogo, ReportTitle, Table, TableSummary } from "../components";
+import { PrintByAndDate, NexSourcifyLogo, ReportTitle, Table, TableSummary } from "../components";
 import { useDecodedUser } from "~/hooks";
 import type { inferRouterOutputs } from '@trpc/server';
 import type { exportSummaryReportRouter } from '~/server/api/routers/reports/exportSummaryReport'
@@ -89,7 +89,7 @@ const SalesReportPDF = ({ data, base }: SalesReportPDFProps) => {
 	];
 
 	if(base === 'SC') { 
-		tableColumns.splice(11, 0, { key: 'total_rdl_export_value', label: 'NexSourcify Export Value', width: 80 })
+		tableColumns.splice(11, 0, { key: 'total_rdl_export_value', label: 'Company Export Value', width: 80 })
 	}
 
 	const results = [
@@ -112,16 +112,16 @@ const SalesReportPDF = ({ data, base }: SalesReportPDFProps) => {
     return (
 		<Document
             title={title}
-            author="NexSourcify Nexus"
+            author="Nex-Sourcify"
             subject="Factory Invoice PDF"
-            keywords="Factory, Invoice, PDF, NexSourcify Nexus, ERP"
+            keywords="Factory, Invoice, PDF, Nex-Sourcify, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="NexSourcify Nexus"
+            producer="Nex-Sourcify"
 			pageMode='useOutlines'
 			creationDate={new Date()}
         >
 			<Page orientation="landscape" size="A4" style={styles.body} wrap>
-				<RenaissanceLogo />
+				<NexSourcifyLogo />
 				<ReportTitle title={title} />
 				<View style={{ marginTop: -10, marginBottom: 10 }}>
 					<PrintByAndDate />

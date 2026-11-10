@@ -80,7 +80,7 @@ const Brands = (props: BrandsProps) => {
             </div>
             <div className="flex flex-col gap-5">
                 {brands?.buyer_brands.map((brand, brandIndex) => (
-                    <article key={brandIndex} className="emboss rounded-lg p-4 sm:p-5">
+                    <article key={brandIndex} className="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
                         <div className="flex items-start justify-between gap-4 border-b border-gray-200 pb-4">
                             <div className="min-w-0">
                                 <p className="mb-1 text-xs font-bold uppercase tracking-wide text-primary-dark">Brand</p>

@@ -7,8 +7,8 @@ export const formFields = (): Field<keyof RDLInvoiceDetailsFormValues>[] => {
     return [
         {
             name: "rdl_invoice_no",
-            label: "NexSourcify Invoice No",
-            placeholder: "Enter NexSourcify invoice no",
+            label: "Company Invoice No",
+            placeholder: "Enter Company invoice no",
             type: 'text',
             optional: true,
             disabled: true,

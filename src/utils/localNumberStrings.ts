@@ -53,7 +53,8 @@ const numberToWords = (num: number): string => {
 }
 
 export const amountToWords = (amount: number) => {
-    const rounded = Math.round(amount * 100);
+    const rounded = Math.round(Math.abs(amount) * 100);
+    const prefix = amount < 0 && rounded > 0 ? "Negative " : "";
 
     const dollars = Math.floor(rounded / 100);
     const cents = rounded % 100;
@@ -67,5 +68,5 @@ export const amountToWords = (amount: number) => {
         result += ` and ${centWords} Cent${cents !== 1 ? "s" : ""}`;
     }
 
-    return `${result} Only.`;
+    return `${prefix}${result} Only.`;
 };

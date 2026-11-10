@@ -37,7 +37,7 @@ const RdlInvoicePage = () => {
 
     const deleteMutation = api.rdlInvoice.deleteRdlInvoice.useMutation({
         onSuccess: async () => {
-            toast.success("NexSourcify Invoice deleted successfully");
+            toast.success("Nex-Sourcify Invoice deleted successfully");
             await Promise.all([
                 utils.rdlInvoice.getRdlInvoice.invalidate(),
                 utils.rdlInvoice.searchRdlInvoices.invalidate(),
@@ -52,18 +52,18 @@ const RdlInvoicePage = () => {
         deleteID, isLoadingDelete, deleteClicked, setDeleteClicked, handleDeleteClicked, handleDeleteConfirmed 
     } = useDeleteConfirmation({
         mutation: deleteMutation,
-        successMessage: 'NexSourcify Invoice deleted successfully',
+        successMessage: 'Nex-Sourcify Invoice deleted successfully',
         payloadBuilder: id => ({ id }),
     });
 
     return (
         <>
             <Wrapper
-                heading="NexSourcify Invoices"
+                heading="Nex-Sourcify Invoices"
                 subSectionLeft={
                     <SearchField
-                        placeholder="Search NexSourcify Invoices..."
-                        infoText="NexSourcify Invoice No, Buyer Name, Order Reference, Style No, Po no."
+                        placeholder="Search Nex-Sourcify Invoices..."
+                        infoText="Company Invoice No, Buyer Name, Order Reference, Style No, Po no."
                         handleSearchChange={handleSearchChange}
                     />
                 }
@@ -72,7 +72,7 @@ const RdlInvoicePage = () => {
                         <div className="w-70">
                             <Button
                                 variant="secondary"
-                                label="Add New NexSourcify Invoice"
+                                label="Add New Nex-Sourcify Invoice"
                                 leftIcon={plusIcon}
                                 onClick={() => router.push('/commercial/rdl_invoice/new')}
                             />

@@ -33,7 +33,7 @@ const factoryPaymentTableHeader = [
     'Factory Invoice Quantity',
     'Factory Invoice Value',
     'Document Submission',
-    'NexSourcify Invoice',
+    'Company Invoice',
     'Factory Payment',
     'Payment Date'
 ]

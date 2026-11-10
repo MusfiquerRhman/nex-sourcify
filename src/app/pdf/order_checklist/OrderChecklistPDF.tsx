@@ -1,6 +1,6 @@
 import { Document, Page, Text } from "@react-pdf/renderer";
 import { registerPdfFonts, styles } from "../components/pdfConfig";
-import { PrintByAndDate, RenaissanceLogo, ReportTitle, HeaderPart, Signature } from "../components";
+import { PrintByAndDate, NexSourcifyLogo, ReportTitle, HeaderPart, Signature } from "../components";
 import ChecklistTable from "./components/ChecklistTable";
 import { useDecodedUser } from "~/hooks";
 import type { HeaderData } from "~/types/pdf";
@@ -20,7 +20,7 @@ const OrderChecklistPDF = (props: Props) => {
     const checklistHeader: HeaderData = [
         [
             { label: "Buyer Name", value: header?.buyer_name ?? '' },
-            { label: "NexSourcify Order No", value: header?.ref_no ?? '' },
+            { label: "Company Order No", value: header?.ref_no ?? '' },
             { label: "Style", value: header?.style ?? '' },
         ],
         [
@@ -32,19 +32,19 @@ const OrderChecklistPDF = (props: Props) => {
     return (
         <Document
             title={`Order Checklist - ${header?.ref_no ?? ''}`}
-            author="NexSourcify Nexus"
+            author="Nex-Sourcify"
             subject="Order Checklist PDF"
-            keywords="Order, Checklist, Quality, PDF, NexSourcify Nexus, ERP"
-            creator={user ? `${user.first_name} ${user.last_name}` : "NexSourcify Nexus"}
-            producer="NexSourcify Nexus"
+            keywords="Order, Checklist, Quality, PDF, Nex-Sourcify, ERP"
+            creator={user ? `${user.first_name} ${user.last_name}` : "Nex-Sourcify"}
+            producer="Nex-Sourcify"
             pageMode="useOutlines"
             creationDate={new Date()}
         >
             <Page orientation="landscape" size="A4" style={styles.body} wrap>
-                <RenaissanceLogo />
+                <NexSourcifyLogo />
                 <PrintByAndDate />
                 <ReportTitle title="ORDER CHECKLIST" />
-                <HeaderPart data={checklistHeader} />
+                <HeaderPart data={checklistHeader} variant="between"/>
                 <ChecklistTable details={data.details} />
                 <Signature signatures={["Technical Check by", "QA Check By"]} />
                 <Text

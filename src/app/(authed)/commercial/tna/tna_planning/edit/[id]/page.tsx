@@ -68,7 +68,7 @@ const EditTNAPlans = ({ params }: ParamsProp) => {
             await updateTnaPlans.mutateAsync(payload);
         } catch (error) {
             const message = parseTRPCError(error);
-            toast.error(`Error updating NexSourcify Invoice: ${message}`);
+            toast.error(`Error updating Nex-Sourcify Invoice: ${message}`);
             setError(message);
         } finally {
             setIsLoadingSubmit(false);

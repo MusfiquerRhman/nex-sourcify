@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Loader, Toggle, FormSelect, TextField, Button, MultiSelect, CheckBox, Label} from '~/components'
+import { Loader, Toggle, FormSelect, TextField, Button, MultiSelect, CheckBox, Label, Info } from '~/components'
 import { Controller } from "react-hook-form";
 import type { Control, FieldValues, Path, UseFormRegister } from "react-hook-form";
 import type { BaseField } from "~/types/form";
@@ -32,9 +32,9 @@ const Form = <T extends FieldValues, >(props: Props<T>) => {
                     <p>Error: {error}</p>
                 </div>
             )}
-            <form onSubmit={onSubmit} className="nex-form flex w-full min-w-0 flex-col justify-center p-5 sm:p-8">
+            <form onSubmit={onSubmit} className="nex-form @container flex w-full min-w-0 flex-col p-4 sm:p-6">
                 {/* Main dynamic layout grid */}
-                <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-x-6 gap-y-5">
+                <div className="grid w-full min-w-0 grid-cols-1 gap-x-4 gap-y-3 @lg:grid-cols-2 @4xl:grid-cols-3">
                     {fields.map((field, index) => (
                         <React.Fragment key={index}>
                             {(() => {
@@ -81,6 +81,28 @@ const Form = <T extends FieldValues, >(props: Props<T>) => {
                                                 minDate={field.minDate}
                                             />
                                         );
+
+                                    case "textarea":
+                                        return (
+                                            <div className="col-span-full flex min-w-0 flex-col">
+                                                <Label
+                                                    htmlFor={fieldName}
+                                                    label={field.label}
+                                                    optional={field.optional}
+                                                    isErrored={!!validationMessage}
+                                                />
+                                                <textarea
+                                                    {...register(fieldName as Path<T>)}
+                                                    id={fieldName}
+                                                    className="nex-input w-full focus:outline-none"
+                                                    rows={2}
+                                                    placeholder={field.placeholder ?? field.label}
+                                                    readOnly={isDisabled}
+                                                    aria-invalid={!!validationMessage}
+                                                />
+                                                <Info info={validationMessage} variant="error" />
+                                            </div>
+                                        );
                                     
                                     case 'toggle': 
                                         return (
@@ -113,7 +135,7 @@ const Form = <T extends FieldValues, >(props: Props<T>) => {
 
                                     case 'checkbox':
                                         return (
-                                            <div className="col-span-full flex items-center gap-3 p-2 min-h-10 max-w-md">
+                                            <div className="nex-form-checkbox col-span-full flex min-h-8 max-w-md items-center gap-2">
                                                 <Controller
                                                     name={fieldName as Path<T>}
                                                     control={control}
@@ -152,7 +174,7 @@ const Form = <T extends FieldValues, >(props: Props<T>) => {
                         </React.Fragment>
                     ))}
                 </div>
-                {(!disabled && !!onSubmit) && <div className="nex-form-actions mt-7 flex w-full flex-wrap items-center justify-end gap-3">
+                {(!disabled && !!onSubmit) && <div className="nex-form-actions mt-5 flex w-full flex-wrap items-center justify-end gap-3">
                     {secondaryActions}
                     <Button type="submit" 
                         label={buttonLabel} 

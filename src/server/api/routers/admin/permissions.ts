@@ -1,6 +1,6 @@
 import { createTRPCRouter, invalidateAuthPermissionsCache, protectedProcedure } from "~/server/api/trpc";
 import { z } from "zod";
-import { m } from "~/utils/moduleMap";
+import { formatModuleName, m, withModuleDisplayName } from "~/utils/moduleMap";
 import { TRPCError } from "@trpc/server";
 import { handlePrismaError, logError } from "~/server/_utils/handleTRPCErrors";
 import { db } from "~/server/db";
@@ -78,20 +78,19 @@ export const permissionRouter = createTRPCRouter({
 			parseInt(input.department_id),
 		);
 		const cached = redis ? await redis.get(cacheKey) : null;
+		const permissions = cached
+			? JSON.parse(cached) as CachedPermissions
+			: await getPermissions(ctx.db, parseInt(input.level_id), parseInt(input.department_id));
 
-		if (cached) {
-			return JSON.parse(cached) as CachedPermissions;
+		if (redis && !cached) {
+			await redis.set(cacheKey, JSON.stringify(permissions), { EX: 600 });
 		}
 
-		const permissions = await getPermissions(
-			ctx.db,
-			parseInt(input.level_id),
-			parseInt(input.department_id),
-		);
-
-	if (redis) await redis.set(cacheKey, JSON.stringify(permissions), { EX: 600 }); // Cache for 10 minutes
-
-    return permissions;
+		return permissions.map((permission) => ({
+			...permission,
+			module_name: formatModuleName(permission.modules.name),
+			modules: withModuleDisplayName(permission.modules),
+		}));
   }),
 
 
@@ -230,7 +229,7 @@ export const permissionRouter = createTRPCRouter({
 			).values()
         );
 
-        return modules;
+        return modules.map(withModuleDisplayName);
     }),
 
     

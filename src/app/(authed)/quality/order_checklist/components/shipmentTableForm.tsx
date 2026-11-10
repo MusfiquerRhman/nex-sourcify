@@ -26,10 +26,18 @@ const TableForm = (props: Props) => {
     const fields = useTableFormFields();
 
     const handleCheckboxChange = (fieldName: string, checked: boolean, index: number) => {
-        if (fieldName !== 'technical_check' && fieldName !== 'qa_check') return;
+        if (fieldName !== 'qa_check') return;
 
-        const dateField = fieldName === 'technical_check' ? 'technical_check_date' : 'qa_check_date';
-        methods.setValue(`details.${index}.${dateField}`, checked ? formatDateForInput(new Date()) : '', {
+        methods.setValue(`details.${index}.qa_check_date`, checked ? formatDateForInput(new Date()) : '', {
+            shouldDirty: true,
+            shouldValidate: true,
+        });
+    };
+
+    const handleSelectChange = (fieldName: string, value: string | number | boolean | null, index: number) => {
+        if (fieldName !== 'technical_check') return;
+
+        methods.setValue(`details.${index}.technical_check_date`, value === 1 ? formatDateForInput(new Date()) : '', {
             shouldDirty: true,
             shouldValidate: true,
         });
@@ -57,6 +65,7 @@ const TableForm = (props: Props) => {
                                     index={index}
                                     canDelete={false}
                                     onCheckboxChange={handleCheckboxChange}
+                                    onSelectChange={handleSelectChange}
                                 />
                             ))}
                         </TableBody>

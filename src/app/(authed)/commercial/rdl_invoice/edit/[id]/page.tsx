@@ -41,7 +41,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
     const updateRDLInvoice = api.rdlInvoice.updateRdlInvoice.useMutation({
         onSuccess: async () => {
             setError(null);
-            toast.success("NexSourcify Invoice updated successfully!");
+            toast.success("Nex-Sourcify Invoice updated successfully!");
             await Promise.all([
                 utils.rdlInvoice.getRdlInvoiceById.invalidate({ id }),
                 utils.rdlInvoice.getRdlInvoice.invalidate(),
@@ -63,6 +63,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
                 pi_no: rdlInvoiceData.pi_no,
                 remarks: rdlInvoiceData.remarks,
                 container_no: rdlInvoiceData.container_no,
+                contact_no: rdlInvoiceData.contact_no,
                 discount: rdlInvoiceData.discount,
                 details: (rdlInvoiceData.details ?? []).map((detail) => ({
                     db_id: detail.db_id,
@@ -80,7 +81,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
             await updateRDLInvoice.mutateAsync(payload);
         } catch (error) {
             const message = parseTRPCError(error);
-            toast.error(`Error updating NexSourcify Invoice: ${message}`);
+            toast.error(`Error updating Nex-Sourcify Invoice: ${message}`);
             setError(message);
         } finally {
             setIsLoadingSubmit(false);
@@ -142,7 +143,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
     const exists = !!documentSubmissionExistsData?.exists;
     
     return (
-        <Wrapper heading='Update NexSourcify Invoice' 
+        <Wrapper heading='Update Nex-Sourcify Invoice'
             subSectionRight={
                 can_view ? (
                     <div className="w-50 mb-3">
@@ -158,7 +159,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
         >
             <Form 
                 fields={formFields} 
-                buttonLabel="Add New NexSourcify Invoice" 
+                buttonLabel="Add New Nex-Sourcify Invoice"
                 register={methods.register}
                 isLoading={isLoading}
                 validationError={validationError ?? {}}
@@ -179,20 +180,20 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
             <div className="w-full flex flex-row justify-end">
                 <Button type="button" 
                     onClick={() => onSubmitAll()}
-                    label={"Update NexSourcify Invoice"} 
+                    label={"Update Nex-Sourcify Invoice"}
                     className="text-lg tracking-wide mt-6 max-w-80 m-8"
                     disabled={isLoading || isLoadingSubmit || isAuthorized || exists}
                 />
             </div>
 
             <MessageBox 
-                message="This NexSourcify Invoice has been approved and cannot be updated or deleted" 
+                message="This Nex-Sourcify Invoice has been approved and cannot be updated or deleted"
                 active={isAuthorized} 
                 type="secondary" 
             />
 
             <MessageBox 
-                message="This NexSourcify Invoice has associated Document Submission and cannot be updated or deleted" 
+                message="This Nex-Sourcify Invoice has associated Document Submission and cannot be updated or deleted"
                 active={exists} 
                 type="primary" 
             />
@@ -204,7 +205,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
                             type="button"
                             variant="delete"
                             onClick={() => onSetAuthorization(false)}
-                            label="Unauthorize NexSourcify Invoice"
+                            label="Unauthorize Nex-Sourcify Invoice"
                             className="text-lg tracking-wide mt-6 max-w-80"
                             disabled={!canAuthorize || exists}
                         />
@@ -215,7 +216,7 @@ const EditRDLInvoicePage = ({ params }: ParamsProp) => {
                             type="button"
                             variant="secondary"
                             onClick={() => onSetAuthorization(true)}
-                            label="Authorize NexSourcify Invoice"
+                            label="Authorize Nex-Sourcify Invoice"
                             className="text-lg tracking-wide mt-6 max-w-80"
                             disabled={!canAuthorize}
                         />

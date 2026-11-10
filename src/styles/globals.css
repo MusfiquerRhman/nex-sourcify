@@ -285,8 +285,6 @@ textarea {
 .nex-table tbody:last-child tr:last-child > td { border-bottom:0; }
 .nex-table .freeze-head { background:#031e40; color:#fff; }
 .nex-table .freeze-col { background:inherit; backdrop-filter:none; }
-.nex-table .nex-input,
-.nex-table .nex-select { font-size:0.8125rem; min-height:40px; }
 .nex-table-placeholder,
 .nex-table-empty { background:#f0f5fa; color:#62788c; }
 .nex-table-empty { margin:4px; border:1px dashed #bfd0e0; @apply rounded-md; }
@@ -319,11 +317,12 @@ textarea {
   line-height:1.5;
 }
 
+.nex-field-label.text-red { color:var(--color-red); }
+
 .nex-form {
-  border:1px solid #d5e2ee;
-  @apply rounded-md;
-  background:#fff;
-  box-shadow:0 4px 18px #173e6008;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
 }
 
 .nex-input.nex-input,
@@ -338,6 +337,9 @@ textarea {
   transition:border-color 160ms ease,background-color 160ms ease,box-shadow 160ms ease;
 }
 
+.nex-table .nex-input.nex-input,
+.nex-table .nex-select.nex-select { font-size:0.8125rem; min-height:40px; }
+
 .nex-input::placeholder { color:#71869a; }
 .nex-input.nex-input:hover:not([readonly]),
 .nex-select.nex-select:hover { border-color:#8aafcd; }
@@ -350,13 +352,63 @@ textarea {
 }
 .nex-input.nex-input[readonly],
 .nex-input.nex-input:disabled { background:#eaf0f5; color:#62788c; }
-.nex-input.border-red-accent,
-.nex-input.border-red-500,
-.nex-select.is-errored { border-color:var(--color-red); }
+.nex-input.nex-input.border-red-accent,
+.nex-input.nex-input.border-red-500,
+.nex-select.nex-select.is-errored { border-color:var(--color-red); }
 .nex-input.border-red-accent:focus-visible,
 .nex-select.is-errored.is-focused { box-shadow:0 0 0 3px #dc26261a; }
 
-.nex-form-actions { border-top:1px solid #e3ecf4; padding-top:22px; }
+.nex-form .nex-field-label {
+  margin-bottom: 4px;
+  padding: 0;
+  color: #5c6573;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.nex-form .nex-field-label.text-red { color: var(--color-red); }
+.nex-form-checkbox .nex-field-label { margin-bottom: 0; }
+
+.nex-form :is(.nex-input, .nex-select, .nex-toggle) {
+  min-width: 0;
+  min-height: 36px;
+  margin-bottom: 0;
+  padding: 6px 10px;
+  border: 1px solid #cfd4da;
+  border-radius: 5px;
+  background: #fff;
+  color: #20252d;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.nex-form .nex-input::placeholder,
+.nex-form .nex-select .text-gray-400 { color: #697382; }
+
+.nex-form .nex-input[readonly] {
+  background: #f5f6f8;
+  color: #5c6573;
+}
+
+.nex-form .nex-input:is(.border-red-accent, .border-red-500, [aria-invalid="true"]),
+.nex-form .nex-input:is(.border-red-accent, .border-red-500, [aria-invalid="true"]):hover {
+  border-color: var(--color-red);
+}
+.nex-form .nex-input[aria-invalid="true"]:focus-visible { box-shadow: 0 0 0 3px #dc26261a; }
+.nex-form textarea.nex-input { min-height: 64px; }
+.nex-form .nex-select svg { width: 14px; height: 14px; }
+
+.nex-form .nex-toggle {
+  height: auto;
+  align-self: end;
+}
+
+.nex-form .nex-toggle > span {
+  color: #5c6573;
+  font-size: 0.75rem;
+}
+
+.nex-form-actions { border-top: 1px solid #e5e7eb; padding-top: 16px; }
 .nex-button.nex-button-primary,
 .nex-button.nex-button-secondary {
   min-height:40px;
@@ -374,7 +426,7 @@ textarea {
 
 .nex-signin { min-height:100dvh; display:grid; grid-template-columns:1.2fr 1fr; gap:6vw; align-items:center; padding:6vw; background:#bed7eb url("/nexsourcify-signin-background.jpg") center / cover no-repeat; color:#173e60; }
 .nex-signin-story { align-self:start; padding-top:clamp(0px,4vh,48px); }
-.nex-signin-logo { display:block; width:min(100%,320px); aspect-ratio:523 / 147; object-fit:cover; object-position:center 50.27%; }
+.nex-signin-logo { display:block; width:min(100%,320px); height:auto; aspect-ratio:523 / 147; object-fit:cover; object-position:center 50.27%; }
 .nex-signin-copy {
   width:fit-content;
   max-width:100%;
@@ -501,9 +553,10 @@ textarea {
 
 .nex-sidebar .nex-nav-group-toggle > img {
   flex-shrink:0;
-  width:12px;
-  height:12px;
+  width:16px;
+  height:16px;
   margin-left:8px;
+  padding:2px;
   object-fit:contain;
   opacity:0.85;
   transition:transform 160ms ease;

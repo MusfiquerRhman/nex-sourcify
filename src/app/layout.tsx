@@ -7,8 +7,8 @@ import { Toaster } from 'sonner';
 import { headers } from "next/headers";
 
 export const metadata: Metadata = {
-	title: "NexSourcify Nexus",
-	description: "NexSourcify Nexus Application",
+	title: "Nex-Sourcify",
+	description: "Nex-Sourcify Application",
 	icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 

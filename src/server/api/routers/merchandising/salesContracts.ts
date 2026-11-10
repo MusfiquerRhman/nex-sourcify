@@ -11,6 +11,16 @@ import { formatDate } from "~/utils/localDateString";
 import type { SalesContractResponse, SalesContractPDFHeaderData } from "./_types/salesContract";
 import { notificationQueue } from "~/server/queues/notification.queue";
 
+const salesContractSelectionFields = {
+    freight_terms_id: z.number({ errorMap: () => ({ message: "Select Freight Terms." }) }).int().positive(),
+    contact_person_id: z.number({ errorMap: () => ({ message: "Select a Contact Person." }) }).int().positive(),
+};
+
+const salesContractSelectionErrors = {
+    sales_contracts_freight_term_id_fkey: "The selected Freight Terms are no longer available. Select another option.",
+    sales_contracts_contact_person_id_fkey: "The selected Contact Person is no longer available. Select another option.",
+};
+
 export const formatColorQty = (items: { colors: { name: string }; quantity: number }[]): string => {
     const map = items.reduce((acc, item) => {
         const key = item.colors.name;
@@ -378,10 +388,9 @@ export const salesContractsRouter = createTRPCRouter({
                 negotiation_bank_id: z.number(),
                 partial_shipment: z.boolean(),
                 destination_id: z.number(),
-                freight_terms_id: z.number(),
+                ...salesContractSelectionFields,
                 consignee_ids: z.array(z.number()),
                 company_id: z.number(),
-                contact_person_id: z.number(),
                 details: z.array(
                     z.object({
                         order_id: z.string(),
@@ -449,7 +458,7 @@ export const salesContractsRouter = createTRPCRouter({
 
                     const serial = String(metadata.last_serial).padStart(4, "0");
 
-                    const sales_contract_no = `NexSourcify/SC/${buyerPrefix.trim()}/${factoryPrefix.trim()}/${String(currentYear).slice(-2)}/${serial}`;
+                    const sales_contract_no = `RCL/SC/${buyerPrefix.trim()}/${factoryPrefix.trim()}/${String(currentYear).slice(-2)}/${serial}`;
 
                     // Create SC
                     const newSalesContract = await tx.sales_contracts.create({
@@ -541,7 +550,7 @@ export const salesContractsRouter = createTRPCRouter({
                 }, {timeout: 30000});
             } catch (error) {
                 await logError(error, ctx, input);
-                handlePrismaError(error);
+                handlePrismaError(error, salesContractSelectionErrors);
             }
         }),
         
@@ -728,10 +737,9 @@ export const salesContractsRouter = createTRPCRouter({
                 negotiation_bank_id: z.number(),
                 partial_shipment: z.boolean(),
                 destination_id: z.number(),
-                freight_terms_id: z.number(),
+                ...salesContractSelectionFields,
                 consignee_ids: z.array(z.number()),
                 company_id: z.number(),
-                contact_person_id: z.number(),
                 details: z.array(z.object({
                     id: z.string().optional(),
                     order_id: z.string(),
@@ -979,7 +987,7 @@ export const salesContractsRouter = createTRPCRouter({
             }
             catch (error) {
                 await logError(error, ctx, input);
-                handlePrismaError(error);
+                handlePrismaError(error, salesContractSelectionErrors);
             }
         }),
 

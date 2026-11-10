@@ -12,6 +12,7 @@ const SalesContracts = () => {
     const router = useRouter();
     const utils = api.useUtils();
     const [filter, setFilter] = useState(-1);
+    const [deleteContractNo, setDeleteContractNo] = useState("");
 
     const { page, limit, debouncedSearch, handleSearchChange, nextPage, prevPage } = useSearchablePagination();
 
@@ -32,6 +33,7 @@ const SalesContracts = () => {
         { query: debouncedSearch, limit, offset: page * limit },
         { enabled: debouncedSearch.length > 0 }
     );
+    const visibleSalesContracts = debouncedSearch ? searchQuery.data?.salesContracts ?? salesContractsList : salesContractsList;
 
     // URLs for actions
     const editURL = '/merchandising/sales_contract/sales_contracts/edit/';
@@ -49,12 +51,20 @@ const SalesContracts = () => {
     });
     
     const { 
-        deleteID, isLoadingDelete, deleteClicked, setDeleteClicked, handleDeleteClicked, handleDeleteConfirmed 
+        isLoadingDelete, deleteClicked, setDeleteClicked, handleDeleteClicked, handleDeleteConfirmed
     } = useDeleteConfirmation({
         mutation: deleteMutation,
         successMessage: 'Sales Contract deleted successfully',
         payloadBuilder: id => ({ id }),
     });
+
+    const onDeleteClicked = (id: string) => {
+        const contract = visibleSalesContracts.find((contract) => contract.id === id);
+        if (!contract) return;
+
+        setDeleteContractNo(contract.sales_contract_no);
+        handleDeleteClicked(id);
+    };
 
     return (
         <>
@@ -95,9 +105,7 @@ const SalesContracts = () => {
             >
                 <div className="w-full">
                     <Table
-                        data={searchQuery.data?.salesContracts && !!debouncedSearch 
-                            ? searchQuery.data.salesContracts : salesContractsList
-                        }
+                        data={visibleSalesContracts}
                         isLoading={isLoading || searchQuery.isLoading}
                         columns={tableHeaders}
                         nextPage={nextPage}
@@ -105,7 +113,7 @@ const SalesContracts = () => {
                         total={searchQuery.data?.salesContracts && searchQuery.data.salesContracts.length > 0 
                             ? searchQuery.data.total ?? 0 : total
                         }
-                        deleteFunction={handleDeleteClicked}
+                        deleteFunction={onDeleteClicked}
                         page={page}
                         limit={limit}
                         editURL={editURL}
@@ -123,10 +131,7 @@ const SalesContracts = () => {
                 open={deleteClicked}
                 onClose={() => setDeleteClicked(false)}
                 heading="Confirm Deletion"
-                description={`Are you sure you want to delete "${(
-                    searchQuery.data?.salesContracts && !!debouncedSearch 
-                        ? searchQuery.data.salesContracts : salesContractsList
-                ).find(contract => contract.id === parseInt(deleteID))?.sales_contract_no}"?`}
+                description={`Are you sure you want to delete "${deleteContractNo}"?`}
                 actionLabel="DELETE"
                 negativeAction={true}
                 loading={isLoadingDelete}

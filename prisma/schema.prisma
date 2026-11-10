@@ -144,6 +144,7 @@ model users {
   hashed_password                                                    String
   level_id                                                           Int
   created_at                                                         DateTime?                                      @default(now()) @db.Timestamp(6)
+  approval_status_history                                            approval_status_history[]
   authorizations                                                     authorizations[]
   banks_history_banks_history_action_byTousers                       banks_history[]                                @relation("banks_history_action_byTousers")
   buyer_additional_clause_history                                    buyer_additional_clause_history[]
@@ -224,9 +225,11 @@ model users {
   permissions_history_permissions_history_action_byTousers           permissions_history[]                          @relation("permissions_history_action_byTousers")
   permissions_history_permissions_history_added_byTousers            permissions_history[]                          @relation("permissions_history_added_byTousers")
   permissions_history_permissions_history_user_idTousers             permissions_history[]                          @relation("permissions_history_user_idTousers")
+  pre_production_meeting_history                                     pre_production_meeting_history[]
   proceed_realization_details_history                                proceed_realization_details_history[]
   proceed_realization_history                                        proceed_realization_history[]
   product_types_history_product_types_history_action_byTousers       product_types_history[]                        @relation("product_types_history_action_byTousers")
+  production_plan_history                                            production_plan_history[]
   products_history_products_history_action_byTousers                 products_history[]                             @relation("products_history_action_byTousers")
   rdl_invoice_details_history                                        rdl_invoice_details_history[]
   rdl_invoice_history                                                rdl_invoice_history[]
@@ -237,6 +240,9 @@ model users {
   sales_contract_contact_person_history                              sales_contract_contact_person_history[]
   sales_contract_details_history                                     sales_contract_details_history[]
   sales_contracts_history                                            sales_contracts_history[]
+  sample_check_list                                                  sample_check_list[]
+  sample_check_list_history                                          sample_check_list_history[]
+  sample_types_history                                               sample_types_history[]
   seasons_history                                                    seasons_history[]
   shipment_details_history                                           shipment_details_history[]
   shipment_item_details_history                                      shipment_item_details_history[]
@@ -613,6 +619,8 @@ model colors {
   id                    Int                     @id @default(autoincrement())
   name                  String                  @unique(map: "unique_colors") @db.VarChar(75)
   added_at              DateTime?               @default(now()) @db.Timestamp(6)
+  production_plan       production_plan[]
+  sample_check_list     sample_check_list[]
   shipment_item_details shipment_item_details[]
 }
 
@@ -674,24 +682,26 @@ model fabric_suppliers_history {
 }
 
 model factories {
-  id                  Int                   @id @default(autoincrement())
-  name                String                @unique(map: "unique_factories") @db.VarChar(50)
-  office_address      String?
-  factory_address     String?
-  email               String?               @db.VarChar(50)
-  contact_person      String?               @db.VarChar(30)
-  prefix              String?               @db.VarChar(10)
-  phone_no            String?               @db.VarChar(75)
-  website             String?               @db.VarChar(25)
-  added_at            DateTime?             @default(now()) @db.Timestamp(6)
-  buyer_orders        buyer_orders[]
-  debit_note          debit_note[]
-  exfactory           exfactory[]
-  factory_bank        factory_bank[]
-  factory_invoice     factory_invoice[]
-  lc_transfer_details lc_transfer_details[]
-  rdl_invoice_details rdl_invoice_details[]
-  sales_contracts     sales_contracts[]
+  id                     Int                      @id @default(autoincrement())
+  name                   String                   @unique(map: "unique_factories") @db.VarChar(50)
+  office_address         String?
+  factory_address        String?
+  email                  String?                  @db.VarChar(50)
+  contact_person         String?                  @db.VarChar(30)
+  prefix                 String?                  @db.VarChar(10)
+  phone_no               String?                  @db.VarChar(75)
+  website                String?                  @db.VarChar(25)
+  added_at               DateTime?                @default(now()) @db.Timestamp(6)
+  buyer_orders           buyer_orders[]
+  debit_note             debit_note[]
+  exfactory              exfactory[]
+  factory_bank           factory_bank[]
+  factory_invoice        factory_invoice[]
+  lc_transfer_details    lc_transfer_details[]
+  pre_production_meeting pre_production_meeting[]
+  rdl_invoice_details    rdl_invoice_details[]
+  sales_contracts        sales_contracts[]
+  sample_check_list      sample_check_list[]
 
   @@index([name], map: "idx_factories_name")
 }
@@ -978,6 +988,7 @@ model buyers {
   proceed_realization         proceed_realization[]
   rdl_invoice                 rdl_invoice[]
   sales_contracts             sales_contracts[]
+  sample_check_list           sample_check_list[]
   seasons                     seasons[]
   shipment_tolerance_level    shipment_tolerance_level?
   teams                       teams[]
@@ -1262,26 +1273,28 @@ model buyer_orders_history {
 }
 
 model order_styles {
-  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  order_id         String             @db.Uuid
-  product_type_id  Int
-  product_id       Int
-  style            String             @db.VarChar(50)
-  fabric_id        Int
-  supplier_id      Int
-  order_quantity   Int
-  added_at         DateTime?          @default(now()) @db.Timestamp(6)
-  serial           Int?
-  photo_url        String?
-  file_size        Int?
-  order_checklist  order_checklist[]
-  fabrics          fabrics            @relation(fields: [fabric_id], references: [id], onUpdate: NoAction)
-  buyer_orders     buyer_orders       @relation(fields: [order_id], references: [id], onUpdate: NoAction)
-  products         products           @relation(fields: [product_id], references: [id], onUpdate: NoAction)
-  product_types    product_types      @relation(fields: [product_type_id], references: [id], onUpdate: NoAction)
-  fabric_suppliers fabric_suppliers   @relation(fields: [supplier_id], references: [id], onUpdate: NoAction)
-  shipment_details shipment_details[]
-  tna_plans        tna_plans[]
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id               String                   @db.Uuid
+  product_type_id        Int
+  product_id             Int
+  style                  String                   @db.VarChar(50)
+  fabric_id              Int
+  supplier_id            Int
+  order_quantity         Int
+  added_at               DateTime?                @default(now()) @db.Timestamp(6)
+  serial                 Int?
+  photo_url              String?
+  file_size              Int?
+  order_checklist        order_checklist[]
+  fabrics                fabrics                  @relation(fields: [fabric_id], references: [id], onUpdate: NoAction)
+  buyer_orders           buyer_orders             @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+  products               products                 @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+  product_types          product_types            @relation(fields: [product_type_id], references: [id], onUpdate: NoAction)
+  fabric_suppliers       fabric_suppliers         @relation(fields: [supplier_id], references: [id], onUpdate: NoAction)
+  pre_production_meeting pre_production_meeting[]
+  sample_check_list      sample_check_list[]
+  shipment_details       shipment_details[]
+  tna_plans              tna_plans[]
 
   @@index([order_id], map: "idx_order_styles_order_id")
   @@index([product_id], map: "idx_order_styles_product_id")
@@ -1326,6 +1339,7 @@ model shipment_details {
   lc_amendment_shipments           lc_amendment_shipments[]
   lc_shipments                     lc_shipments[]
   order_checklist                  order_checklist[]
+  production_plan                  production_plan[]
   rdl_invoice_shipment_details     rdl_invoice_shipment_details[]
   destinations                     destinations                      @relation(fields: [destination_id], references: [id], onUpdate: NoAction)
   order_styles                     order_styles                      @relation(fields: [order_style_id], references: [id], onUpdate: NoAction)
@@ -3125,6 +3139,7 @@ model order_checklist {
   style_id                String                    @db.Uuid
   shipment_id             String                    @db.Uuid
   added_at                DateTime?                 @default(now()) @db.Timestamp(6)
+  status                  Int?
   buyers                  buyers                    @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
   buyer_orders            buyer_orders              @relation(fields: [order_id], references: [id], onUpdate: NoAction)
   shipment_details        shipment_details          @relation(fields: [shipment_id], references: [id], onUpdate: NoAction)
@@ -3142,6 +3157,7 @@ model order_checklist_history {
   action_type        actions?
   action_by          String    @db.Uuid
   action_at          DateTime? @default(now()) @db.Timestamp(6)
+  status             Int?
   users              users     @relation(fields: [action_by], references: [id], onUpdate: NoAction)
 }
 
@@ -3150,13 +3166,13 @@ model order_checklist_details {
   order_checklist_id              String                            @db.Uuid
   serial_no                       Int
   document_details                String
-  technical_check                 Boolean?                          @default(false)
   technical_remarks               String?
   technical_check_date            DateTime?                         @db.Date
   qa_check                        Boolean?                          @default(false)
   qa_remarks                      String?
   qa_check_date                   DateTime?                         @db.Date
   added_at                        DateTime?                         @default(now()) @db.Timestamp(6)
+  technical_check                 Int?                              @default(0)
   order_checklist                 order_checklist                   @relation(fields: [order_checklist_id], references: [id], onUpdate: NoAction)
   order_checklist_details_history order_checklist_details_history[]
 }
@@ -3167,7 +3183,7 @@ model order_checklist_details_history {
   order_checklist_id         String?                  @db.Uuid
   serial_no                  Int?
   document_details           String?
-  technical_check            Boolean?                 @default(false)
+  technical_check            Int?                     @default(0)
   technical_remarks          String?
   technical_check_date       DateTime?                @db.Date
   qa_check                   Boolean?                 @default(false)
@@ -3178,6 +3194,324 @@ model order_checklist_details_history {
   action_at                  DateTime?                @default(now()) @db.Timestamp(6)
   users                      users                    @relation(fields: [action_by], references: [id], onUpdate: NoAction)
   order_checklist_details    order_checklist_details? @relation(fields: [order_checklist_details_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model approval_status {
+  id                        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pre_production_meeting_id String                 @db.Uuid
+  status_name               String
+  approval_status           Int?                   @default(-1)
+  added_at                  DateTime?              @default(now()) @db.Timestamp(6)
+  pre_production_meeting    pre_production_meeting @relation(fields: [pre_production_meeting_id], references: [id], onUpdate: NoAction)
+}
+
+model approval_status_history {
+  id                        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  approval_status_id        String?   @db.Uuid
+  pre_production_meeting_id String?   @db.Uuid
+  status_name               String?
+  approval_status           Int?
+  action_type               actions?
+  action_by                 String    @db.Uuid
+  action_at                 DateTime? @default(now()) @db.Timestamp(6)
+  users                     users     @relation(fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model pre_production_meeting {
+  id                                     String                                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  meeting_date                           DateTime?                                @default(dbgenerated("CURRENT_DATE")) @db.Date
+  factory_id                             Int
+  style_id                               String                                   @db.Uuid
+  daily_production_plan                  Int?
+  attendance_list_image                  String?
+  added_at                               DateTime?                                @default(now()) @db.Timestamp(6)
+  overall_comments                       String?
+  attendance_list_photo                  String?
+  approval_status                        approval_status[]
+  factories                              factories                                @relation(fields: [factory_id], references: [id], onUpdate: NoAction)
+  order_styles                           order_styles                             @relation(fields: [style_id], references: [id], onUpdate: NoAction)
+  pre_production_meeting_pps_images      pre_production_meeting_pps_images[]
+  pre_production_meeting_size_set_images pre_production_meeting_size_set_images[]
+  production_plan                        production_plan[]
+}
+
+model pre_production_meeting_history {
+  id                        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pre_production_meeting_id String?   @db.Uuid
+  meeting_date              DateTime? @db.Date
+  factory_id                Int?
+  style_id                  String?   @db.Uuid
+  daily_production_plan     Int?
+  pps_view_front_image      String?
+  pps_view_back_image       String?
+  size_set_view_front_image String?
+  size_set_view_back_image  String?
+  attendance_list_image     String?
+  action_type               actions?
+  action_by                 String    @db.Uuid
+  action_at                 DateTime? @default(now()) @db.Timestamp(6)
+  users                     users     @relation(fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model production_plan {
+  id                        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pre_production_meeting_id String                 @db.Uuid
+  color_id                  Int
+  shipment_id               String                 @db.Uuid
+  cutting_date              DateTime?              @db.Date
+  sewing_date               DateTime?              @db.Date
+  finishing_date            DateTime?              @db.Date
+  plan_inspection_date      DateTime?              @db.Date
+  added_at                  DateTime?              @default(now()) @db.Timestamp(6)
+  colors                    colors                 @relation(fields: [color_id], references: [id], onUpdate: NoAction)
+  pre_production_meeting    pre_production_meeting @relation(fields: [pre_production_meeting_id], references: [id], onUpdate: NoAction)
+  shipment_details          shipment_details       @relation(fields: [shipment_id], references: [id], onUpdate: NoAction)
+}
+
+model production_plan_history {
+  id                        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  production_plan_id        String?   @db.Uuid
+  pre_production_meeting_id String?   @db.Uuid
+  color_id                  Int?
+  shipment_id               String?   @db.Uuid
+  cutting_date              DateTime? @db.Date
+  sewing_date               DateTime? @db.Date
+  finishing_date            DateTime? @db.Date
+  plan_inspection_date      DateTime? @db.Date
+  action_type               actions?
+  action_by                 String    @db.Uuid
+  action_at                 DateTime? @default(now()) @db.Timestamp(6)
+  users                     users     @relation(fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model pre_production_meeting_pps_images {
+  id                        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pre_production_meeting_id String                 @db.Uuid
+  url                       String
+  added_at                  DateTime?              @default(now()) @db.Timestamp(6)
+  pre_production_meeting    pre_production_meeting @relation(fields: [pre_production_meeting_id], references: [id], onUpdate: NoAction, map: "pre_production_meeting_pps_image_pre_production_meeting_id_fkey")
+}
+
+model pre_production_meeting_size_set_images {
+  id                        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pre_production_meeting_id String                 @db.Uuid
+  url                       String
+  added_at                  DateTime?              @default(now()) @db.Timestamp(6)
+  pre_production_meeting    pre_production_meeting @relation(fields: [pre_production_meeting_id], references: [id], onUpdate: NoAction, map: "pre_production_meeting_size_set__pre_production_meeting_id_fkey")
+}
+
+model sample_types {
+  id                Int                 @id @default(autoincrement())
+  name              String              @db.VarChar(50)
+  added_at          DateTime?           @default(now()) @db.Timestamp(6)
+  sample_check_list sample_check_list[]
+}
+
+model sample_types_history {
+  id              Int       @id @default(autoincrement())
+  sample_types_id Int?
+  name            String    @db.VarChar(50)
+  action_type     actions?
+  action_by       String    @db.Uuid
+  action_at       DateTime? @default(now()) @db.Timestamp(6)
+  users           users     @relation(fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model sample_check_list {
+  id                                         String                                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_ref_no                              String                                       @db.VarChar(50)
+  with_order                                 Boolean?                                     @default(false)
+  style_no_manual                            String?                                      @db.VarChar(50)
+  sample_check_date                          DateTime?                                    @default(dbgenerated("CURRENT_DATE")) @db.Date
+  status                                     Int?
+  checked_by                                 String?                                      @db.Uuid
+  buyer_id                                   Int
+  factory_id                                 Int
+  style_id                                   String?                                      @db.Uuid
+  color_id                                   Int
+  sample_type                                Int
+  sample_size                                String?                                      @db.VarChar(50)
+  sample_quantity                            Int?
+  fabric                                     String?
+  trims_accessories                          String?
+  workmanship                                String?
+  fitting                                    String?
+  measurement                                String?
+  pattern                                    String?
+  print_emb                                  String?
+  wash                                       String?
+  main_label                                 Int?
+  main_label_position                        Int?
+  size_label                                 Int?
+  size_label_position                        Int?
+  care_label                                 Int?
+  care_label_position                        Int?
+  risk_area                                  String?
+  submission_no                              Int?                                         @default(1)
+  is_resubmission                            Boolean?                                     @default(false)
+  previous_submission_id                     String?                                      @db.Uuid
+  added_at                                   DateTime?                                    @default(now()) @db.Timestamp(6)
+  buyers                                     buyers                                       @relation(fields: [buyer_id], references: [id], onUpdate: NoAction)
+  users                                      users?                                       @relation(fields: [checked_by], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  colors                                     colors                                       @relation(fields: [color_id], references: [id], onUpdate: NoAction)
+  factories                                  factories                                    @relation(fields: [factory_id], references: [id], onUpdate: NoAction)
+  sample_check_list                          sample_check_list?                           @relation("sample_check_listTosample_check_list", fields: [previous_submission_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  other_sample_check_list                    sample_check_list[]                          @relation("sample_check_listTosample_check_list")
+  sample_types                               sample_types                                 @relation(fields: [sample_type], references: [id], onUpdate: NoAction)
+  order_styles                               order_styles?                                @relation(fields: [style_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sample_check_list_fabric_images            sample_check_list_fabric_images[]
+  sample_check_list_fitting_images           sample_check_list_fitting_images[]
+  sample_check_list_labels_images            sample_check_list_labels_images[]
+  sample_check_list_measurement_images       sample_check_list_measurement_images[]
+  sample_check_list_other_images             sample_check_list_other_images[]
+  sample_check_list_pattern_images           sample_check_list_pattern_images[]
+  sample_check_list_print_images             sample_check_list_print_images[]
+  sample_check_list_risk_area_images         sample_check_list_risk_area_images[]
+  sample_check_list_trims_accessories_images sample_check_list_trims_accessories_images[]
+  sample_check_list_wash_images              sample_check_list_wash_images[]
+  sample_check_list_workmanship_images       sample_check_list_workmanship_images[]
+
+  @@unique([style_id, sample_type, submission_no], map: "unique_submission")
+  @@unique([style_no_manual, sample_type, submission_no], map: "unique_submission_manual")
+}
+
+model sample_check_list_fitting_images {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_check_list_id String            @db.Uuid
+  url                  String
+  added_at             DateTime?         @default(now()) @db.Timestamp(6)
+  sample_check_list    sample_check_list @relation(fields: [sample_check_list_id], references: [id], onUpdate: NoAction)
+}
+
+model sample_check_list_history {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_ref_no          String?   @db.VarChar(50)
+  sample_check_date      DateTime? @default(dbgenerated("CURRENT_DATE")) @db.Date
+  with_order             Boolean?
+  checked_by             String?   @db.Uuid
+  style_no_manual        String?   @db.VarChar(50)
+  status                 Int?
+  buyer_id               Int?
+  factory_id             Int?
+  style_id               String?   @db.Uuid
+  color_id               Int?
+  sample_type            Int?
+  sample_size            String?   @db.VarChar(50)
+  sample_quantity        Int?
+  fabric                 String?
+  trims_accessories      String?
+  workmanship            String?
+  fitting                String?
+  measurement            String?
+  pattern                String?
+  print_emb              String?
+  wash                   String?
+  main_label             Int?
+  main_label_position    Int?
+  size_label             Int?
+  size_label_position    Int?
+  care_label             Int?
+  care_label_position    Int?
+  risk_area              String?
+  submission_no          Int?
+  is_resubmission        Boolean?
+  previous_submission_id String?   @db.Uuid
+  action_type            actions?
+  action_by              String    @db.Uuid
+  action_at              DateTime? @default(now()) @db.Timestamp(6)
+  users                  users     @relation(fields: [action_by], references: [id], onUpdate: NoAction)
+}
+
+model sample_check_list_labels_images {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_check_list_id String            @db.Uuid
+  url                  String
+  added_at             DateTime?         @default(now()) @db.Timestamp(6)
+  sample_check_list    sample_check_list @relation(fields: [sample_check_list_id], references: [id], onUpdate: NoAction)
+}
+
+model sample_check_list_measurement_images {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_check_list_id String            @db.Uuid
+  url                  String
+  added_at             DateTime?         @default(now()) @db.Timestamp(6)
+  sample_check_list    sample_check_list @relation(fields: [sample_check_list_id], references: [id], onUpdate: NoAction)
+}
+
+model sample_check_list_other_images {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_check_list_id String            @db.Uuid
+  url                  String
+  added_at             DateTime?         @default(now()) @db.Timestamp(6)
+  sample_check_list    sample_check_list @relation(fields: [sample_check_list_id], references: [id], onUpdate: NoAction)
+}
+
+model sample_check_list_pattern_images {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_check_list_id String            @db.Uuid
+  url                  String
+  added_at             DateTime?         @default(now()) @db.Timestamp(6)
+  sample_check_list    sample_check_list @relation(fields: [sample_check_list_id], references: [id], onUpdate: NoAction)
+}
+
+model sample_check_list_print_images {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_check_list_id String            @db.Uuid
+  url                  String
+  added_at             DateTime?         @default(now()) @db.Timestamp(6)
+  sample_check_list    sample_check_list @relation(fields: [sample_check_list_id], references: [id], onUpdate: NoAction)
+}
+
+model sample_check_list_risk_area_images {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_check_list_id String            @db.Uuid
+  url                  String
+  added_at             DateTime?         @default(now()) @db.Timestamp(6)
+  sample_check_list    sample_check_list @relation(fields: [sample_check_list_id], references: [id], onUpdate: NoAction)
+}
+
+model sample_check_list_trims_accessories_images {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_check_list_id String            @db.Uuid
+  url                  String
+  added_at             DateTime?         @default(now()) @db.Timestamp(6)
+  sample_check_list    sample_check_list @relation(fields: [sample_check_list_id], references: [id], onUpdate: NoAction, map: "sample_check_list_trims_accessories_i_sample_check_list_id_fkey")
+}
+
+model sample_check_list_wash_images {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_check_list_id String            @db.Uuid
+  url                  String
+  added_at             DateTime?         @default(now()) @db.Timestamp(6)
+  sample_check_list    sample_check_list @relation(fields: [sample_check_list_id], references: [id], onUpdate: NoAction)
+}
+
+model sample_check_list_workmanship_images {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_check_list_id String            @db.Uuid
+  url                  String
+  added_at             DateTime?         @default(now()) @db.Timestamp(6)
+  sample_check_list    sample_check_list @relation(fields: [sample_check_list_id], references: [id], onUpdate: NoAction)
+}
+
+model sample_checklist_ref_no_metadata {
+  id          Int  @id @default(autoincrement())
+  year        Int? @default(dbgenerated("(EXTRACT(year FROM CURRENT_DATE))::integer"))
+  last_serial Int? @default(1)
+}
+
+model sample_check_list_fabric_images {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sample_check_list_id String            @db.Uuid
+  url                  String
+  added_at             DateTime?         @default(now()) @db.Timestamp(6)
+  sample_check_list    sample_check_list @relation(fields: [sample_check_list_id], references: [id], onUpdate: NoAction)
+}
+
+model sample_checklist_submission_no_meta_data {
+  id                  Int    @id @default(autoincrement())
+  sample_checklist_id String @db.Uuid
+  sample_no           Int?   @default(1)
 }
 
 enum actions {

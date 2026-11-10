@@ -48,7 +48,7 @@ const OrderChecklist = () => {
     return (
         <>
             <Wrapper
-                heading="Order Checklist"
+                heading="File Review Checklist"
                 subSectionLeft={
                     <SearchField
                         placeholder="Search Order Checklist..."

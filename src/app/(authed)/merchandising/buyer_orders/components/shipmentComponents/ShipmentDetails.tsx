@@ -149,7 +149,7 @@ const ShipmentDetails = (props: props) => {
     }, [JSON.stringify(etdDate), handoverDateBuffer, methods.setValue]);
 
 
-    // Auto calculate NexSourcify values when FOB or Quantity change
+    // Auto calculate RDL values when FOB or Quantity change
     useEffect(() => {
         if (!shipments?.length) return;
 

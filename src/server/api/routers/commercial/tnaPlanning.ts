@@ -28,7 +28,7 @@ export const commercialTnaPlanRouter = createTRPCRouter({
             if(!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view NexSourcify Invoices." 
+                    message: "You do not have permission to view Nex-Sourcify Invoices."
                 });
             }
             
@@ -103,7 +103,7 @@ export const commercialTnaPlanRouter = createTRPCRouter({
             if(!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view NexSourcify Invoices." 
+                    message: "You do not have permission to view Nex-Sourcify Invoices."
                 });
             }
             
@@ -182,7 +182,7 @@ export const commercialTnaPlanRouter = createTRPCRouter({
             if(!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view NexSourcify Invoices." 
+                    message: "You do not have permission to view Nex-Sourcify Invoices."
                 });
             }
             

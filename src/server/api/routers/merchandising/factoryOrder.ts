@@ -94,7 +94,6 @@ export const factoryOrderRouter = createTRPCRouter({
                             WHEN 0 THEN -1
                             WHEN 1 THEN 0
                             WHEN 2 THEN 1
-                            WHEN 3 THEN 2
                         END
                     ORDER BY added_at DESC, order_date DESC
                     LIMIT ${input.limit}
@@ -552,6 +551,19 @@ export const factoryOrderRouter = createTRPCRouter({
                         })
                     );
 
+                    await notificationQueue.add("factory-order-submitted", {
+                        factoryOrderId: factoryOrder.id,
+                        approval_status: -1,
+                        action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
+                        level_id: ctx.user.level_id,
+                    }, {
+                        attempts: 5,
+                        backoff: {
+                            type: "exponential",
+                            delay: 1000,
+                        },
+                    });
+
                     return {
                         ...factoryOrder,
                         shipments,
@@ -895,35 +907,18 @@ export const factoryOrderRouter = createTRPCRouter({
                     WHERE fo.id = ${input.factoryOrderId};
                 `;
 
-                // const authorizations = await ctx.db.$queryRaw<{is_complete: boolean}[]>`
-                //     SELECT
-                //         os_sum.total_order_qty <= sid_sum.total_shipment_qty AS is_complete
-                //     FROM factory_orders fo
-                //     JOIN (
-                //         SELECT order_id, SUM(order_quantity) AS total_order_qty
-                //         FROM order_styles
-                //         GROUP BY order_id
-                //     ) os_sum ON os_sum.order_id = fo.order_id
-                //     JOIN (
-                //         SELECT os.order_id, SUM(sid.quantity) AS total_shipment_qty
-                //         FROM order_styles os
-                //         JOIN shipment_details sd ON sd.order_style_id = os.id
-                //         JOIN shipment_item_details sid ON sid.shipment_detail_id = sd.id
-                //         GROUP BY os.order_id
-                //     ) sid_sum ON sid_sum.order_id = fo.order_id
-                //     WHERE fo.id = ${input.factoryOrderId};
-                // `;
-
                 // Get the user's authorization permission for factory orders
-                const authorizationPermission = await ctx.db.$queryRaw<{department_id: number, level_id: number, approval_level: number}[]>`
+                const authorizationPermission = await ctx.db.$queryRaw<{department_id: number, level_id: number }[]>`
                     SELECT 
-                        department_id, level_id, approval_level
+                        department_id, level_id
                     FROM AUTHORIZATIONS 
                     WHERE module_id = ${m.FACTORY_ORDERS}
                         AND level_id = ${ctx.user.level_id}
                         AND department_id = ${ctx.user.department_id}
                     LIMIT 1;
                 `;
+
+                console.log(authorizations, authorizationPermission);
 
                 return {authorizations: authorizations[0], authorizationPermission: authorizationPermission[0]};
             }
@@ -959,10 +954,13 @@ export const factoryOrderRouter = createTRPCRouter({
                     select: { approval_status: true },
                 });
 
+                const userLevel = ctx.user.level_id;
+                const userDepartment = ctx.user.department_id;
+                const isAdmin = userLevel === ADMIN_LEVEL_ID && userDepartment === ADMIN_DEPARTMENT_ID;
 
                 const authorizationPermission = await ctx.db.$queryRaw<{approval_level: number}[]>`
                     SELECT 
-                        approval_level
+                        1 as can_approve
                     FROM AUTHORIZATIONS 
                     WHERE module_id = ${m.FACTORY_ORDERS}
                         AND level_id = ${ctx.user.level_id}
@@ -984,23 +982,10 @@ export const factoryOrderRouter = createTRPCRouter({
                     });
                 }
 
-                // Check if the user has permission to Authorize / Unauthorize
-                if(currentApprovalLevel.approval_status === 0 && input.approval_status === 2) { 
+                if (authorizationPermission.length === 0 && !isAdmin) {
                     throw new TRPCError({
                         code: "FORBIDDEN",
-                        message: "Factory Order is not 1st level authorized yet.",
-                    });
-                }
-                else if(authorizationPermission?.[0]?.approval_level === 1 && input.approval_status === 2) {
-                    throw new TRPCError({
-                        code: "FORBIDDEN",
-                        message: "You do not have permission to authorize factory order.",
-                    });
-                }
-                else if(authorizationPermission?.[0]?.approval_level === 1 && input.approval_status === 0 && currentApprovalLevel.approval_status === 2) {
-                    throw new TRPCError({
-                        code: "FORBIDDEN",
-                        message: "You do not have permission to Unauthorize Authorized factory orders.",
+                        message: "You do not have permission to Authorize Factory Orders.",
                     });
                 }
 
@@ -1027,7 +1012,6 @@ export const factoryOrderRouter = createTRPCRouter({
                     await notificationQueue.add("factory-order-submitted", {
                         factoryOrderId: input.factoryOrderId,
                         approval_status: input.approval_status,
-                        previous_approval_status: input.previous_approval_status,
                         action_by: `${ctx.user.first_name} ${ctx.user.last_name}`,
                         level_id: ctx.user.level_id,
                     }, {

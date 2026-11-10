@@ -1,6 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, styles, tableBorderColor } from "../components/pdfConfig";
-import { RenaissanceLogo, ReportTitle, HeaderPart, Signature } from "../components";
+import { NexSourcifyLogo, ReportTitle, HeaderPart, Signature } from "../components";
 import { formatDate } from "~/utils/localDateString";
 
 import type { HeaderData } from "~/types/pdf";
@@ -19,13 +19,15 @@ type GetPDFDataOutput = RouterOutput['getPDFData'];
 
 registerPdfFonts();
 
-const CommissionInvoicePDF = ({ data }: { data: GetPDFDataOutput }) => {
+const CommissionInvoicePDF = (props: { data: GetPDFDataOutput }) => {
+    const { data } = props;
+
     const today = formatDate(new Date());
     const { user } = useDecodedUser();
 
     const buyerOrderData: HeaderData = [
         [
-            { label: "LC / NexSourcify Ref", value: data.header?.lc_sc_no ?? "" },
+            { label: "LC / Company Ref", value: data.header?.lc_sc_no ?? "" },
             { label: "Buyer Name", value: data.header?.buyer_name ?? "" },
             { label: "Bank Name", value: data.header?.bank_name ?? "" },
             { label: "Exfactory Date", value: data.header?.exfactory_date ?? "" },
@@ -92,16 +94,16 @@ const CommissionInvoicePDF = ({ data }: { data: GetPDFDataOutput }) => {
     return (
         <Document
             title={`Commission Invoice - ${data.header?.ref_no}`}
-            author="NexSourcify Nexus"
+            author="Nex-Sourcify"
             subject="Commission Invoice PDF"
-            keywords="Commission, Invoice, PDF, NexSourcify Nexus, ERP"
+            keywords="Commission, Invoice, PDF, Nex-Sourcify, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="NexSourcify Nexus"
+            producer="Nex-Sourcify"
             pageMode="useOutlines"
             creationDate={new Date()}
         >
             <Page orientation="portrait" size="A4" style={styles.body} wrap>
-                <RenaissanceLogo />
+                <NexSourcifyLogo />
 
                 <ReportTitle title="COMMISSION INVOICE" />
 
@@ -136,7 +138,7 @@ const CommissionInvoicePDF = ({ data }: { data: GetPDFDataOutput }) => {
 								value={item.invoice_value}
 								description={
 									<View style={{ paddingTop: 5, ...(!item.charge && { marginBottom: 5 })}}>
-										<Text>NexSourcify Invoice No: {item.invoice_no}</Text>
+										<Text>Company Invoice No: {item.invoice_no}</Text>
 										<Text style={{ marginTop: 2}}>Date: {item.invoice_date}</Text>
 									</View>
 								}
@@ -152,33 +154,40 @@ const CommissionInvoicePDF = ({ data }: { data: GetPDFDataOutput }) => {
 							}
 						</View>
                     ))}
-                    summaryLabel="Total NexSourcify Invoice Net Quantity and Value"
+                    additionalSummaryRows={[
+                        { label: "Gross Company Invoice Value", value: data.result.rdlInvoiceResults.total_gross_invoice_value },
+                        {
+                            label: "Total Early Settlement Value",
+                            quantity: data.result.rdlInvoiceResults.early_settlement_rates,
+                            value: data.result.rdlInvoiceResults.total_early_settlement_value,
+                        },
+                    ]}
+                    summaryLabel="Net Company Invoice Quantity and Value"
                     totalQuantity={data.result.rdlInvoiceResults.total_invoice_quantity}
                     totalValue={data.result.rdlInvoiceResults.total_invoice_value}
                 />
 
-                <View style={{ marginTop: 10 }}>
-                    <InvoiceTable
-                        rows={data.formattedFactoryInvoice.map((item, index) => (
-                            <TableRow
-                                key={index}
-                                index={index}
-                                quantity={item.invoice_quantity}
-                                value={item.invoice_value}
-                                description={
-                                    <View style={{paddingVertical: 5}}>
-                                        <Text>Factory Invoice No: {item.invoice_no}</Text>
-                                        <Text style={{ marginTop: 2 }}>Date: {item.invoice_date}</Text>
-                                        <Text style={{ marginTop: 2 }}>Factory Name: {item.factory_name}</Text>
-                                    </View>
-                                }
-                            />
-                        ))}
-                        summaryLabel="Total Factory Invoice Quantity and Value"
-                        totalQuantity={data.result.factoryInvoiceResults.total_invoice_quantity}
-                        totalValue={data.result.factoryInvoiceResults.total_invoice_value}
-                    />
-                </View>
+                <InvoiceTable
+                    marginTop={10}
+                    rows={data.formattedFactoryInvoice.map((item, index) => (
+                        <TableRow
+                            key={index}
+                            index={index}
+                            quantity={item.invoice_quantity}
+                            value={item.invoice_value}
+                            description={
+                                <View style={{paddingVertical: 5}}>
+                                    <Text>Factory Invoice No: {item.invoice_no}</Text>
+                                    <Text style={{ marginTop: 2 }}>Date: {item.invoice_date}</Text>
+                                    <Text style={{ marginTop: 2 }}>Factory Name: {item.factory_name}</Text>
+                                </View>
+                            }
+                        />
+                    ))}
+                    summaryLabel="Total Factory Invoice Quantity and Value"
+                    totalQuantity={data.result.factoryInvoiceResults.total_invoice_quantity}
+                    totalValue={data.result.factoryInvoiceResults.total_invoice_value}
+                />
 
 				<View style={{
 					marginTop: 15,

@@ -1,5 +1,5 @@
-# RDL NEXUS
-RDL NEXUS is build with the [T3 stack](https://create.t3.gg/en/introduction), guaranteeing type safety from start to finish.
+# Nex-Sourcify
+Nex-Sourcify is build with the [T3 stack](https://create.t3.gg/en/introduction), guaranteeing type safety from start to finish.
 
 ## Tech Stack
 - Language: [TypeScript](https://www.typescriptlang.org/docs/handbook/intro.html)

@@ -291,7 +291,7 @@ export const activityReportRouter = createTRPCRouter({
                                 FROM rdl_invoice_details RID
                                 INNER JOIN rdl_invoice RI ON RI.id = RID.rdl_invoice_id
                                 GROUP BY RID.factory_invoice_id
-                            ) NexSourcify ON RDL.factory_invoice_id = FI.id
+                            ) RDL ON RDL.factory_invoice_id = FI.id
                             LEFT JOIN lc_shipments LCS ON LCS.shipment_details_id = ES.shipment_details_id
                             LEFT JOIN lc_orders LCO ON LCO.id = LCS.lc_order_id
                             LEFT JOIN lc_master LC ON LC.id = LCO.lc_master_id

@@ -1,6 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, styles, tableBorderColor } from "../components/pdfConfig";
-import { PrintByAndDate, RenaissanceLogo, ReportTitle, Table } from "../components";
+import { PrintByAndDate, NexSourcifyLogo, ReportTitle, Table } from "../components";
 import { formatDate } from "~/utils/localDateString";
 
 import type { inferRouterOutputs } from '@trpc/server';
@@ -14,6 +14,7 @@ type GetPDFDataOutput = ExportReportOutput['getExportReport'];
 registerPdfFonts();
 
 interface SelectedFields {
+    season?: boolean;
 	buyers?: boolean;
 	brand?: boolean;
 	factory_name?: boolean;
@@ -33,23 +34,29 @@ interface ExportReportPDFProps {
 	selectedFields?: SelectedFields;
 }
 
-const ExportReportPDF = ({ data, fromDate, toDate, selectedFields }: ExportReportPDFProps) => {
-	const width = 1000 / ((selectedFields?.buyers ? 2 : 0) + 
-		(selectedFields?.factory_name ? 2 : 0) +
-		(selectedFields?.brand ? 1 : 0) + 
-		(selectedFields?.department ? 1 : 0) +
-		(selectedFields?.productTypes ? 1 : 0) +
-		(selectedFields?.teams ? 1 : 0) + 
-		(selectedFields?.quantity ? 1 : 0) + 
-		(selectedFields?.rdl_value ? 1 : 0) + 
-		(selectedFields?.factory_value ? 1 : 0) + 
-		(selectedFields?.commission_value ? 1 : 0)
-	);
+const ExportReportPDF = (props: ExportReportPDFProps) => {
+    const { data, fromDate, toDate, selectedFields } = props;
+
+    const width = 1000 / ((selectedFields?.buyers ? 2 : 0) +
+        (selectedFields?.season ? 1 : 0) +
+        (selectedFields?.factory_name ? 2 : 0) +
+        (selectedFields?.brand ? 1 : 0) +
+        (selectedFields?.department ? 1 : 0) +
+        (selectedFields?.productTypes ? 1 : 0) +
+        (selectedFields?.teams ? 1 : 0) +
+        (selectedFields?.quantity ? 1 : 0) +
+        (selectedFields?.rdl_value ? 1 : 0) +
+        (selectedFields?.factory_value ? 1 : 0) +
+        (selectedFields?.commission_value ? 1 : 0)
+    );
 
 	const tableColumns = [
 		...((selectedFields?.buyers) ? 
 			[{ key: 'buyer_name', label: 'Buyer', width: width * 2 }] : []
 		),
+        ...((selectedFields?.season) ?
+            [{ key: 'season_name', label: 'Season', width }] : []
+        ),
 		...((selectedFields?.factory_name) ? 
 			[{ key: 'factory_name', label: 'Factory', width: width * 2 }] : []
 		),
@@ -69,7 +76,7 @@ const ExportReportPDF = ({ data, fromDate, toDate, selectedFields }: ExportRepor
 			[{ key: 'quantity', label: 'Quantity', width: width }] : []
 		),
 		...((selectedFields?.rdl_value) ? 
-			[{ key: 'rdl_value', label: 'NexSourcify Value', width: width }] : []
+			[{ key: 'rdl_value', label: 'Company Value', width: width }] : []
 		),
 		...((selectedFields?.factory_value) ? 
 			[{ key: 'factory_value', label: 'Factory Value', width: width }] : []
@@ -112,16 +119,16 @@ const ExportReportPDF = ({ data, fromDate, toDate, selectedFields }: ExportRepor
     return (
 		<Document
             title={title}
-            author="NexSourcify Nexus"
+            author="Nex-Sourcify"
             subject="Factory Invoice PDF"
-            keywords="Factory, Invoice, PDF, NexSourcify Nexus, ERP"
+            keywords="Factory, Invoice, PDF, Nex-Sourcify, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="NexSourcify Nexus"
+            producer="Nex-Sourcify"
 			pageMode='useOutlines'
 			creationDate={new Date()}
         >
 			<Page orientation="landscape" size="A4" style={styles.body} wrap>
-				<RenaissanceLogo />
+				<NexSourcifyLogo />
 				<ReportTitle title={title} />
 				<View style={{ marginTop: -20 }}>
 					<PrintByAndDate />

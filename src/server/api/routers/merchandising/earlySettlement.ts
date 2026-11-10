@@ -563,52 +563,49 @@ export const earlySettlementRouter = createTRPCRouter({
                 })
             }
 
-            return await transactionWithQueuedHistory(ctx.db, async (tx) => {
-                const existingDetails = await tx.early_settlement_details.findMany({
-                    where: {
-                        early_settlement_id: input.id
-                    }
-                })
+            try {
+                return await transactionWithQueuedHistory(ctx.db, async (tx) => {
+                    const existingDetails = await tx.early_settlement_details.findMany({
+                        where: {
+                            early_settlement_id: input.id
+                        }
+                    });
 
-                try {
-                    await Promise.all([
-                        await tx.early_settlement.update({
+                    await tx.early_settlement.update({
+                        where: {
+                            id: input.id
+                        },
+                        data: {
+                            remarks: input.remarks
+                        }
+                    });
+
+                    for (const item of input.pos) {
+                        await tx.early_settlement_details.update({
                             where: {
-                                id: input.id
+                                id: item.id
                             },
                             data: {
-                                remarks: input.remarks
+                                early_settlement_charge: item.percentage
                             }
-                        }),
+                        });
+                    }
 
-                        input.pos.map(async (item) => {
-                            await tx.early_settlement_details.update({
-                                where: {
-                                    id: item.id
-                                },
-                                data: {
-                                    early_settlement_charge: item.percentage
-                                }
-                            })
-                        }),
-
-                        await tx.early_settlement_details_history.createMany({
-                            data: existingDetails.map((item) => ({
-                                early_settlement_details_id: item.id,
-                                early_settlement_charge: item.early_settlement_charge,
-                                shipment_details_id: item.shipment_details_id,
-                                action_by: ctx.user.id,
-                                action_type: actions.UPDATE
-                            }))
-                        })
-                        
-                    ])
-                }
-                catch (error){
-                    await logError(error, ctx, input);
-                    handlePrismaError(error);
-                }
-            })
+                    await tx.early_settlement_details_history.createMany({
+                        data: existingDetails.map((item) => ({
+                            early_settlement_details_id: item.id,
+                            early_settlement_charge: item.early_settlement_charge,
+                            shipment_details_id: item.shipment_details_id,
+                            action_by: ctx.user.id,
+                            action_type: actions.UPDATE
+                        }))
+                    });
+                });
+            }
+            catch (error){
+                await logError(error, ctx, input);
+                handlePrismaError(error);
+            }
         })
 
 });

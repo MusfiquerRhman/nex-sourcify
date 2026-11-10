@@ -57,7 +57,7 @@ const ProceedRealizationPage = () => {
                 subSectionLeft={
                     <SearchField
                         placeholder="Search Proceed Realizations..."
-                        infoText="FDBC No, Buyer Name, Term and NexSourcify Invoice."
+                        infoText="FDBC No, Buyer Name, Term and Company Invoice."
                         handleSearchChange={handleSearchChange}
                     />
                 }

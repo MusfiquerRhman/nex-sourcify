@@ -12,7 +12,7 @@ const NewOrderChecklistPage = () => {
     const router = useRouter();
 
     // Form setup
-    const { methods, handleSubmit, formFields, validationError, control } = useOrderChecklistForm();
+    const { methods, handleSubmit, formFields, validationError, control, selectedStyle, queryError, isLoadingOptions } = useOrderChecklistForm();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -22,13 +22,20 @@ const NewOrderChecklistPage = () => {
     const addOrderChecklist = api.orderChecklist.addOrderChecklist.useMutation({
         onSuccess: async () => {
             setError(null);
-            toast.success("Order Checklist added successfully!");
+            toast.success("File Review Checklist added successfully!");
             await utils.orderChecklist.invalidate();
         }
     });
 
     // Handle form submission for all fields
-    const onSubmitAll =  handleSubmit(async (orderChecklist) => {
+    const onSubmitAll = handleSubmit(async (orderChecklist) => {
+        if (addOrderChecklist.isPending) return;
+        if (!selectedStyle || isLoadingOptions || queryError) {
+            setError("Select an available buyer, style, and PO before adding the File Review Checklist.");
+            return;
+        }
+        setError(null);
+
         try {
             setIsLoading(true);
             const payload = {
@@ -36,6 +43,7 @@ const NewOrderChecklistPage = () => {
                 order_id: orderChecklist.order_id,
                 style_id: orderChecklist.style_id,
                 shipment_id: orderChecklist.po_id,
+                status: orderChecklist.status,
             };
 
             const newId = await addOrderChecklist.mutateAsync(payload);
@@ -43,7 +51,8 @@ const NewOrderChecklistPage = () => {
         }
         catch (error) {
             const message = parseTRPCError(error);
-            toast.error(`Failed to add Order Checklist: ${message}`);
+            setError(message);
+            toast.error(`Failed to add File Review Checklist: ${message}`);
         }
         finally {
             setIsLoading(false);
@@ -51,23 +60,23 @@ const NewOrderChecklistPage = () => {
     });
 
     return (
-        <Wrapper heading='Add Order Checklist' >
+        <Wrapper heading='Add File Review Checklist' >
             <Form 
                 fields={formFields} 
-                buttonLabel="Add Order Checklist" 
+                buttonLabel="Add File Review Checklist" 
                 register={methods.register}
                 isLoading={isLoading}
                 validationError={validationError ?? {}}
-                error={error}
+                error={queryError?.message ?? error}
                 control={control}
             />
 
             <div className="w-full flex flex-row justify-end">
                 <Button type="button" 
                     onClick={() => onSubmitAll()}
-                    label={"Add Order Checklist"} 
+                    label={"Add File Review Checklist"} 
                     className="text-lg tracking-wide mt-6 max-w-80 m-8"
-                    disabled={isLoading}
+                    disabled={isLoading || isLoadingOptions || !!queryError}
                 />
             </div>
         </Wrapper>

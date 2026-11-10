@@ -32,7 +32,7 @@ const specificFriendlyMessages: Record<string, string> = {
     early_settlement_details_shipment_details_id_fkey:
         "This shipment is used in an early settlement and cannot be deleted.",
     rdl_invoice_shipment_details_shipment_details_id_fkey:
-        "This shipment is included in an NexSourcify invoice and cannot be deleted.",
+        "This shipment is included in a Nex-Sourcify invoice and cannot be deleted.",
     tna_plan_details_shipment_id_fkey:
         "This shipment has TNA planning records and cannot be deleted.",
     shipment_item_details_shipment_detail_id_fkey:
@@ -75,23 +75,23 @@ const specificFriendlyMessages: Record<string, string> = {
     factory_payments_factory_invoice_id_fkey:
         "This factory invoice has payment records and cannot be deleted.",
     factory_payments_rdl_invoice_id_fkey:
-        "This NexSourcify invoice has factory payment records and cannot be deleted.",
+        "This Nex-Sourcify invoice has factory payment records and cannot be deleted.",
     factory_payment_header_rdl_invoice_id_fkey:
-        "This NexSourcify invoice has payment records and cannot be deleted.",
+        "This Nex-Sourcify invoice has payment records and cannot be deleted.",
     commission_invoice_sales_contract_id_fkey:
         "This sales contract is used in a commission invoice and cannot be deleted.",
     commission_invoice_lc_id_fkey:
         "This LC is used in a commission invoice and cannot be deleted.",
     commission_invoice_rdl_invoice_id_fkey:
-        "This NexSourcify invoice is used in a commission invoice and cannot be deleted.",
+        "This Nex-Sourcify invoice is used in a commission invoice and cannot be deleted.",
     debit_note_sales_contract_id_fkey:
         "This sales contract is used in a debit note and cannot be deleted.",
     debit_note_lc_id_fkey:
         "This LC is used in a debit note and cannot be deleted.",
     rdl_invoice_sales_contract_id_fkey:
-        "This sales contract is used in an NexSourcify invoice and cannot be deleted.",
+        "This sales contract is used in a Nex-Sourcify invoice and cannot be deleted.",
     rdl_invoice_lc_id_fkey:
-        "This LC is used in an NexSourcify invoice and cannot be deleted.",
+        "This LC is used in a Nex-Sourcify invoice and cannot be deleted.",
 };
 
 export const friendlyMessages: Record<string, string> = new Proxy(

@@ -26,7 +26,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view NexSourcify Invoices." 
+                    message: "You do not have permission to view Nex-Sourcify Invoices."
                 });
             }
             
@@ -105,7 +105,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view NexSourcify Invoices." 
+                    message: "You do not have permission to view Nex-Sourcify Invoices."
                 });
             }
             
@@ -186,7 +186,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_delete) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to delete NexSourcify Invoices." 
+                    message: "You do not have permission to delete Nex-Sourcify Invoices."
                 });
             }
             
@@ -277,7 +277,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view NexSourcify Invoices." 
+                    message: "You do not have permission to view Nex-Sourcify Invoices."
                 });
             }
             
@@ -362,7 +362,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_view) {
                 throw new TRPCError({ 
                     code: 'FORBIDDEN', 
-                    message: "You don't have permission to view NexSourcify Invoices." 
+                    message: "You don't have permission to view Nex-Sourcify Invoices."
                 });
             }
             
@@ -480,7 +480,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
                 if (!can_create) {
                     throw new TRPCError({ 
                         code: "FORBIDDEN", 
-                        message: "You do not have permission to create NexSourcify Invoices." 
+                        message: "You do not have permission to create Nex-Sourcify Invoices."
                     });
                 }
 
@@ -728,7 +728,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_delete) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to delete Factory Invoices from NexSourcify Invoices." 
+                    message: "You do not have permission to delete Factory Invoices from Nex-Sourcify Invoices."
                 });
             }
             
@@ -878,7 +878,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if (!can_update) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to update NexSourcify Invoices." 
+                    message: "You do not have permission to update Nex-Sourcify Invoices."
                 });
             }
             
@@ -1028,7 +1028,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if(!can_view) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to view NexSourcify invoices." 
+                    message: "You do not have permission to view Nex-Sourcify invoices."
                 });
             }
 
@@ -1069,7 +1069,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
             if(!can_approve) {
                 throw new TRPCError({ 
                     code: "FORBIDDEN", 
-                    message: "You do not have permission to approve NexSourcify invoices." 
+                    message: "You do not have permission to approve Nex-Sourcify invoices."
                 });
             }
 
@@ -1091,7 +1091,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
                 if (can_approve.length === 0 && !isAdmin) {
                     throw new TRPCError({
                         code: "FORBIDDEN",
-                        message: "You do not have permission to Authorize this NexSourcify Invoice.",
+                        message: "You do not have permission to Authorize this Nex-Sourcify Invoice.",
                     });
                 }
 
@@ -1169,7 +1169,7 @@ export const rdlInvoiceRouter = createTRPCRouter({
                 if(!isATeamMember && (ctx.user.level_id !== 5 || ctx.user.department_id !== 5)) {
                     throw new TRPCError({ 
                         code: "FORBIDDEN", 
-                        message: "You do not have permission to view this NexSourcify Invoice." 
+                        message: "You do not have permission to view this Nex-Sourcify Invoice."
                     });
                 }
 

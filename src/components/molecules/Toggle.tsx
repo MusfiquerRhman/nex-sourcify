@@ -18,7 +18,7 @@ const Toggle = React.forwardRef<HTMLInputElement, TextFieldProps>((props, ref) =
 	const { label, checked, name, disabled, ...rest } = props;
 
 	return (
-		<div className="flex h-full w-full flex-row items-center justify-between gap-4 rounded-md border border-primary-light bg-white px-4 py-3">
+		<div className="nex-toggle flex h-full w-full flex-row items-center justify-between gap-4 rounded-md border border-primary-light bg-white px-4 py-3">
 			<span className="text-sm font-medium text-primary-dark">{label}</span>
 			<label className="relative inline-flex cursor-pointer items-center">
 				<input

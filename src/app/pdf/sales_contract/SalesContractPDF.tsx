@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Document, Image, Page, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, styles, tableBorderColor } from "../components/pdfConfig";
-import { PrintByAndDate, RenaissanceLogo, ReportTitle } from "../components";
+import { PrintByAndDate, NexSourcifyLogo, ReportTitle } from "../components";
 import { formatDate } from "~/utils/localDateString";
 import { authorized } from '~/assets'
 import type { inferRouterOutputs } from '@trpc/server';
@@ -136,16 +136,16 @@ const SalesContractPDF = ({ data }: { data: GetPDFDataOutput }) => {
     return (
         <Document
             title={data.pdfHeaderData?.sales_contract_no}
-            author="NexSourcify Nexus"
+            author="Nex-Sourcify"
             subject="Sales Contract PDF"
-            keywords="Sales, Contract, PDF, NexSourcify Nexus, ERP"
+            keywords="Sales, Contract, PDF, Nex-Sourcify, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="NexSourcify Nexus"
+            producer="Nex-Sourcify"
             pageMode='useOutlines'
 			creationDate={new Date()}
         >
             <Page orientation="portrait" size="A4" style={styles.body}>
-				<RenaissanceLogo />
+				<NexSourcifyLogo />
 				<PrintByAndDate />
 				<ReportTitle title="SALES CONTRACT" />
 

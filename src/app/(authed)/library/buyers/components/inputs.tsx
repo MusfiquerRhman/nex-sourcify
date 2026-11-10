@@ -9,7 +9,7 @@ type InputProps = {
 export const Input = ({ placeholder, value, setValue, onEnter, disabled }: InputProps) => {
     return (
         <input
-            className="mb-1 py-2 px-3 rounded-lg focus:outline-none emboss-inner w-full border-2 border-transparent disabled:opacity-50"
+            className="mb-1 w-full min-w-0 rounded-md border border-gray-300 bg-white px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/15 focus:outline-none disabled:opacity-50"
             placeholder={placeholder}
             value={value}
             disabled={disabled}

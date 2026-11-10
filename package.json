@@ -1,5 +1,5 @@
 {
-  "name": "nex-sourcify",
+  "name": "nexus",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "dev": "next dev -p 3000",
+    "dev": "next dev  -p 4000",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "postinstall": "prisma generate",
@@ -32,13 +32,14 @@
     "@trpc/server": "^11.0.0",
     "babel-plugin-react-compiler": "^1.0.0",
     "bcryptjs": "^3.0.2",
-    "bullmq": "^6.3.16",
+    "bullmq": "^6.3.10",
     "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
     "framer-motion": "^12.23.24",
     "heic2any": "^0.0.4",
     "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
+    "jszip": "^3.10.1",
     "jwt-decode": "^4.0.0",
     "next": "^15.2.6",
     "pg": "^8.16.3",
@@ -46,7 +47,7 @@
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.65.0",
     "react-select": "^5.10.2",
-    "redis": "^6.3.0",
+    "redis": "^6.2.1",
     "server-only": "^0.0.1",
     "sonner": "^2.0.7",
     "superjson": "^2.2.1",
@@ -74,5 +75,8 @@
   "ct3aMetadata": {
     "initVersion": "7.39.3"
   },
-  "packageManager": "npm@10.9.3"
+  "packageManager": "npm@10.9.3",
+  "optionalDependencies": {
+    "@valkey/valkey-glide": "^2.5.3"
+  }
 }

@@ -39,6 +39,5 @@ export { default as commissionWhiteIcon } from './icons/commission_white.png';
 
 // images
 export { default as unauthorizedImage } from "./img/denied.jpg";
-export { default as renaissanceImage } from "./img/Renaissance.png";
 export { default as authorized } from "./img/authorized.png";
 export { default as notFound } from "./img/not_found.png";

@@ -22,10 +22,10 @@ export const formSchema = z.object({
     negotiation_bank_id: z.string(),
     partial_shipment: z.boolean(),
     destination_id: z.string(),
-    freight_terms_id: z.string(),
+    freight_terms_id: z.string({ message: "Select Freight Terms." }).regex(/^[1-9]\d*$/, "Select Freight Terms."),
     consignee_ids: z.array(z.string()).optional(),
     company_id: z.string(),
-    contact_person_id: z.string(),
+    contact_person_id: z.string({ message: "Select a Contact Person." }).regex(/^[1-9]\d*$/, "Select a Contact Person."),
     details: z.array(salesContractDetailsSchema).optional(),
 });
 

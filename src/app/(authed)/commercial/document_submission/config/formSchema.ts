@@ -17,7 +17,7 @@ export type FactoryInvoiceDetailsFormValues = z.infer<typeof FactoryInvoiceDetai
 
 export const RDLInvoiceDetails = z.object({
     db_id: z.string().optional(),
-    rdl_invoice_id: z.string().min(1, "NexSourcify Invoice is required"),
+    rdl_invoice_id: z.string().min(1, "Company Invoice is required"),
     rdl_invoice_no: z.string().optional(),
     invoice_date: z.string().optional(),
     quantity: z.string().optional(),

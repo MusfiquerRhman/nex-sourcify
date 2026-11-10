@@ -617,7 +617,7 @@ export const documentSubmissionRouter = createTRPCRouter({
             if (!can_delete) {
                 throw new TRPCError({ 
                     code: 'FORBIDDEN', 
-                    message: "You do not have permission to delete NexSourcify Invoices from document submissions." 
+                    message: "You do not have permission to delete Nex-Sourcify Invoices from document submissions."
                 });
             }
             

@@ -6,7 +6,6 @@ import type { FormValues } from "./formSchema";
 import { formFields } from "./formFields";
 import { formatDateForInput } from "~/utils/localDateString";
 import type { GetSalesContractByIdTypes } from "~/types/merchandisingAPITypes";
-import { DEFAULT_FREIGHT_TERM, SALES_CONTRACT_DEFAULT_CONTRACT_PERSON_ID } from "~/utils/config";
 
 type SalesContractDetails = NonNullable<GetSalesContractByIdTypes>['details'][number];
 
@@ -28,10 +27,10 @@ export const useSalesContractForm = (salesContractData?: GetSalesContractByIdTyp
             negotiation_bank_id: salesContractData.negotiation_bank_id?.toString(),
             partial_shipment: salesContractData.partial_shipment ?? true,
             destination_id: salesContractData.destination_id?.toString(),
-            freight_terms_id: salesContractData.freight_terms_id?.toString(),
+            freight_terms_id: salesContractData.freight_terms_id?.toString() ?? "",
             consignee_ids: salesContractData.consignee_ids ?? [],
             company_id: salesContractData.company_id?.toString(),
-            contact_person_id: salesContractData.contact_person_id?.toString(),
+            contact_person_id: salesContractData.contact_person_id?.toString() ?? "",
             details: salesContractData.details?.map((detail: SalesContractDetails) => ({
                 db_id: detail.id,
                 ...detail,
@@ -48,10 +47,10 @@ export const useSalesContractForm = (salesContractData?: GetSalesContractByIdTyp
             negotiation_bank_id: undefined,
             partial_shipment: true,
             destination_id: undefined,
-            freight_terms_id: DEFAULT_FREIGHT_TERM,
+            freight_terms_id: "",
             consignee_ids: [],
             company_id: undefined,
-            contact_person_id: SALES_CONTRACT_DEFAULT_CONTRACT_PERSON_ID,
+            contact_person_id: "",
             details: [],
         },
     });
@@ -72,9 +71,9 @@ export const useSalesContractForm = (salesContractData?: GetSalesContractByIdTyp
                 negotiation_bank_id: salesContractData.negotiation_bank_id?.toString(),
                 partial_shipment: salesContractData.partial_shipment ?? true,
                 destination_id: salesContractData.destination_id?.toString(),
-                freight_terms_id: salesContractData.freight_terms_id?.toString(),
+                freight_terms_id: salesContractData.freight_terms_id?.toString() ?? "",
                 company_id: salesContractData.company_id?.toString(),
-                contact_person_id: salesContractData.contact_person_id?.toString(),
+                contact_person_id: salesContractData.contact_person_id?.toString() ?? "",
                 sales_contract_date: salesContractData.sales_contract_date 
                     ? formatDateForInput(new Date(salesContractData.sales_contract_date)) 
                     : formatDateForInput(new Date()),

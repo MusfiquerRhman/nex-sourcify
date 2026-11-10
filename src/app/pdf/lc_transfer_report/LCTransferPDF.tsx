@@ -1,6 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { registerPdfFonts, styles } from "../components/pdfConfig";
-import { PrintByAndDate, RenaissanceLogo, ReportTitle, HeaderPart, Table, TableSummary, Signature } from "../components";
+import { PrintByAndDate, NexSourcifyLogo, ReportTitle, HeaderPart, Table, TableSummary, Signature } from "../components";
 
 import type { HeaderData } from "~/types/pdf";
 import type { inferRouterOutputs } from '@trpc/server';
@@ -46,16 +46,16 @@ const LCTransferPDF = ({ data }: { data: GetPDFDataOutput }) => {
     return (
 		<Document
             title={`LC Transfer - ${data.header?.lc_no}`}
-            author="NexSourcify Nexus"
+            author="Nex-Sourcify"
             subject="LC Transfer PDF"
-            keywords="LC, Transfer, PDF, NexSourcify Nexus, ERP"
+            keywords="LC, Transfer, PDF, Nex-Sourcify, ERP"
             creator={`${user?.first_name} ${user?.last_name}`}
-            producer="NexSourcify Nexus"
+            producer="Nex-Sourcify"
 			pageMode='useOutlines'
 			creationDate={new Date()}
         >
 			<Page orientation="landscape" size="A4" style={styles.body} wrap>
-				<RenaissanceLogo />
+				<NexSourcifyLogo />
 				<PrintByAndDate />
 				<ReportTitle title="LC TRANSFER SUMMARY" />
 				<HeaderPart data={buyerOrderData}/>

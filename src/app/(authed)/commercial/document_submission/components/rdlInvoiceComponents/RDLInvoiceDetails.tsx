@@ -43,7 +43,7 @@ const RdlInvoiceDetails = ({ methods, validationError, disabled = false }: Props
 
     const deleteRdlInvoiceMutation = api.documentSubmission.deleteRdlInvoice.useMutation({
         onSuccess: async () => {
-            toast.success("NexSourcify Invoice deleted successfully!");
+            toast.success("Nex-Sourcify Invoice deleted successfully!");
             await Promise.all([
                 utils.documentSubmission.getDocumentSubmission.invalidate(),
                 utils.documentSubmission.getRdlInvoiceForDocumentSubmission.invalidate()
@@ -63,7 +63,7 @@ const RdlInvoiceDetails = ({ methods, validationError, disabled = false }: Props
         }
         catch (error) {
             const message = parseTRPCError(error);
-            toast.error(`Error deleting NexSourcify Invoice: ${message}`);
+            toast.error(`Error deleting Nex-Sourcify Invoice: ${message}`);
         }
     }, [deleteRdlInvoiceMutation, removeRdlInvoice, rdlInvoiceFields]);
 
